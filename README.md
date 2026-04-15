@@ -283,3 +283,57 @@ Este repositorio está orientado a trabajo académico/técnico del **Sistema de 
 **Estado de este README:** versión inicial para arranque del repositorio y trabajo colaborativo.
 
 Proyecto actualizado el 15/04/2026 Clemeente
+
+## Arranque del backend base
+
+### Infraestructura incluida
+
+- `compose.yaml` con servicios `db` (PostgreSQL 16) y `backend` (Django).
+- `backend/Dockerfile`
+- `backend/requirements.txt`
+- `backend/.dockerignore`
+- `.env.example`
+
+### Configuración local
+
+```bash
+cp .env.example .env
+```
+
+### Levantar servicios y migraciones
+
+```bash
+docker compose up -d db
+docker compose build backend
+docker compose run --rm backend python manage.py makemigrations
+docker compose run --rm backend python manage.py migrate
+docker compose run --rm backend python manage.py createsuperuser
+docker compose up -d backend
+```
+
+### Pruebas rápidas
+
+- Healthcheck del backend: `http://localhost:8000/health/`
+- Admin de Django: `http://localhost:8000/admin/`
+- PostgreSQL local: `localhost:5433`
+
+## Apps base del dominio creadas
+
+- `usuarios` (modelo de usuario personalizado con `AUTH_USER_MODEL`)
+- `core`
+- `catalogos`
+- `relaciones`
+- `evaluacion`
+- `actas`
+- `trayectoria`
+- `reportes`
+- `auditoria`
+
+## Dev Container (opcional, recomendado)
+
+El repositorio incluye `.devcontainer/devcontainer.json` para abrir VS Code en un entorno reproducible usando el servicio `backend` definido en `compose.yaml`.
+
+En VS Code:
+
+1. Abrir la paleta de comandos.
+2. Ejecutar `Dev Containers: Reopen in Container`.

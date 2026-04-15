@@ -1,11 +1,17 @@
 {
   "name": "sca-emi-ici-dev",
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "dockerComposeFile": [
+    "../compose.yaml"
+  ],
+  "service": "backend",
+  "workspaceFolder": "/app",
+  "shutdownAction": "stopCompose",
   "customizations": {
     "vscode": {
       "extensions": [
         "openai.chatgpt",
-        "ms-vscode-remote.remote-containers",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
         "ms-azuretools.vscode-docker"
       ]
     }
