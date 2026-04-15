@@ -281,3 +281,5 @@ Este repositorio está orientado a trabajo académico/técnico del **Sistema de 
 ---
 
 **Estado de este README:** versión inicial para arranque del repositorio y trabajo colaborativo.
+
+Proyecto actualizado el 15/04/2026 Clemeente
