@@ -49,24 +49,30 @@ class GeneracionAdmin(admin.ModelAdmin):
 
 @admin.register(PeriodoEscolar)
 class PeriodoEscolarAdmin(admin.ModelAdmin):
-    list_display = ("clave", "nombre", "estado", "vigente_desde", "vigente_hasta")
+    list_display = (
+        "clave",
+        "anio_escolar",
+        "semestre_operativo",
+        "fecha_inicio",
+        "fecha_fin",
+        "estado",
+    )
     list_filter = ("estado",)
-    search_fields = ("clave", "nombre")
+    search_fields = ("clave", "anio_escolar")
 
 
 @admin.register(GrupoAcademico)
 class GrupoAcademicoAdmin(admin.ModelAdmin):
     list_display = (
-        "clave",
-        "nombre",
+        "clave_grupo",
         "generacion",
-        "periodo_escolar",
-        "turno",
+        "periodo",
+        "semestre_numero",
         "cupo_maximo",
         "estado",
     )
-    list_filter = ("estado", "turno", "periodo_escolar", "generacion__plan_estudios")
-    search_fields = ("clave", "nombre", "generacion__clave", "periodo_escolar__clave")
+    list_filter = ("estado", "periodo", "generacion__plan_estudios")
+    search_fields = ("clave_grupo", "generacion__clave", "periodo__clave")
 
 
 @admin.register(Materia)
@@ -89,10 +95,9 @@ class MateriaPlanAdmin(admin.ModelAdmin):
     list_display = (
         "plan_estudios",
         "materia",
-        "semestre",
-        "orden_malla",
+        "semestre_numero",
+        "anio_escolar_numero",
         "obligatoria",
-        "estado",
     )
-    list_filter = ("estado", "obligatoria", "plan_estudios")
+    list_filter = ("obligatoria", "plan_estudios", "anio_escolar_numero", "semestre_numero")
     search_fields = ("plan_estudios__clave", "materia__clave", "materia__nombre")

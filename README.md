@@ -434,3 +434,11 @@ Ejecutar:
 docker compose run --rm backend python manage.py makemigrations catalogos
 docker compose run --rm backend python manage.py migrate
 ```
+
+### Corrección Bloque 2
+
+Se alineo el Bloque 2 al baseline academico aprobado con estos ajustes puntuales:
+
+- `PeriodoEscolar` ahora expone `clave`, `anio_escolar`, `semestre_operativo`, `fecha_inicio`, `fecha_fin`, `estado`.
+- `GrupoAcademico` elimina `turno` y conserva estructura con `clave_grupo`, `generacion`, `periodo`, `semestre_numero` (con `cupo_maximo` opcional).
+- `MateriaPlan` queda explicita con `plan_estudios`, `materia`, `semestre_numero`, `anio_escolar_numero`, `obligatoria`.

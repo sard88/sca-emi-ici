@@ -10,6 +10,26 @@ ESTADO_CHOICES = [
     (ESTADO_INACTIVO, "Inactivo"),
 ]
 
+ANIO_ESCOLAR_CHOICES = [
+    ("2023-2024", "2023-2024"),
+    ("2024-2025", "2024-2025"),
+    ("2025-2026", "2025-2026"),
+    ("2026-2027", "2026-2027"),
+    ("2027-2028", "2027-2028"),
+    ("2028-2029", "2028-2029"),
+    ("2029-2030", "2029-2030"),
+    ("2030-2031", "2030-2031"),
+    ("2031-2032", "2031-2032"),
+    ("2032-2033", "2032-2033"),
+    ("2033-2034", "2033-2034"),
+    ("2034-2035", "2034-2035"),
+]
+
+SEMESTRE_OPERATIVO_CHOICES = [
+    (1, "Primer semestre"),
+    (2, "Segundo semestre"),
+]
+
 
 class CatalogoAcademicoBase(models.Model):
     clave = models.CharField(max_length=30)
@@ -32,6 +52,8 @@ class CatalogoAcademicoBase(models.Model):
 class Carrera(CatalogoAcademicoBase):
     class Meta:
         ordering = ["clave", "nombre"]
+        verbose_name = "Carrera"
+        verbose_name_plural = "Carreras"
         constraints = [
             models.UniqueConstraint(fields=["clave"], name="uq_carrera_clave"),
         ]
@@ -50,6 +72,8 @@ class PlanEstudios(CatalogoAcademicoBase):
 
     class Meta:
         ordering = ["carrera__clave", "clave"]
+        verbose_name = "Plan de estudio"
+        verbose_name_plural = "Planes de estudio"
         constraints = [
             models.UniqueConstraint(
                 fields=["carrera", "clave"],
@@ -72,6 +96,8 @@ class Generacion(CatalogoAcademicoBase):
 
     class Meta:
         ordering = ["-anio_inicio", "clave"]
+        verbose_name = "Generación"
+        verbose_name_plural = "Generaciones"
         constraints = [
             models.UniqueConstraint(
                 fields=["plan_estudios", "clave"],
@@ -88,52 +114,86 @@ class Generacion(CatalogoAcademicoBase):
         return f"{self.plan_estudios.clave} - {self.clave}"
 
 
-class PeriodoEscolar(CatalogoAcademicoBase):
+class PeriodoEscolar(models.Model):
+    clave = models.CharField(max_length=30, verbose_name="Clave")
+    anio_escolar = models.CharField(
+        max_length=20,
+        choices=ANIO_ESCOLAR_CHOICES,
+        blank=True,
+        default="",
+        verbose_name="Año escolar",
+    )
+    semestre_operativo = models.PositiveSmallIntegerField(
+        choices=SEMESTRE_OPERATIVO_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Semestre operativo",
+    )
+    fecha_inicio = models.DateField(null=True, blank=True, verbose_name="Fecha de inicio")
+    fecha_fin = models.DateField(null=True, blank=True, verbose_name="Fecha de fin")
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default=ESTADO_ACTIVO,
+        verbose_name="Estado",
+    )
+
     class Meta:
-        ordering = ["-vigente_desde", "clave"]
+        ordering = ["-anio_escolar", "-semestre_operativo", "clave"]
+        verbose_name = "Periodo escolar"
+        verbose_name_plural = "Periodo escolar"
         constraints = [
             models.UniqueConstraint(fields=["clave"], name="uq_periodoescolar_clave"),
         ]
 
+    def clean(self):
+        if self.fecha_inicio and self.fecha_fin and self.fecha_fin < self.fecha_inicio:
+            raise ValidationError({"fecha_fin": "No puede ser anterior a fecha_inicio."})
+
     def __str__(self) -> str:
-        return f"{self.clave} - {self.nombre}"
+        return f"{self.clave} - {self.anio_escolar} S{self.semestre_operativo}"
 
 
-class GrupoAcademico(CatalogoAcademicoBase):
-    TURNO_MATUTINO = "matutino"
-    TURNO_VESPERTINO = "vespertino"
-    TURNO_NOCTURNO = "nocturno"
-
-    TURNO_CHOICES = [
-        (TURNO_MATUTINO, "Matutino"),
-        (TURNO_VESPERTINO, "Vespertino"),
-        (TURNO_NOCTURNO, "Nocturno"),
-    ]
-
+class GrupoAcademico(models.Model):
+    clave_grupo = models.CharField(max_length=30, verbose_name="Clave de grupo")
     generacion = models.ForeignKey(
         Generacion,
         on_delete=models.PROTECT,
         related_name="grupos_academicos",
+        verbose_name="Generación",
     )
-    periodo_escolar = models.ForeignKey(
+    periodo = models.ForeignKey(
         PeriodoEscolar,
         on_delete=models.PROTECT,
         related_name="grupos_academicos",
+        verbose_name="Periodo escolar",
     )
-    turno = models.CharField(max_length=20, choices=TURNO_CHOICES, default=TURNO_MATUTINO)
-    cupo_maximo = models.PositiveIntegerField(default=40)
+    semestre_numero = models.PositiveSmallIntegerField(default=1, verbose_name="Semestre número")
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default=ESTADO_ACTIVO,
+        verbose_name="Estado",
+    )
+    cupo_maximo = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Cupo máximo",
+    )
 
     class Meta:
-        ordering = ["periodo_escolar__clave", "clave"]
+        ordering = ["periodo__anio_escolar", "periodo__semestre_operativo", "clave_grupo"]
+        verbose_name = "Grupo académico"
+        verbose_name_plural = "Grupos académicos"
         constraints = [
             models.UniqueConstraint(
-                fields=["generacion", "periodo_escolar", "clave"],
+                fields=["generacion", "periodo", "clave_grupo"],
                 name="uq_grupo_generacion_periodo_clave",
             )
         ]
 
     def __str__(self) -> str:
-        return f"{self.periodo_escolar.clave} - {self.clave}"
+        return f"{self.periodo.clave} - {self.clave_grupo}"
 
 
 class Materia(CatalogoAcademicoBase):
@@ -142,6 +202,8 @@ class Materia(CatalogoAcademicoBase):
 
     class Meta:
         ordering = ["clave", "nombre"]
+        verbose_name = "Materia"
+        verbose_name_plural = "Materias"
         constraints = [
             models.UniqueConstraint(fields=["clave"], name="uq_materia_clave"),
         ]
@@ -155,34 +217,31 @@ class MateriaPlan(models.Model):
         PlanEstudios,
         on_delete=models.PROTECT,
         related_name="materias_plan",
+        verbose_name="Plan de estudio",
     )
     materia = models.ForeignKey(
         Materia,
         on_delete=models.PROTECT,
         related_name="planes_estudio",
+        verbose_name="Materia",
     )
-    semestre = models.PositiveSmallIntegerField(default=1)
-    orden_malla = models.PositiveIntegerField(default=1)
-    obligatoria = models.BooleanField(default=True)
-    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=ESTADO_ACTIVO)
-    vigente_desde = models.DateField(null=True, blank=True)
-    vigente_hasta = models.DateField(null=True, blank=True)
+    semestre_numero = models.PositiveSmallIntegerField(default=1, verbose_name="Semestre número")
+    anio_escolar_numero = models.PositiveSmallIntegerField(
+        default=1,
+        verbose_name="Año escolar número",
+    )
+    obligatoria = models.BooleanField(default=True, verbose_name="Obligatoria")
 
     class Meta:
-        ordering = ["plan_estudios__clave", "orden_malla", "materia__clave"]
+        ordering = ["plan_estudios__clave", "anio_escolar_numero", "semestre_numero", "materia__clave"]
+        verbose_name = "Plan de materia"
+        verbose_name_plural = "Planes de materias"
         constraints = [
             models.UniqueConstraint(
                 fields=["plan_estudios", "materia"],
                 name="uq_materiaplan_plan_materia",
             )
         ]
-
-    def clean(self):
-        if self.vigente_desde and self.vigente_hasta:
-            if self.vigente_hasta < self.vigente_desde:
-                raise ValidationError(
-                    {"vigente_hasta": "No puede ser anterior a 'vigente_desde'."}
-                )
 
     def __str__(self) -> str:
         return f"{self.plan_estudios.clave} - {self.materia.clave}"

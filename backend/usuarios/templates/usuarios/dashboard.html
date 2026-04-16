@@ -40,6 +40,20 @@
         color: #fff;
         cursor: pointer;
       }
+      .links {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin: 10px 0 16px;
+      }
+      .link-btn {
+        display: inline-block;
+        padding: 10px 14px;
+        border-radius: 8px;
+        background: #1f4fbf;
+        color: #fff;
+        text-decoration: none;
+      }
       code {
         background: #edf2fc;
         padding: 2px 6px;
@@ -73,8 +87,19 @@
 
       <div class="card">
         <h2>Enlaces utiles</h2>
-        <p>Health: <code>/health/</code></p>
-        <p>Admin: <code>/admin/</code></p>
+        <p>Abre accesos del sistema sin perder este menu (se abren en otra pestaña).</p>
+        <div class="links">
+          <a class="link-btn" href="/health/" target="_blank" rel="noopener noreferrer">
+            Health
+          </a>
+          <a class="link-btn" href="/admin/" target="_blank" rel="noopener noreferrer">
+            Admin
+          </a>
+          <a class="link-btn" href="/dashboard/">
+            Menú (Dashboard)
+          </a>
+        </div>
+        <p>Rutas: <code>/health/</code> y <code>/admin/</code></p>
         <form method="post" action="{% url 'usuarios:logout' %}">
           {% csrf_token %}
           <button type="submit">Cerrar sesion</button>
