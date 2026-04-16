@@ -337,3 +337,49 @@ En VS Code:
 
 1. Abrir la paleta de comandos.
 2. Ejecutar `Dev Containers: Reopen in Container`.
+
+## Bloque 1
+
+Implementacion inicial de autenticacion local, roles y base administrativa del backend Django.
+
+### Incluye
+
+- Modelo `Usuario` personalizado (basado en `AbstractUser`) con campos:
+  - `nombre_completo`
+  - `correo`
+  - `telefono`
+  - `estado_cuenta`
+- Soporte de roles mediante `django.contrib.auth.models.Group` con creacion automatica de roles base:
+  - `ADMIN_SISTEMA`
+  - `JEFATURA_CARRERA`
+  - `JEFATURA_ACADEMICA`
+  - `DOCENTE`
+- Modelo `AsignacionCargo` para cargos institucionales vigentes con:
+  - `usuario`
+  - `cargo_codigo`
+  - `tipo_designacion`
+  - `vigente_desde`
+  - `vigente_hasta`
+  - `activo`
+- Formularios y vistas minimas:
+  - `login` (`/login/`)
+  - `logout` (`/logout/`)
+  - `dashboard` (`/dashboard/`)
+- Dashboard restringido a usuarios autenticados.
+- Endpoint de salud JSON: `/health/`.
+
+### Admin
+
+Se registran en admin:
+
+- `Usuario`
+- `AsignacionCargo`
+
+### Migraciones
+
+Ejecutar:
+
+```bash
+docker compose run --rm backend python manage.py makemigrations usuarios
+docker compose run --rm backend python manage.py migrate
+```

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        background: #f5f7fb;
+      }
+      .layout {
+        max-width: 860px;
+        margin: 32px auto;
+        padding: 0 16px;
+      }
+      .card {
+        background: #fff;
+        border: 1px solid #d8deea;
+        border-radius: 10px;
+        padding: 18px;
+        margin-bottom: 16px;
+      }
+      h1 {
+        margin-top: 0;
+      }
+      .badge {
+        display: inline-block;
+        border-radius: 999px;
+        background: #e9eefb;
+        padding: 4px 10px;
+        margin-right: 6px;
+      }
+      button {
+        padding: 10px 14px;
+        border: 0;
+        border-radius: 8px;
+        background: #1f4fbf;
+        color: #fff;
+        cursor: pointer;
+      }
+      code {
+        background: #edf2fc;
+        padding: 2px 6px;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <div class="card">
+        <h1>Dashboard base administrativo</h1>
+        <p>Usuario autenticado: <strong>{{ request.user.username }}</strong></p>
+        <p>Nombre: {{ request.user.nombre_completo|default:"(sin registrar)" }}</p>
+        <p>Correo: {{ request.user.correo|default:"(sin registrar)" }}</p>
+        <p>Telefono: {{ request.user.telefono|default:"(sin registrar)" }}</p>
+        <p>Estado de cuenta: <strong>{{ request.user.estado_cuenta }}</strong></p>
+      </div>
+
+      <div class="card">
+        <h2>Roles (Groups)</h2>
+        {% with grupos=request.user.groups.all %}
+          {% if grupos %}
+            {% for grupo in grupos %}
+              <span class="badge">{{ grupo.name }}</span>
+            {% endfor %}
+          {% else %}
+            <p>Sin roles asignados.</p>
+          {% endif %}
+        {% endwith %}
+      </div>
+
+      <div class="card">
+        <h2>Enlaces utiles</h2>
+        <p>Health: <code>/health/</code></p>
+        <p>Admin: <code>/admin/</code></p>
+        <form method="post" action="{% url 'usuarios:logout' %}">
+          {% csrf_token %}
+          <button type="submit">Cerrar sesion</button>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>
