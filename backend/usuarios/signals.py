@@ -8,6 +8,7 @@ ROLES_BASE = (
     "JEFATURA_CARRERA",
     "JEFATURA_ACADEMICA",
     "DOCENTE",
+    "DISCENTE",
 )
 
 

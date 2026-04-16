@@ -37,6 +37,14 @@ class UsuarioAdmin(UserAdmin):
                 )
             },
         ),
+        (
+            "Roles y permisos",
+            {
+                "fields": (
+                    "groups",
+                )
+            },
+        ),
     )
 
 
