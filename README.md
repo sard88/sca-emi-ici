@@ -383,3 +383,54 @@ Ejecutar:
 docker compose run --rm backend python manage.py makemigrations usuarios
 docker compose run --rm backend python manage.py migrate
 ```
+
+## Bloque 2
+
+Implementacion de catalogos academicos minimos para sostener la estructura base del sistema desde admin.
+
+### Modelos creados
+
+- `Carrera`
+- `PlanEstudios`
+- `Generacion`
+- `PeriodoEscolar`
+- `GrupoAcademico`
+- `Materia`
+- `MateriaPlan`
+
+### Relaciones del dominio (Bloque 2)
+
+- `PlanEstudios` pertenece a `Carrera`.
+- `Generacion` pertenece a `PlanEstudios`.
+- `GrupoAcademico` pertenece a `Generacion` y `PeriodoEscolar`.
+- `MateriaPlan` relaciona `Materia` con `PlanEstudios`.
+
+### Campos base incorporados
+
+Se incluyeron campos razonables para:
+
+- identificacion (`clave`, `nombre`)
+- vigencia (`vigente_desde`, `vigente_hasta`)
+- estado (`estado`)
+- asociaciones entre entidades academicas
+
+### Admin
+
+Todos los modelos de Bloque 2 se registraron en Django Admin para alta y mantenimiento:
+
+- `Carrera`
+- `PlanEstudios`
+- `Generacion`
+- `PeriodoEscolar`
+- `GrupoAcademico`
+- `Materia`
+- `MateriaPlan`
+
+### Migraciones
+
+Ejecutar:
+
+```bash
+docker compose run --rm backend python manage.py makemigrations catalogos
+docker compose run --rm backend python manage.py migrate
+```
