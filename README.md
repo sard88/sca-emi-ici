@@ -442,3 +442,44 @@ Se alineo el Bloque 2 al baseline academico aprobado con estos ajustes puntuales
 - `PeriodoEscolar` ahora expone `clave`, `anio_escolar`, `semestre_operativo`, `fecha_inicio`, `fecha_fin`, `estado`.
 - `GrupoAcademico` elimina `turno` y conserva estructura con `clave_grupo`, `generacion`, `periodo`, `semestre_numero` (con `cupo_maximo` opcional).
 - `MateriaPlan` queda explicita con `plan_estudios`, `materia`, `semestre_numero`, `anio_escolar_numero`, `obligatoria`.
+
+## Bloque 3
+
+Implementacion del esquema de evaluacion y validaciones academicas, sin adelantar actas, trayectoria ni reportes.
+
+### Modelos creados
+
+- `EsquemaEvaluacion`
+- `ComponenteEvaluacion`
+
+### Reglas implementadas
+
+- Se permiten esquemas con `1`, `2` o `3` parciales.
+- Exencion solo permitida para materias con `2` o `3` parciales (`num_parciales=1` la bloquea).
+- En materias de `1` parcial, el examen final es obligatorio.
+- Formula base configurable por materia-plan con `peso_parciales` y `peso_final` (45/55 por omision).
+- La suma `peso_parciales + peso_final` debe ser exactamente `100`.
+- Cada corte (`P1`, `P2`, `P3`, `FINAL`) valida suma de componentes igual a `100`.
+
+### Admin
+
+Se registran ambos modelos en Django admin con soporte para edicion de componentes por esquema:
+
+- `EsquemaEvaluacion`
+- `ComponenteEvaluacion`
+
+### Tests minimos incluidos
+
+- Permitir esquemas de 1, 2 y 3 parciales.
+- Impedir exencion cuando `num_parciales = 1`.
+- Validar sumas de porcentajes por corte iguales a 100.
+- Validar pesos 45/55 por omision y persistencia configurable.
+
+### Migraciones
+
+Ejecutar:
+
+```bash
+docker compose run --rm backend python manage.py makemigrations evaluacion
+docker compose run --rm backend python manage.py migrate
+```

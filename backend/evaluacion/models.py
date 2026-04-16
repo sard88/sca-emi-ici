@@ -1,3 +1,181 @@
-from django.db import models
+from decimal import Decimal
 
-# Create your models here.
+from django.core.exceptions import ValidationError
+from django.db import models
+from django.db.models import Sum
+
+from catalogos.models import MateriaPlan
+
+
+class EsquemaEvaluacion(models.Model):
+    PARCIALES_1 = 1
+    PARCIALES_2 = 2
+    PARCIALES_3 = 3
+
+    NUM_PARCIALES_CHOICES = [
+        (PARCIALES_1, "1 parcial"),
+        (PARCIALES_2, "2 parciales"),
+        (PARCIALES_3, "3 parciales"),
+    ]
+
+    materia_plan = models.ForeignKey(
+        MateriaPlan,
+        on_delete=models.PROTECT,
+        related_name="esquemas_evaluacion",
+        verbose_name="Materia plan",
+    )
+    version = models.CharField(max_length=20, default="v1", verbose_name="Versión")
+    num_parciales = models.PositiveSmallIntegerField(
+        choices=NUM_PARCIALES_CHOICES,
+        default=PARCIALES_2,
+        verbose_name="Número de parciales",
+    )
+    permite_exencion = models.BooleanField(default=False, verbose_name="Permite exención")
+    peso_parciales = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("45.00"),
+        verbose_name="Peso parciales",
+    )
+    peso_final = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("55.00"),
+        verbose_name="Peso final",
+    )
+    umbral_exencion = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("90.00"),
+        verbose_name="Umbral de exención",
+    )
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+
+    class Meta:
+        ordering = ["-activo", "materia_plan__plan_estudios__clave", "materia_plan__materia__clave"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["materia_plan", "version"],
+                name="uq_esquemaevaluacion_materiaplan_version",
+            )
+        ]
+        verbose_name = "Esquema de evaluación"
+        verbose_name_plural = "Esquemas de evaluación"
+
+    def cortes_esperados(self):
+        cortes = ["P1"]
+        if self.num_parciales >= self.PARCIALES_2:
+            cortes.append("P2")
+        if self.num_parciales >= self.PARCIALES_3:
+            cortes.append("P3")
+        cortes.append("FINAL")
+        return cortes
+
+    def validar_componentes_por_corte(self):
+        sumas = (
+            self.componentes.values("corte_codigo")
+            .annotate(total=Sum("porcentaje"))
+            .order_by("corte_codigo")
+        )
+        totales = {item["corte_codigo"]: item["total"] or Decimal("0.00") for item in sumas}
+
+        errores = {}
+        for corte in self.cortes_esperados():
+            total = totales.get(corte, Decimal("0.00"))
+            if total != Decimal("100.00"):
+                errores[corte] = (
+                    f"La suma de porcentajes del corte {corte} debe ser 100 "
+                    f"(actual: {total})."
+                )
+
+        if self.num_parciales == self.PARCIALES_1 and not self.componentes.filter(
+            corte_codigo=ComponenteEvaluacion.CORTE_FINAL,
+            es_examen=True,
+        ).exists():
+            errores["FINAL"] = "En materias de 1 parcial, el examen final es obligatorio."
+
+        if errores:
+            raise ValidationError(list(errores.values()))
+
+    def clean(self):
+        if self.num_parciales not in (self.PARCIALES_1, self.PARCIALES_2, self.PARCIALES_3):
+            raise ValidationError({"num_parciales": "Solo se permiten 1, 2 o 3 parciales."})
+
+        total = (self.peso_parciales or Decimal("0.00")) + (self.peso_final or Decimal("0.00"))
+        if total != Decimal("100.00"):
+            raise ValidationError(
+                {"peso_final": "La suma de peso_parciales y peso_final debe ser 100."}
+            )
+
+        if self.permite_exencion and self.num_parciales == self.PARCIALES_1:
+            raise ValidationError(
+                {
+                    "permite_exencion": (
+                        "La exención solo aplica cuando la materia opera con 2 o 3 parciales."
+                    )
+                }
+            )
+
+        if self.umbral_exencion < Decimal("0.00") or self.umbral_exencion > Decimal("100.00"):
+            raise ValidationError(
+                {"umbral_exencion": "El umbral de exención debe estar entre 0 y 100."}
+            )
+
+    def __str__(self):
+        return f"{self.materia_plan} - {self.version}"
+
+
+class ComponenteEvaluacion(models.Model):
+    CORTE_P1 = "P1"
+    CORTE_P2 = "P2"
+    CORTE_P3 = "P3"
+    CORTE_FINAL = "FINAL"
+
+    CORTE_CHOICES = [
+        (CORTE_P1, "Parcial 1"),
+        (CORTE_P2, "Parcial 2"),
+        (CORTE_P3, "Parcial 3"),
+        (CORTE_FINAL, "Final"),
+    ]
+
+    esquema = models.ForeignKey(
+        EsquemaEvaluacion,
+        on_delete=models.CASCADE,
+        related_name="componentes",
+        verbose_name="Esquema",
+    )
+    corte_codigo = models.CharField(max_length=10, choices=CORTE_CHOICES, verbose_name="Corte")
+    nombre = models.CharField(max_length=120, verbose_name="Nombre")
+    porcentaje = models.DecimalField(max_digits=5, decimal_places=2, verbose_name="Porcentaje")
+    es_examen = models.BooleanField(default=False, verbose_name="Es examen")
+    orden = models.PositiveSmallIntegerField(default=1, verbose_name="Orden")
+
+    class Meta:
+        ordering = ["esquema", "corte_codigo", "orden"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["esquema", "corte_codigo", "orden"],
+                name="uq_componenteevaluacion_esquema_corte_orden",
+            )
+        ]
+        verbose_name = "Componente de evaluación"
+        verbose_name_plural = "Componentes de evaluación"
+
+    def clean(self):
+        if self.porcentaje <= Decimal("0.00") or self.porcentaje > Decimal("100.00"):
+            raise ValidationError({"porcentaje": "El porcentaje debe estar entre 0 y 100."})
+
+        if self.esquema_id:
+            cortes_validos = self.esquema.cortes_esperados()
+            if self.corte_codigo not in cortes_validos:
+                raise ValidationError(
+                    {"corte_codigo": f"El corte {self.corte_codigo} no aplica a este esquema."}
+                )
+
+        if self.es_examen and self.corte_codigo != self.CORTE_FINAL:
+            raise ValidationError(
+                {"es_examen": "El componente de examen debe pertenecer al corte FINAL."}
+            )
+
+    def __str__(self):
+        return f"{self.esquema} - {self.corte_codigo} - {self.nombre}"
