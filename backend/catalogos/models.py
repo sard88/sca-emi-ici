@@ -1,6 +1,8 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from .validators import CLAVE_MAX_LENGTH, clave_format_validator
+
 
 ESTADO_ACTIVO = "activo"
 ESTADO_INACTIVO = "inactivo"
@@ -32,7 +34,10 @@ SEMESTRE_OPERATIVO_CHOICES = [
 
 
 class CatalogoAcademicoBase(models.Model):
-    clave = models.CharField(max_length=30)
+    clave = models.CharField(
+        max_length=CLAVE_MAX_LENGTH,
+        validators=[clave_format_validator],
+    )
     nombre = models.CharField(max_length=255)
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=ESTADO_ACTIVO)
     vigente_desde = models.DateField(null=True, blank=True)
@@ -96,7 +101,7 @@ class Generacion(CatalogoAcademicoBase):
 
     class Meta:
         ordering = ["-anio_inicio", "clave"]
-        verbose_name = "Generación"
+        verbose_name = "GeneraciÃ³n"
         verbose_name_plural = "Generaciones"
         constraints = [
             models.UniqueConstraint(
@@ -115,13 +120,17 @@ class Generacion(CatalogoAcademicoBase):
 
 
 class PeriodoEscolar(models.Model):
-    clave = models.CharField(max_length=30, verbose_name="Clave")
+    clave = models.CharField(
+        max_length=CLAVE_MAX_LENGTH,
+        validators=[clave_format_validator],
+        verbose_name="Clave",
+    )
     anio_escolar = models.CharField(
         max_length=20,
         choices=ANIO_ESCOLAR_CHOICES,
         blank=True,
         default="",
-        verbose_name="Año escolar",
+        verbose_name="AÃ±o escolar",
     )
     semestre_operativo = models.PositiveSmallIntegerField(
         choices=SEMESTRE_OPERATIVO_CHOICES,
@@ -155,12 +164,16 @@ class PeriodoEscolar(models.Model):
 
 
 class GrupoAcademico(models.Model):
-    clave_grupo = models.CharField(max_length=30, verbose_name="Clave de grupo")
+    clave_grupo = models.CharField(
+        max_length=CLAVE_MAX_LENGTH,
+        validators=[clave_format_validator],
+        verbose_name="Clave de grupo",
+    )
     generacion = models.ForeignKey(
         Generacion,
         on_delete=models.PROTECT,
         related_name="grupos_academicos",
-        verbose_name="Generación",
+        verbose_name="GeneraciÃ³n",
     )
     periodo = models.ForeignKey(
         PeriodoEscolar,
@@ -168,7 +181,7 @@ class GrupoAcademico(models.Model):
         related_name="grupos_academicos",
         verbose_name="Periodo escolar",
     )
-    semestre_numero = models.PositiveSmallIntegerField(default=1, verbose_name="Semestre número")
+    semestre_numero = models.PositiveSmallIntegerField(default=1, verbose_name="Semestre nÃºmero")
     estado = models.CharField(
         max_length=20,
         choices=ESTADO_CHOICES,
@@ -178,13 +191,13 @@ class GrupoAcademico(models.Model):
     cupo_maximo = models.PositiveIntegerField(
         null=True,
         blank=True,
-        verbose_name="Cupo máximo",
+        verbose_name="Cupo mÃ¡ximo",
     )
 
     class Meta:
         ordering = ["periodo__anio_escolar", "periodo__semestre_operativo", "clave_grupo"]
-        verbose_name = "Grupo académico"
-        verbose_name_plural = "Grupos académicos"
+        verbose_name = "Grupo acadÃ©mico"
+        verbose_name_plural = "Grupos acadÃ©micos"
         constraints = [
             models.UniqueConstraint(
                 fields=["generacion", "periodo", "clave_grupo"],
@@ -225,10 +238,10 @@ class MateriaPlan(models.Model):
         related_name="planes_estudio",
         verbose_name="Materia",
     )
-    semestre_numero = models.PositiveSmallIntegerField(default=1, verbose_name="Semestre número")
+    semestre_numero = models.PositiveSmallIntegerField(default=1, verbose_name="Semestre nÃºmero")
     anio_escolar_numero = models.PositiveSmallIntegerField(
         default=1,
-        verbose_name="Año escolar número",
+        verbose_name="AÃ±o escolar nÃºmero",
     )
     obligatoria = models.BooleanField(default=True, verbose_name="Obligatoria")
 
