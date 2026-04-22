@@ -101,8 +101,8 @@ class Generacion(CatalogoAcademicoBase):
 
     class Meta:
         ordering = ["-anio_inicio", "clave"]
-        verbose_name = "GeneraciÃ³n"
-        verbose_name_plural = "Generaciones"
+        verbose_name = "Antigüedad"
+        verbose_name_plural = "Antigüedades"
         constraints = [
             models.UniqueConstraint(
                 fields=["plan_estudios", "clave"],
@@ -130,7 +130,7 @@ class PeriodoEscolar(models.Model):
         choices=ANIO_ESCOLAR_CHOICES,
         blank=True,
         default="",
-        verbose_name="AÃ±o escolar",
+        verbose_name="Año escolar",
     )
     semestre_operativo = models.PositiveSmallIntegerField(
         choices=SEMESTRE_OPERATIVO_CHOICES,
@@ -173,7 +173,7 @@ class GrupoAcademico(models.Model):
         Generacion,
         on_delete=models.PROTECT,
         related_name="grupos_academicos",
-        verbose_name="GeneraciÃ³n",
+        verbose_name="Antigüedad",
     )
     periodo = models.ForeignKey(
         PeriodoEscolar,
@@ -181,7 +181,7 @@ class GrupoAcademico(models.Model):
         related_name="grupos_academicos",
         verbose_name="Periodo escolar",
     )
-    semestre_numero = models.PositiveSmallIntegerField(default=1, verbose_name="Semestre nÃºmero")
+    semestre_numero = models.PositiveSmallIntegerField(default=1, verbose_name="Semestre número")
     estado = models.CharField(
         max_length=20,
         choices=ESTADO_CHOICES,
@@ -191,13 +191,13 @@ class GrupoAcademico(models.Model):
     cupo_maximo = models.PositiveIntegerField(
         null=True,
         blank=True,
-        verbose_name="Cupo mÃ¡ximo",
+        verbose_name="Cupo máximo",
     )
 
     class Meta:
         ordering = ["periodo__anio_escolar", "periodo__semestre_operativo", "clave_grupo"]
-        verbose_name = "Grupo acadÃ©mico"
-        verbose_name_plural = "Grupos acadÃ©micos"
+        verbose_name = "Grupo académico"
+        verbose_name_plural = "Grupos académicos"
         constraints = [
             models.UniqueConstraint(
                 fields=["generacion", "periodo", "clave_grupo"],
@@ -238,10 +238,10 @@ class MateriaPlan(models.Model):
         related_name="planes_estudio",
         verbose_name="Materia",
     )
-    semestre_numero = models.PositiveSmallIntegerField(default=1, verbose_name="Semestre nÃºmero")
+    semestre_numero = models.PositiveSmallIntegerField(default=1, verbose_name="Semestre número")
     anio_escolar_numero = models.PositiveSmallIntegerField(
         default=1,
-        verbose_name="AÃ±o escolar nÃºmero",
+        verbose_name="Año escolar número",
     )
     obligatoria = models.BooleanField(default=True, verbose_name="Obligatoria")
 

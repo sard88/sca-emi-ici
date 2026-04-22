@@ -126,3 +126,18 @@ class ClaveCatalogosValidationTests(TestCase):
         self.assertIn("clave_grupo", form.errors)
         self.assertIn(CLAVE_FORMAT_MESSAGE, form.errors["clave_grupo"])
 
+
+class AntiguedadUiLabelTests(TestCase):
+    def test_generacion_model_uses_antiguedad_labels(self):
+        self.assertEqual(Generacion._meta.verbose_name, "Antigüedad")
+        self.assertEqual(Generacion._meta.verbose_name_plural, "Antigüedades")
+
+    def test_grupo_academico_form_uses_antiguedad_field_label(self):
+        grupo_form_class = modelform_factory(
+            GrupoAcademico,
+            fields=["clave_grupo", "generacion", "periodo", "semestre_numero", "estado", "cupo_maximo"],
+        )
+        form = grupo_form_class()
+
+        self.assertEqual(form.fields["generacion"].label, "Antigüedad")
+
