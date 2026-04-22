@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 from .validators import CLAVE_MAX_LENGTH, clave_format_validator
 
@@ -40,18 +41,31 @@ class CatalogoAcademicoBase(models.Model):
     )
     nombre = models.CharField(max_length=255)
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=ESTADO_ACTIVO)
-    vigente_desde = models.DateField(null=True, blank=True)
+    vigente_desde = models.DateField(
+        null=True,
+        blank=True,
+        default=timezone.localdate,
+    )
     vigente_hasta = models.DateField(null=True, blank=True)
 
     class Meta:
         abstract = True
 
+    def _ensure_vigencia_defaults(self):
+        if not self.vigente_desde:
+            self.vigente_desde = timezone.localdate()
+
     def clean(self):
+        self._ensure_vigencia_defaults()
         if self.vigente_desde and self.vigente_hasta:
             if self.vigente_hasta < self.vigente_desde:
                 raise ValidationError(
                     {"vigente_hasta": "No puede ser anterior a 'vigente_desde'."}
                 )
+
+    def save(self, *args, **kwargs):
+        self._ensure_vigencia_defaults()
+        super().save(*args, **kwargs)
 
 
 class Carrera(CatalogoAcademicoBase):

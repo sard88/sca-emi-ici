@@ -1,6 +1,9 @@
+from datetime import timedelta
+
 from django.core.exceptions import ValidationError
 from django.forms import modelform_factory
 from django.test import TestCase
+from django.utils import timezone
 
 from .models import (
     Carrera,
@@ -141,3 +144,74 @@ class AntiguedadUiLabelTests(TestCase):
 
         self.assertEqual(form.fields["generacion"].label, "Antigüedad")
 
+
+class VigenciaCatalogosTests(TestCase):
+    def test_creacion_autocompleta_vigente_desde_si_se_omite(self):
+        hoy = timezone.localdate()
+
+        carrera = Carrera.objects.create(clave="VIGENCIA_01", nombre="Carrera vigencia")
+
+        self.assertEqual(carrera.vigente_desde, hoy)
+        self.assertIsNone(carrera.vigente_hasta)
+
+    def test_edicion_respeta_vigente_desde_existente(self):
+        fecha_existente = timezone.localdate() - timedelta(days=10)
+        carrera = Carrera.objects.create(
+            clave="VIGENCIA_02",
+            nombre="Carrera original",
+            vigente_desde=fecha_existente,
+        )
+
+        carrera.nombre = "Carrera actualizada"
+        carrera.save()
+        carrera.refresh_from_db()
+
+        self.assertEqual(carrera.vigente_desde, fecha_existente)
+
+    def test_edicion_de_registro_legado_sin_vigente_desde_lo_autocompleta(self):
+        carrera = Carrera.objects.create(clave="VIGENCIA_03", nombre="Carrera legado")
+        Carrera.objects.filter(pk=carrera.pk).update(vigente_desde=None)
+
+        carrera.refresh_from_db()
+        self.assertIsNone(carrera.vigente_desde)
+
+        carrera.nombre = "Carrera legado editada"
+        carrera.save()
+        carrera.refresh_from_db()
+
+        self.assertEqual(carrera.vigente_desde, timezone.localdate())
+
+    def test_modelform_no_exige_vigencias_y_autocompleta_vigente_desde(self):
+        carrera_form_class = modelform_factory(
+            Carrera,
+            fields=["clave", "nombre", "estado", "vigente_desde", "vigente_hasta"],
+        )
+        form = carrera_form_class(
+            data={
+                "clave": "VIGENCIA_04",
+                "nombre": "Carrera formulario",
+                "estado": "activo",
+                "vigente_desde": "",
+                "vigente_hasta": "",
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        carrera = form.save()
+
+        self.assertEqual(carrera.vigente_desde, timezone.localdate())
+        self.assertIsNone(carrera.vigente_hasta)
+
+    def test_vigente_hasta_sigue_validando_consistencia_temporal(self):
+        hoy = timezone.localdate()
+        carrera = Carrera(
+            clave="VIGENCIA_05",
+            nombre="Carrera invalida",
+            vigente_desde=hoy,
+            vigente_hasta=hoy - timedelta(days=1),
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            carrera.full_clean()
+
+        self.assertIn("vigente_hasta", exc.exception.message_dict)
