@@ -100,6 +100,17 @@ class PlanEstudios(CatalogoAcademicoBase):
             )
         ]
 
+    def clean(self):
+        super().clean()
+        if self.carrera_id and self.carrera.estado != ESTADO_ACTIVO:
+            raise ValidationError(
+                {"carrera": "Solo se puede asignar una carrera activa."}
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
     def __str__(self) -> str:
         return f"{self.carrera.clave} - {self.clave}"
 

@@ -5,7 +5,7 @@ from django.forms import modelform_factory
 from django.test import TestCase
 from django.utils import timezone
 
-from .forms import GeneracionAdminForm, build_year_choices
+from .forms import GeneracionAdminForm, PlanEstudiosAdminForm, build_year_choices
 from .models import (
     Carrera,
     Generacion,
@@ -295,3 +295,70 @@ class AnioUiTests(TestCase):
 
         self.assertEqual(choice_values[0], current_year - 20)
         self.assertEqual(choice_values[-1], current_year + 10)
+
+
+class PlanEstudiosCarreraActivaTests(TestCase):
+    def setUp(self):
+        self.carrera_activa = Carrera.objects.create(
+            clave="ICI",
+            nombre="Ingenieria en Ciberseguridad",
+            estado="activo",
+        )
+        self.carrera_inactiva = Carrera.objects.create(
+            clave="II",
+            nombre="Ingenieria Industrial",
+            estado="inactivo",
+        )
+
+    def test_plan_estudios_rechaza_carrera_inactiva_en_modelo(self):
+        plan = PlanEstudios(
+            clave="PE-II-2026",
+            nombre="Plan II",
+            carrera=self.carrera_inactiva,
+            estado="activo",
+        )
+
+        with self.assertRaises(ValidationError) as error:
+            plan.full_clean()
+
+        self.assertEqual(
+            error.exception.message_dict["carrera"],
+            ["Solo se puede asignar una carrera activa."],
+        )
+
+    def test_plan_estudios_no_guarda_carrera_inactiva_por_save_directo(self):
+        with self.assertRaises(ValidationError):
+            PlanEstudios.objects.create(
+                clave="PE-II-2026",
+                nombre="Plan II",
+                carrera=self.carrera_inactiva,
+                estado="activo",
+            )
+
+    def test_formulario_muestra_solo_carreras_activas_en_creacion(self):
+        form = PlanEstudiosAdminForm()
+
+        self.assertQuerySetEqual(
+            form.fields["carrera"].queryset,
+            [self.carrera_activa],
+            transform=lambda carrera: carrera,
+        )
+
+    def test_formulario_de_edicion_legacy_no_lista_carrera_inactiva(self):
+        plan = PlanEstudios.objects.create(
+            clave="PE-ICI-2026",
+            nombre="Plan ICI",
+            carrera=self.carrera_activa,
+            estado="activo",
+        )
+        PlanEstudios.objects.filter(pk=plan.pk).update(carrera=self.carrera_inactiva)
+        plan.refresh_from_db()
+
+        form = PlanEstudiosAdminForm(instance=plan)
+
+        self.assertQuerySetEqual(
+            form.fields["carrera"].queryset,
+            [self.carrera_activa],
+            transform=lambda carrera: carrera,
+        )
+        self.assertIn("est\u00e1 inactiva", form.fields["carrera"].help_text)

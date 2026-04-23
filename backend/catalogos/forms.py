@@ -1,7 +1,7 @@
 from django import forms
 from django.utils import timezone
 
-from .models import Generacion
+from .models import Carrera, ESTADO_ACTIVO, Generacion, PlanEstudios
 
 
 def _available_year_choices():
@@ -47,3 +47,22 @@ class GeneracionAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["anio_inicio"].choices = build_year_choices(self.instance.anio_inicio)
         self.fields["anio_fin"].choices = build_year_choices(self.instance.anio_fin)
+
+
+class PlanEstudiosAdminForm(forms.ModelForm):
+    class Meta:
+        model = PlanEstudios
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        carrera_field = self.fields["carrera"]
+        carrera_field.queryset = Carrera.objects.filter(estado=ESTADO_ACTIVO).order_by(
+            "clave", "nombre"
+        )
+
+        if self.instance.pk and self.instance.carrera.estado != ESTADO_ACTIVO:
+            carrera_field.help_text = (
+                "La carrera actual est\u00e1 inactiva. Selecciona una carrera activa "
+                "para guardar cambios."
+            )
