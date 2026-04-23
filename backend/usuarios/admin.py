@@ -9,6 +9,9 @@ class UsuarioAdmin(UserAdmin):
     list_display = ("username", "correo", "estado_cuenta", "is_staff", "is_active")
     list_filter = ("estado_cuenta", "is_staff", "is_superuser", "is_active")
     search_fields = ("username", "correo", "nombre_completo")
+    readonly_fields = tuple(
+        dict.fromkeys((*UserAdmin.readonly_fields, "last_login", "date_joined", "ultimo_acceso"))
+    )
 
     fieldsets = UserAdmin.fieldsets + (
         (
@@ -33,7 +36,6 @@ class UsuarioAdmin(UserAdmin):
                     "nombre_completo",
                     "correo",
                     "telefono",
-                    "ultimo_acceso",
                 )
             },
         ),

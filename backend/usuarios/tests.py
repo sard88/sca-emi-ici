@@ -1,10 +1,13 @@
 from datetime import timedelta
 
+from django.contrib import admin
+from django.contrib.auth.signals import user_logged_in
 from django.core.exceptions import ValidationError
 from django.forms import modelform_factory
 from django.test import TestCase
 from django.utils import timezone
 
+from .admin import UsuarioAdmin
 from .models import AsignacionCargo, Usuario
 
 
@@ -100,3 +103,52 @@ class VigenciaAsignacionCargoTests(TestCase):
             asignacion.full_clean()
 
         self.assertIn("vigente_hasta", exc.exception.message_dict)
+
+
+class UsuarioUltimoAccesoTests(TestCase):
+    def setUp(self):
+        self.usuario = Usuario.objects.create_user(
+            username="usuario_acceso",
+            password="segura123",
+        )
+
+    def test_fechas_de_sistema_no_son_editables_en_modelform(self):
+        usuario_form_class = modelform_factory(Usuario, fields="__all__")
+        form = usuario_form_class()
+
+        self.assertNotIn("last_login", form.fields)
+        self.assertNotIn("date_joined", form.fields)
+        self.assertNotIn("ultimo_acceso", form.fields)
+
+    def test_fechas_de_sistema_son_solo_lectura_en_admin_y_no_aparecen_en_alta(self):
+        usuario_admin = admin.site._registry[Usuario]
+
+        self.assertIsInstance(usuario_admin, UsuarioAdmin)
+        self.assertIn("last_login", usuario_admin.readonly_fields)
+        self.assertIn("date_joined", usuario_admin.readonly_fields)
+        self.assertIn("ultimo_acceso", usuario_admin.readonly_fields)
+
+        add_fields = [
+            field
+            for _, fieldset_options in usuario_admin.add_fieldsets
+            for field in fieldset_options.get("fields", ())
+        ]
+
+        self.assertNotIn("last_login", add_fields)
+        self.assertNotIn("date_joined", add_fields)
+        self.assertNotIn("ultimo_acceso", add_fields)
+
+    def test_signal_de_login_actualiza_ultimo_acceso(self):
+        self.assertIsNone(self.usuario.ultimo_acceso)
+        antes = timezone.now()
+
+        user_logged_in.send(
+            sender=Usuario,
+            request=None,
+            user=self.usuario,
+        )
+
+        self.usuario.refresh_from_db()
+
+        self.assertIsNotNone(self.usuario.ultimo_acceso)
+        self.assertGreaterEqual(self.usuario.ultimo_acceso, antes)

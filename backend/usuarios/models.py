@@ -15,6 +15,17 @@ class Usuario(AbstractUser):
         (ESTADO_BLOQUEADO, "Bloqueado"),
     ]
 
+    last_login = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name="Último ingreso",
+    )
+    date_joined = models.DateTimeField(
+        default=timezone.now,
+        editable=False,
+        verbose_name="Fecha de creación",
+    )
     estado_cuenta = models.CharField(
         max_length=20,
         choices=ESTADO_CUENTA_CHOICES,
@@ -23,7 +34,12 @@ class Usuario(AbstractUser):
     nombre_completo = models.CharField(max_length=255, blank=True)
     correo = models.EmailField(blank=True)
     telefono = models.CharField(max_length=30, blank=True)
-    ultimo_acceso = models.DateTimeField(null=True, blank=True)
+    ultimo_acceso = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name="Último acceso",
+    )
 
     @property
     def roles(self):
