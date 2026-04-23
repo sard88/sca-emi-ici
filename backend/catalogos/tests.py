@@ -5,6 +5,7 @@ from django.forms import modelform_factory
 from django.test import TestCase
 from django.utils import timezone
 
+from .forms import GeneracionAdminForm, build_year_choices
 from .models import (
     Carrera,
     Generacion,
@@ -215,3 +216,82 @@ class VigenciaCatalogosTests(TestCase):
             carrera.full_clean()
 
         self.assertIn("vigente_hasta", exc.exception.message_dict)
+
+
+class AnioUiTests(TestCase):
+    def setUp(self):
+        self.carrera = Carrera.objects.create(clave="ANIO_BASE", nombre="Carrera base")
+        self.plan = PlanEstudios.objects.create(
+            carrera=self.carrera,
+            clave="ANIO_PLAN",
+            nombre="Plan base",
+        )
+
+    def test_generacion_model_uses_ano_labels(self):
+        self.assertEqual(Generacion._meta.get_field("anio_inicio").verbose_name, "Año de inicio")
+        self.assertEqual(Generacion._meta.get_field("anio_fin").verbose_name, "Año de fin")
+
+    def test_generacion_model_uses_ano_error_message(self):
+        generacion = Generacion(
+            plan_estudios=self.plan,
+            clave="ANIO_ERR",
+            nombre="Generacion invalida",
+            anio_inicio=2026,
+            anio_fin=2025,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            generacion.full_clean()
+
+        self.assertIn("anio_fin", exc.exception.message_dict)
+        self.assertIn("No puede ser menor al año de inicio.", exc.exception.message_dict["anio_fin"])
+
+    def test_generacion_admin_form_uses_select_widgets_for_years(self):
+        form = GeneracionAdminForm()
+
+        self.assertEqual(form.fields["anio_inicio"].label, "Año de inicio")
+        self.assertEqual(form.fields["anio_fin"].label, "Año de fin")
+        self.assertEqual(form.fields["anio_inicio"].widget.__class__.__name__, "Select")
+        self.assertEqual(form.fields["anio_fin"].widget.__class__.__name__, "Select")
+
+    def test_generacion_admin_form_saves_selected_years(self):
+        form = GeneracionAdminForm(
+            data={
+                "clave": "ANIO_FORM",
+                "nombre": "Generacion formulario",
+                "plan_estudios": self.plan.pk,
+                "anio_inicio": "2024",
+                "anio_fin": "2028",
+                "estado": "activo",
+                "vigente_desde": "",
+                "vigente_hasta": "",
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        generacion = form.save()
+
+        self.assertEqual(generacion.anio_inicio, 2024)
+        self.assertEqual(generacion.anio_fin, 2028)
+
+    def test_generacion_admin_form_keeps_legacy_year_available(self):
+        generacion = Generacion.objects.create(
+            plan_estudios=self.plan,
+            clave="ANIO_LEGACY",
+            nombre="Generacion legacy",
+            anio_inicio=0,
+            anio_fin=2029,
+        )
+
+        form = GeneracionAdminForm(instance=generacion)
+        inicio_choices = [value for value, _ in form.fields["anio_inicio"].choices]
+
+        self.assertIn(0, inicio_choices)
+
+    def test_build_year_choices_uses_dynamic_range(self):
+        current_year = timezone.localdate().year
+        choices = build_year_choices()
+        choice_values = [value for value, _ in choices if value != ""]
+
+        self.assertEqual(choice_values[0], current_year - 20)
+        self.assertEqual(choice_values[-1], current_year + 10)

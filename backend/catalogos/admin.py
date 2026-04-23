@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from .forms import GeneracionAdminForm
 from .models import (
     Carrera,
     Generacion,
@@ -35,6 +36,7 @@ class PlanEstudiosAdmin(admin.ModelAdmin):
 
 @admin.register(Generacion)
 class GeneracionAdmin(admin.ModelAdmin):
+    form = GeneracionAdminForm
     list_display = (
         "clave",
         "nombre",

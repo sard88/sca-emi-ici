@@ -110,8 +110,16 @@ class Generacion(CatalogoAcademicoBase):
         on_delete=models.PROTECT,
         related_name="generaciones",
     )
-    anio_inicio = models.PositiveSmallIntegerField(null=True, blank=True)
-    anio_fin = models.PositiveSmallIntegerField(null=True, blank=True)
+    anio_inicio = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Año de inicio",
+    )
+    anio_fin = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Año de fin",
+    )
 
     class Meta:
         ordering = ["-anio_inicio", "clave"]
@@ -127,7 +135,7 @@ class Generacion(CatalogoAcademicoBase):
     def clean(self):
         super().clean()
         if self.anio_inicio and self.anio_fin and self.anio_fin < self.anio_inicio:
-            raise ValidationError({"anio_fin": "No puede ser menor al anio_inicio."})
+            raise ValidationError({"anio_fin": "No puede ser menor al año de inicio."})
 
     def __str__(self) -> str:
         return f"{self.plan_estudios.clave} - {self.clave}"
