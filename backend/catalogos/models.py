@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal, ROUND_FLOOR
 
 from django.core.exceptions import ValidationError
@@ -16,20 +17,17 @@ ESTADO_CHOICES = [
     (ESTADO_INACTIVO, "Inactivo"),
 ]
 
-ANIO_ESCOLAR_CHOICES = [
-    ("2023-2024", "2023-2024"),
-    ("2024-2025", "2024-2025"),
-    ("2025-2026", "2025-2026"),
-    ("2026-2027", "2026-2027"),
-    ("2027-2028", "2027-2028"),
-    ("2028-2029", "2028-2029"),
-    ("2029-2030", "2029-2030"),
-    ("2030-2031", "2030-2031"),
-    ("2031-2032", "2031-2032"),
-    ("2032-2033", "2032-2033"),
-    ("2033-2034", "2033-2034"),
-    ("2034-2035", "2034-2035"),
-]
+ANIO_ESCOLAR_START_YEAR = 2020
+ANIO_ESCOLAR_FUTURE_OFFSET = 9
+
+
+def build_anio_escolar_choices():
+    current_year = timezone.localdate().year
+    end_year = current_year + ANIO_ESCOLAR_FUTURE_OFFSET
+    return [
+        (f"{year}-{year + 1}", f"{year}-{year + 1}")
+        for year in range(ANIO_ESCOLAR_START_YEAR, end_year + 1)
+    ]
 
 SEMESTRE_OPERATIVO_CHOICES = [
     (1, "Primer semestre"),
@@ -166,19 +164,16 @@ class PeriodoEscolar(models.Model):
     )
     anio_escolar = models.CharField(
         max_length=20,
-        choices=ANIO_ESCOLAR_CHOICES,
-        blank=True,
-        default="",
+        choices=build_anio_escolar_choices,
         verbose_name="Año escolar",
     )
     semestre_operativo = models.PositiveSmallIntegerField(
         choices=SEMESTRE_OPERATIVO_CHOICES,
         null=True,
-        blank=True,
-        verbose_name="Semestre operativo",
+        verbose_name="Periodo académico",
     )
-    fecha_inicio = models.DateField(null=True, blank=True, verbose_name="Fecha de inicio")
-    fecha_fin = models.DateField(null=True, blank=True, verbose_name="Fecha de fin")
+    fecha_inicio = models.DateField(null=True, verbose_name="Fecha de inicio")
+    fecha_fin = models.DateField(null=True, verbose_name="Fecha de fin")
     estado = models.CharField(
         max_length=20,
         choices=ESTADO_CHOICES,
@@ -194,9 +189,56 @@ class PeriodoEscolar(models.Model):
             models.UniqueConstraint(fields=["clave"], name="uq_periodoescolar_clave"),
         ]
 
+    @staticmethod
+    def get_ciclo_escolar_bounds(anio_escolar: str) -> tuple[date, date]:
+        try:
+            inicio_str, fin_str = anio_escolar.split("-")
+            inicio_anio = int(inicio_str)
+            fin_anio = int(fin_str)
+        except (AttributeError, TypeError, ValueError):
+            raise ValidationError({"anio_escolar": "Debe tener formato AAAA-AAAA."})
+
+        if fin_anio != inicio_anio + 1:
+            raise ValidationError({"anio_escolar": "Debe abarcar dos años consecutivos."})
+
+        return date(inicio_anio, 8, 1), date(fin_anio, 7, 31)
+
     def clean(self):
-        if self.fecha_inicio and self.fecha_fin and self.fecha_fin < self.fecha_inicio:
-            raise ValidationError({"fecha_fin": "No puede ser anterior a fecha_inicio."})
+        errors = {}
+
+        if not self.anio_escolar:
+            errors["anio_escolar"] = "Este campo es obligatorio."
+        if self.semestre_operativo is None:
+            errors["semestre_operativo"] = "Este campo es obligatorio."
+        if not self.fecha_inicio:
+            errors["fecha_inicio"] = "Este campo es obligatorio."
+        if not self.fecha_fin:
+            errors["fecha_fin"] = "Este campo es obligatorio."
+
+        if errors:
+            raise ValidationError(errors)
+
+        ciclo_inicio, ciclo_fin = self.get_ciclo_escolar_bounds(self.anio_escolar)
+
+        if self.fecha_inicio >= self.fecha_fin:
+            errors["fecha_fin"] = "Debe ser posterior a fecha_inicio."
+
+        if self.fecha_inicio < ciclo_inicio:
+            errors["fecha_inicio"] = f"No puede ser anterior al inicio del ciclo {self.anio_escolar}."
+        elif self.fecha_inicio > ciclo_fin:
+            errors["fecha_inicio"] = f"No puede ser posterior al cierre del ciclo {self.anio_escolar}."
+
+        if self.fecha_fin < ciclo_inicio:
+            errors["fecha_fin"] = f"No puede ser anterior al inicio del ciclo {self.anio_escolar}."
+        elif self.fecha_fin > ciclo_fin:
+            errors["fecha_fin"] = f"No puede ser posterior al cierre del ciclo {self.anio_escolar}."
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.clave} - {self.anio_escolar} S{self.semestre_operativo}"

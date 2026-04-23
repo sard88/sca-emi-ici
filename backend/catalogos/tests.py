@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.contrib.admin.sites import AdminSite
 from django.core.exceptions import ValidationError
@@ -15,6 +15,7 @@ from .models import (
     Materia,
     PeriodoEscolar,
     PlanEstudios,
+    build_anio_escolar_choices,
 )
 from .validators import CLAVE_FORMAT_MESSAGE, CLAVE_MAX_LENGTH
 
@@ -38,6 +39,8 @@ class ClaveCatalogosValidationTests(TestCase):
             clave="PERIODO_2025-1",
             anio_escolar="2025-2026",
             semestre_operativo=1,
+            fecha_inicio=date(2025, 8, 1),
+            fecha_fin=date(2026, 1, 31),
         )
 
     def _build_instances(self, value):
@@ -55,6 +58,8 @@ class ClaveCatalogosValidationTests(TestCase):
                 clave=value,
                 anio_escolar="2025-2026",
                 semestre_operativo=1,
+                fecha_inicio=date(2025, 8, 1),
+                fecha_fin=date(2026, 1, 31),
             ),
             GrupoAcademico(
                 clave_grupo=value,
@@ -297,6 +302,128 @@ class AnioUiTests(TestCase):
 
         self.assertEqual(choice_values[0], current_year - 20)
         self.assertEqual(choice_values[-1], current_year + 10)
+
+
+class PeriodoEscolarValidationTests(TestCase):
+    def test_periodo_escolar_usa_label_periodo_academico(self):
+        periodo_form_class = modelform_factory(
+            PeriodoEscolar,
+            fields=["clave", "anio_escolar", "semestre_operativo", "fecha_inicio", "fecha_fin", "estado"],
+        )
+        form = periodo_form_class()
+
+        self.assertEqual(
+            PeriodoEscolar._meta.get_field("semestre_operativo").verbose_name,
+            "Periodo académico",
+        )
+        self.assertEqual(form.fields["semestre_operativo"].label, "Periodo académico")
+
+    def test_periodo_escolar_form_requiere_campos_obligatorios(self):
+        periodo_form_class = modelform_factory(
+            PeriodoEscolar,
+            fields=["clave", "anio_escolar", "semestre_operativo", "fecha_inicio", "fecha_fin", "estado"],
+        )
+        form = periodo_form_class(
+            data={
+                "clave": "PE_REQ",
+                "anio_escolar": "",
+                "semestre_operativo": "",
+                "fecha_inicio": "",
+                "fecha_fin": "",
+                "estado": "activo",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("anio_escolar", form.errors)
+        self.assertIn("semestre_operativo", form.errors)
+        self.assertIn("fecha_inicio", form.errors)
+        self.assertIn("fecha_fin", form.errors)
+
+    def test_periodo_escolar_acepta_fechas_validas_dentro_del_ciclo(self):
+        periodo = PeriodoEscolar.objects.create(
+            clave="PE_VALIDO",
+            anio_escolar="2023-2024",
+            semestre_operativo=1,
+            fecha_inicio=date(2023, 8, 1),
+            fecha_fin=date(2024, 7, 31),
+            estado="activo",
+        )
+
+        self.assertEqual(periodo.anio_escolar, "2023-2024")
+
+    def test_periodo_escolar_rechaza_fechas_iguales(self):
+        periodo = PeriodoEscolar(
+            clave="PE_IGUAL",
+            anio_escolar="2023-2024",
+            semestre_operativo=1,
+            fecha_inicio=date(2023, 8, 1),
+            fecha_fin=date(2023, 8, 1),
+            estado="activo",
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            periodo.full_clean()
+
+        self.assertIn("fecha_fin", exc.exception.message_dict)
+        self.assertIn("Debe ser posterior a fecha_inicio.", exc.exception.message_dict["fecha_fin"])
+
+    def test_periodo_escolar_rechaza_inicio_antes_del_ciclo(self):
+        periodo = PeriodoEscolar(
+            clave="PE_INICIO",
+            anio_escolar="2023-2024",
+            semestre_operativo=1,
+            fecha_inicio=date(2023, 7, 31),
+            fecha_fin=date(2024, 1, 15),
+            estado="activo",
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            periodo.full_clean()
+
+        self.assertIn("fecha_inicio", exc.exception.message_dict)
+        self.assertIn(
+            "No puede ser anterior al inicio del ciclo 2023-2024.",
+            exc.exception.message_dict["fecha_inicio"],
+        )
+
+    def test_periodo_escolar_rechaza_fin_fuera_del_ciclo(self):
+        periodo = PeriodoEscolar(
+            clave="PE_FIN",
+            anio_escolar="2023-2024",
+            semestre_operativo=2,
+            fecha_inicio=date(2024, 1, 15),
+            fecha_fin=date(2024, 8, 1),
+            estado="activo",
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            periodo.full_clean()
+
+        self.assertIn("fecha_fin", exc.exception.message_dict)
+        self.assertIn(
+            "No puede ser posterior al cierre del ciclo 2023-2024.",
+            exc.exception.message_dict["fecha_fin"],
+        )
+
+    def test_periodo_escolar_save_aplica_validacion_backend(self):
+        with self.assertRaises(ValidationError):
+            PeriodoEscolar.objects.create(
+                clave="PE_BACK",
+                anio_escolar="2023-2024",
+                semestre_operativo=1,
+                fecha_inicio=date(2024, 7, 31),
+                fecha_fin=date(2024, 7, 31),
+                estado="activo",
+            )
+
+    def test_anio_escolar_choices_incluye_historicos_y_futuros(self):
+        current_year = timezone.localdate().year
+        choices = build_anio_escolar_choices()
+        choice_values = [value for value, _ in choices]
+
+        self.assertIn("2020-2021", choice_values)
+        self.assertIn(f"{current_year + 9}-{current_year + 10}", choice_values)
 
 
 class PlanEstudiosCarreraActivaTests(TestCase):
