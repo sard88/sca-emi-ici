@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .forms import GeneracionAdminForm, PlanEstudiosAdminForm
+from .forms import GeneracionAdminForm, MateriaAdminForm, PlanEstudiosAdminForm
 from .models import (
     Carrera,
     Generacion,
@@ -80,6 +80,17 @@ class GrupoAcademicoAdmin(admin.ModelAdmin):
 
 @admin.register(Materia)
 class MateriaAdmin(admin.ModelAdmin):
+    form = MateriaAdminForm
+    readonly_fields = ("creditos",)
+    fields = (
+        "clave",
+        "nombre",
+        "horas_totales",
+        "creditos",
+        "estado",
+        "vigente_desde",
+        "vigente_hasta",
+    )
     list_display = (
         "clave",
         "nombre",

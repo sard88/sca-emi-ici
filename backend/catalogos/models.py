@@ -1,4 +1,7 @@
+from decimal import Decimal, ROUND_FLOOR
+
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -32,6 +35,9 @@ SEMESTRE_OPERATIVO_CHOICES = [
     (1, "Primer semestre"),
     (2, "Segundo semestre"),
 ]
+
+CREDITOS_FACTOR = Decimal("0.0625")
+CREDITOS_ROUNDING_OFFSET = Decimal("0.5")
 
 
 class CatalogoAcademicoBase(models.Model):
@@ -243,8 +249,11 @@ class GrupoAcademico(models.Model):
 
 
 class Materia(CatalogoAcademicoBase):
-    creditos = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    horas_totales = models.PositiveIntegerField(default=0)
+    creditos = models.PositiveIntegerField(default=0, editable=False)
+    horas_totales = models.PositiveIntegerField(
+        validators=[MinValueValidator(1, message="Debe ser mayor a 0.")],
+        help_text="Los creditos se calculan automaticamente a partir de las horas totales.",
+    )
 
     class Meta:
         ordering = ["clave", "nombre"]
@@ -253,6 +262,21 @@ class Materia(CatalogoAcademicoBase):
         constraints = [
             models.UniqueConstraint(fields=["clave"], name="uq_materia_clave"),
         ]
+
+    @staticmethod
+    def calculate_creditos(horas_totales: int) -> int:
+        valor = Decimal(horas_totales) * CREDITOS_FACTOR
+        return int((valor + CREDITOS_ROUNDING_OFFSET).to_integral_value(rounding=ROUND_FLOOR))
+
+    def clean(self):
+        super().clean()
+        if self.horas_totales is None or self.horas_totales <= 0:
+            raise ValidationError({"horas_totales": "Debe ser mayor a 0."})
+        self.creditos = self.calculate_creditos(self.horas_totales)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.clave} - {self.nombre}"

@@ -1,7 +1,7 @@
 from django import forms
 from django.utils import timezone
 
-from .models import Carrera, ESTADO_ACTIVO, Generacion, PlanEstudios
+from .models import Carrera, ESTADO_ACTIVO, Generacion, Materia, PlanEstudios
 
 
 def _available_year_choices():
@@ -66,3 +66,15 @@ class PlanEstudiosAdminForm(forms.ModelForm):
                 "La carrera actual est\u00e1 inactiva. Selecciona una carrera activa "
                 "para guardar cambios."
             )
+
+
+class MateriaAdminForm(forms.ModelForm):
+    class Meta:
+        model = Materia
+        fields = "__all__"
+
+    def clean_horas_totales(self):
+        horas_totales = self.cleaned_data.get("horas_totales")
+        if horas_totales is None or horas_totales <= 0:
+            raise forms.ValidationError("Debe ser mayor a 0.")
+        return horas_totales

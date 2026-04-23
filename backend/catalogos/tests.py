@@ -1,11 +1,13 @@
 from datetime import timedelta
 
+from django.contrib.admin.sites import AdminSite
 from django.core.exceptions import ValidationError
 from django.forms import modelform_factory
 from django.test import TestCase
 from django.utils import timezone
 
-from .forms import GeneracionAdminForm, PlanEstudiosAdminForm, build_year_choices
+from .admin import MateriaAdmin
+from .forms import GeneracionAdminForm, MateriaAdminForm, PlanEstudiosAdminForm, build_year_choices
 from .models import (
     Carrera,
     Generacion,
@@ -60,7 +62,7 @@ class ClaveCatalogosValidationTests(TestCase):
                 periodo=self.periodo,
                 semestre_numero=1,
             ),
-            Materia(clave=value, nombre="Materia prueba"),
+            Materia(clave=value, nombre="Materia prueba", horas_totales=64),
         ]
 
     def test_backend_accepts_valid_key_formats(self):
@@ -362,3 +364,103 @@ class PlanEstudiosCarreraActivaTests(TestCase):
             transform=lambda carrera: carrera,
         )
         self.assertIn("est\u00e1 inactiva", form.fields["carrera"].help_text)
+
+
+class MateriaCreditosTests(TestCase):
+    def test_materia_calcula_creditos_en_creacion(self):
+        materia = Materia.objects.create(
+            clave="MAT_AUTO_01",
+            nombre="Materia automatica",
+            horas_totales=64,
+        )
+
+        self.assertEqual(materia.creditos, 4)
+
+    def test_materia_recalcula_creditos_en_edicion(self):
+        materia = Materia.objects.create(
+            clave="MAT_AUTO_02",
+            nombre="Materia editable",
+            horas_totales=32,
+        )
+
+        materia.horas_totales = 48
+        materia.save()
+        materia.refresh_from_db()
+
+        self.assertEqual(materia.creditos, 3)
+
+    def test_materia_redondea_al_entero_mas_cercano(self):
+        materia = Materia.objects.create(
+            clave="MAT_AUTO_03",
+            nombre="Materia redondeo",
+            horas_totales=23,
+        )
+
+        self.assertEqual(materia.creditos, 1)
+
+    def test_materia_redondea_medio_hacia_arriba(self):
+        materia = Materia.objects.create(
+            clave="MAT_AUTO_031",
+            nombre="Materia medio arriba",
+            horas_totales=8,
+        )
+
+        self.assertEqual(materia.creditos, 1)
+
+    def test_materia_redondea_hacia_abajo_si_no_llega_a_medio(self):
+        materia = Materia.objects.create(
+            clave="MAT_AUTO_032",
+            nombre="Materia abajo",
+            horas_totales=7,
+        )
+
+        self.assertEqual(materia.creditos, 0)
+
+    def test_materia_rechaza_horas_totales_en_cero(self):
+        materia = Materia(
+            clave="MAT_AUTO_04",
+            nombre="Materia invalida",
+            horas_totales=0,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            materia.full_clean()
+
+        self.assertIn("horas_totales", exc.exception.message_dict)
+
+    def test_materia_rechaza_horas_totales_negativas(self):
+        materia = Materia(
+            clave="MAT_AUTO_05",
+            nombre="Materia negativa",
+            horas_totales=-4,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            materia.full_clean()
+
+        self.assertIn("horas_totales", exc.exception.message_dict)
+
+    def test_materia_admin_form_no_expone_creditos_editables(self):
+        form = MateriaAdminForm()
+
+        self.assertNotIn("creditos", form.fields)
+
+    def test_materia_admin_form_rechaza_horas_totales_en_cero(self):
+        form = MateriaAdminForm(
+            data={
+                "clave": "MAT_AUTO_06",
+                "nombre": "Materia admin",
+                "horas_totales": 0,
+                "estado": "activo",
+                "vigente_desde": "",
+                "vigente_hasta": "",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("horas_totales", form.errors)
+
+    def test_materia_admin_usa_creditos_como_solo_lectura(self):
+        admin = MateriaAdmin(Materia, AdminSite())
+
+        self.assertIn("creditos", admin.get_readonly_fields(request=None))
