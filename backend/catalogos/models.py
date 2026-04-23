@@ -29,10 +29,19 @@ def build_anio_escolar_choices():
         for year in range(ANIO_ESCOLAR_START_YEAR, end_year + 1)
     ]
 
+
 SEMESTRE_OPERATIVO_CHOICES = [
     (1, "Primer semestre"),
     (2, "Segundo semestre"),
 ]
+
+GRUPO_SEMESTRE_MIN = 1
+GRUPO_SEMESTRE_MAX = 12
+GRUPO_SEMESTRE_CHOICES = [
+    (value, str(value)) for value in range(GRUPO_SEMESTRE_MIN, GRUPO_SEMESTRE_MAX + 1)
+]
+
+MAYOR_A_CERO_MESSAGE = "Debe ser mayor a 0."
 
 CREDITOS_FACTOR = Decimal("0.0625")
 CREDITOS_ROUNDING_OFFSET = Decimal("0.5")
@@ -262,7 +271,11 @@ class GrupoAcademico(models.Model):
         related_name="grupos_academicos",
         verbose_name="Periodo escolar",
     )
-    semestre_numero = models.PositiveSmallIntegerField(default=1, verbose_name="Semestre número")
+    semestre_numero = models.PositiveSmallIntegerField(
+        default=1,
+        choices=GRUPO_SEMESTRE_CHOICES,
+        verbose_name="Semestre",
+    )
     estado = models.CharField(
         max_length=20,
         choices=ESTADO_CHOICES,
@@ -272,6 +285,7 @@ class GrupoAcademico(models.Model):
     cupo_maximo = models.PositiveIntegerField(
         null=True,
         blank=True,
+        validators=[MinValueValidator(1, message=MAYOR_A_CERO_MESSAGE)],
         verbose_name="Cupo máximo",
     )
 
@@ -285,6 +299,10 @@ class GrupoAcademico(models.Model):
                 name="uq_grupo_generacion_periodo_clave",
             )
         ]
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.periodo.clave} - {self.clave_grupo}"

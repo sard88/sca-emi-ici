@@ -6,11 +6,13 @@ from django.forms import modelform_factory
 from django.test import TestCase
 from django.utils import timezone
 
-from .admin import MateriaAdmin
+from .admin import GrupoAcademicoAdmin, MateriaAdmin
 from .forms import GeneracionAdminForm, MateriaAdminForm, PlanEstudiosAdminForm, build_year_choices
 from .models import (
     Carrera,
     Generacion,
+    GRUPO_SEMESTRE_MAX,
+    GRUPO_SEMESTRE_MIN,
     GrupoAcademico,
     Materia,
     PeriodoEscolar,
@@ -151,6 +153,117 @@ class AntiguedadUiLabelTests(TestCase):
         form = grupo_form_class()
 
         self.assertEqual(form.fields["generacion"].label, "Antigüedad")
+
+
+class GrupoAcademicoValidationTests(TestCase):
+    def setUp(self):
+        self.carrera = Carrera.objects.create(clave="GA_BASE", nombre="Carrera base")
+        self.plan = PlanEstudios.objects.create(
+            carrera=self.carrera,
+            clave="GA_PLAN",
+            nombre="Plan base",
+        )
+        self.generacion = Generacion.objects.create(
+            plan_estudios=self.plan,
+            clave="GA_GEN",
+            nombre="Generacion base",
+            anio_inicio=2025,
+            anio_fin=2029,
+        )
+        self.periodo = PeriodoEscolar.objects.create(
+            clave="GA_PERIODO",
+            anio_escolar="2025-2026",
+            semestre_operativo=1,
+            fecha_inicio=date(2025, 8, 1),
+            fecha_fin=date(2026, 1, 31),
+        )
+
+    def _build_grupo(self, **overrides):
+        payload = {
+            "clave_grupo": "GA_GRUPO",
+            "generacion": self.generacion,
+            "periodo": self.periodo,
+            "semestre_numero": 1,
+            "estado": "activo",
+            "cupo_maximo": 30,
+        }
+        payload.update(overrides)
+        return GrupoAcademico(**payload)
+
+    def _build_form_data(self, **overrides):
+        payload = {
+            "clave_grupo": "GA_GRUPO_FORM",
+            "generacion": self.generacion.pk,
+            "periodo": self.periodo.pk,
+            "semestre_numero": 1,
+            "estado": "activo",
+            "cupo_maximo": 30,
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_grupo_academico_usa_label_semestre_en_modelo_y_admin(self):
+        admin = GrupoAcademicoAdmin(GrupoAcademico, AdminSite())
+        admin_form_class = admin.get_form(request=None)
+        form = admin_form_class()
+
+        self.assertEqual(GrupoAcademico._meta.get_field("semestre_numero").verbose_name, "Semestre")
+        self.assertEqual(form.fields["semestre_numero"].label, "Semestre")
+
+    def test_grupo_academico_admin_usa_lista_del_1_al_12_para_semestre(self):
+        admin = GrupoAcademicoAdmin(GrupoAcademico, AdminSite())
+        admin_form_class = admin.get_form(request=None)
+        form = admin_form_class()
+        choice_values = [value for value, _ in form.fields["semestre_numero"].choices if isinstance(value, int)]
+
+        self.assertEqual(form.fields["semestre_numero"].widget.__class__.__name__, "Select")
+        self.assertEqual(
+            choice_values,
+            list(range(GRUPO_SEMESTRE_MIN, GRUPO_SEMESTRE_MAX + 1)),
+        )
+
+    def test_grupo_academico_rechaza_semestre_fuera_de_rango(self):
+        for value in (0, -1, 13):
+            with self.subTest(value=value):
+                grupo = self._build_grupo(semestre_numero=value)
+
+                with self.assertRaises(ValidationError) as exc:
+                    grupo.full_clean()
+
+                self.assertIn("semestre_numero", exc.exception.message_dict)
+
+    def test_grupo_academico_save_aplica_validacion_backend_de_semestre(self):
+        with self.assertRaises(ValidationError):
+            self._build_grupo(semestre_numero=15).save()
+
+    def test_grupo_academico_rechaza_cupo_maximo_no_positivo(self):
+        for value in (0, -5):
+            with self.subTest(value=value):
+                grupo = self._build_grupo(cupo_maximo=value)
+
+                with self.assertRaises(ValidationError) as exc:
+                    grupo.full_clean()
+
+                self.assertIn("cupo_maximo", exc.exception.message_dict)
+
+    def test_grupo_academico_form_rechaza_cupo_maximo_no_positivo(self):
+        grupo_form_class = modelform_factory(
+            GrupoAcademico,
+            fields=["clave_grupo", "generacion", "periodo", "semestre_numero", "estado", "cupo_maximo"],
+        )
+        form = grupo_form_class(data=self._build_form_data(cupo_maximo=0))
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("cupo_maximo", form.errors)
+
+    def test_grupo_academico_form_permite_cupo_maximo_vacio(self):
+        grupo_form_class = modelform_factory(
+            GrupoAcademico,
+            fields=["clave_grupo", "generacion", "periodo", "semestre_numero", "estado", "cupo_maximo"],
+        )
+        form = grupo_form_class(data=self._build_form_data(cupo_maximo=""))
+
+        self.assertTrue(form.is_valid(), form.errors)
 
 
 class VigenciaCatalogosTests(TestCase):
