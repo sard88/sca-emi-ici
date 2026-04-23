@@ -2,15 +2,15 @@ from django import forms
 from django.utils import timezone
 
 from .models import (
+    Antiguedad,
     Carrera,
     ESTADO_ACTIVO,
-    Generacion,
     Materia,
-    MateriaPlan,
+    PlanEstudios,
+    ProgramaAsignatura,
     MATERIA_PLAN_SEMESTRE_CHOICES,
     MATERIA_PLAN_SEMESTRE_MAX,
     MATERIA_PLAN_SEMESTRE_MIN,
-    PlanEstudios,
 )
 
 
@@ -33,7 +33,7 @@ def build_year_choices(extra_value=None):
     return choices
 
 
-class GeneracionAdminForm(forms.ModelForm):
+class AntiguedadAdminForm(forms.ModelForm):
     anio_inicio = forms.TypedChoiceField(
         choices=(),
         coerce=int,
@@ -50,7 +50,7 @@ class GeneracionAdminForm(forms.ModelForm):
     )
 
     class Meta:
-        model = Generacion
+        model = Antiguedad
         fields = "__all__"
 
     def __init__(self, *args, **kwargs):
@@ -90,13 +90,13 @@ class MateriaAdminForm(forms.ModelForm):
         return horas_totales
 
 
-class MateriaPlanAdminForm(forms.ModelForm):
+class ProgramaAsignaturaAdminForm(forms.ModelForm):
     semestre_numero = forms.TypedChoiceField(
         choices=MATERIA_PLAN_SEMESTRE_CHOICES,
         coerce=int,
         label="Semestre",
     )
-    anio_escolar_numero = forms.IntegerField(
+    anio_formacion = forms.IntegerField(
         required=False,
         disabled=True,
         label="Año de formación",
@@ -109,7 +109,7 @@ class MateriaPlanAdminForm(forms.ModelForm):
     )
 
     class Meta:
-        model = MateriaPlan
+        model = ProgramaAsignatura
         fields = "__all__"
 
     def __init__(self, *args, **kwargs):
@@ -136,7 +136,7 @@ class MateriaPlanAdminForm(forms.ModelForm):
 
         self.initial["obligatoria"] = True
         self.fields["obligatoria"].initial = True
-        self.fields["anio_escolar_numero"].initial = self._build_anio_formacion_initial()
+        self.fields["anio_formacion"].initial = self._build_anio_formacion_initial()
 
     def _build_anio_formacion_initial(self):
         semestre = self.data.get("semestre_numero") if self.is_bound else self.instance.semestre_numero
@@ -147,9 +147,9 @@ class MateriaPlanAdminForm(forms.ModelForm):
             semestre = None
 
         if semestre and MATERIA_PLAN_SEMESTRE_MIN <= semestre <= MATERIA_PLAN_SEMESTRE_MAX:
-            return MateriaPlan.calculate_anio_formacion(semestre)
+            return ProgramaAsignatura.calculate_anio_formacion(semestre)
 
-        return self.instance.anio_escolar_numero or MateriaPlan.calculate_anio_formacion(1)
+        return self.instance.anio_formacion or ProgramaAsignatura.calculate_anio_formacion(1)
 
     def clean_semestre_numero(self):
         semestre_numero = self.cleaned_data.get("semestre_numero")
@@ -167,6 +167,6 @@ class MateriaPlanAdminForm(forms.ModelForm):
 
         cleaned_data["obligatoria"] = True
         if semestre_numero is not None:
-            cleaned_data["anio_escolar_numero"] = MateriaPlan.calculate_anio_formacion(semestre_numero)
+            cleaned_data["anio_formacion"] = ProgramaAsignatura.calculate_anio_formacion(semestre_numero)
 
         return cleaned_data

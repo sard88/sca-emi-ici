@@ -30,7 +30,7 @@ def build_anio_escolar_choices():
     ]
 
 
-SEMESTRE_OPERATIVO_CHOICES = [
+PERIODO_ACADEMICO_CHOICES = [
     (1, "Primer semestre"),
     (2, "Segundo semestre"),
 ]
@@ -134,11 +134,11 @@ class PlanEstudios(CatalogoAcademicoBase):
         return f"{self.carrera.clave} - {self.clave}"
 
 
-class Generacion(CatalogoAcademicoBase):
+class Antiguedad(CatalogoAcademicoBase):
     plan_estudios = models.ForeignKey(
         PlanEstudios,
         on_delete=models.PROTECT,
-        related_name="generaciones",
+        related_name="antiguedades",
     )
     anio_inicio = models.PositiveSmallIntegerField(
         null=True,
@@ -152,6 +152,7 @@ class Generacion(CatalogoAcademicoBase):
     )
 
     class Meta:
+        db_table = "catalogos_generacion"
         ordering = ["-anio_inicio", "clave"]
         verbose_name = "Antigüedad"
         verbose_name_plural = "Antigüedades"
@@ -182,8 +183,9 @@ class PeriodoEscolar(models.Model):
         choices=build_anio_escolar_choices,
         verbose_name="Año escolar",
     )
-    semestre_operativo = models.PositiveSmallIntegerField(
-        choices=SEMESTRE_OPERATIVO_CHOICES,
+    periodo_academico = models.PositiveSmallIntegerField(
+        db_column="semestre_operativo",
+        choices=PERIODO_ACADEMICO_CHOICES,
         null=True,
         verbose_name="Periodo académico",
     )
@@ -197,7 +199,7 @@ class PeriodoEscolar(models.Model):
     )
 
     class Meta:
-        ordering = ["-anio_escolar", "-semestre_operativo", "clave"]
+        ordering = ["-anio_escolar", "-periodo_academico", "clave"]
         verbose_name = "Periodo escolar"
         verbose_name_plural = "Periodo escolar"
         constraints = [
@@ -223,8 +225,8 @@ class PeriodoEscolar(models.Model):
 
         if not self.anio_escolar:
             errors["anio_escolar"] = "Este campo es obligatorio."
-        if self.semestre_operativo is None:
-            errors["semestre_operativo"] = "Este campo es obligatorio."
+        if self.periodo_academico is None:
+            errors["periodo_academico"] = "Este campo es obligatorio."
         if not self.fecha_inicio:
             errors["fecha_inicio"] = "Este campo es obligatorio."
         if not self.fecha_fin:
@@ -256,7 +258,7 @@ class PeriodoEscolar(models.Model):
         return super().save(*args, **kwargs)
 
     def __str__(self) -> str:
-        return f"{self.clave} - {self.anio_escolar} S{self.semestre_operativo}"
+        return f"{self.clave} - {self.anio_escolar} S{self.periodo_academico}"
 
 
 class GrupoAcademico(models.Model):
@@ -265,9 +267,10 @@ class GrupoAcademico(models.Model):
         validators=[clave_format_validator],
         verbose_name="Clave de grupo",
     )
-    generacion = models.ForeignKey(
-        Generacion,
+    antiguedad = models.ForeignKey(
+        Antiguedad,
         on_delete=models.PROTECT,
+        db_column="generacion_id",
         related_name="grupos_academicos",
         verbose_name="Antigüedad",
     )
@@ -296,12 +299,12 @@ class GrupoAcademico(models.Model):
     )
 
     class Meta:
-        ordering = ["periodo__anio_escolar", "periodo__semestre_operativo", "clave_grupo"]
+        ordering = ["periodo__anio_escolar", "periodo__periodo_academico", "clave_grupo"]
         verbose_name = "Grupo académico"
         verbose_name_plural = "Grupos académicos"
         constraints = [
             models.UniqueConstraint(
-                fields=["generacion", "periodo", "clave_grupo"],
+                fields=["antiguedad", "periodo", "clave_grupo"],
                 name="uq_grupo_generacion_periodo_clave",
             )
         ]
@@ -348,17 +351,17 @@ class Materia(CatalogoAcademicoBase):
         return f"{self.clave} - {self.nombre}"
 
 
-class MateriaPlan(models.Model):
+class ProgramaAsignatura(models.Model):
     plan_estudios = models.ForeignKey(
         PlanEstudios,
         on_delete=models.PROTECT,
-        related_name="materias_plan",
+        related_name="programas_asignatura",
         verbose_name="Plan de estudio",
     )
     materia = models.ForeignKey(
         Materia,
         on_delete=models.PROTECT,
-        related_name="planes_estudio",
+        related_name="programas_asignatura",
         verbose_name="Materia",
     )
     semestre_numero = models.PositiveSmallIntegerField(
@@ -366,14 +369,16 @@ class MateriaPlan(models.Model):
         choices=MATERIA_PLAN_SEMESTRE_CHOICES,
         verbose_name="Semestre",
     )
-    anio_escolar_numero = models.PositiveSmallIntegerField(
+    anio_formacion = models.PositiveSmallIntegerField(
         default=1,
+        db_column="anio_escolar_numero",
         verbose_name="Año de formación",
     )
     obligatoria = models.BooleanField(default=True, verbose_name="Obligatoria")
 
     class Meta:
-        ordering = ["plan_estudios__clave", "anio_escolar_numero", "semestre_numero", "materia__clave"]
+        db_table = "catalogos_materiaplan"
+        ordering = ["plan_estudios__clave", "anio_formacion", "semestre_numero", "materia__clave"]
         verbose_name = "Programa de asignatura"
         verbose_name_plural = "Programas de asignatura"
         constraints = [
@@ -406,7 +411,7 @@ class MateriaPlan(models.Model):
             raise ValidationError(errors)
 
         self.obligatoria = True
-        self.anio_escolar_numero = self.calculate_anio_formacion(self.semestre_numero)
+        self.anio_formacion = self.calculate_anio_formacion(self.semestre_numero)
 
     def save(self, *args, **kwargs):
         self.full_clean()

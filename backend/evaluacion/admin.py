@@ -55,7 +55,7 @@ class ComponenteEvaluacionInline(admin.TabularInline):
 @admin.register(EsquemaEvaluacion)
 class EsquemaEvaluacionAdmin(admin.ModelAdmin):
     list_display = (
-        "materia_plan",
+        "programa_asignatura",
         "version",
         "num_parciales",
         "permite_exencion",
@@ -65,9 +65,9 @@ class EsquemaEvaluacionAdmin(admin.ModelAdmin):
     )
     list_filter = ("num_parciales", "permite_exencion", "activo")
     search_fields = (
-        "materia_plan__plan_estudios__clave",
-        "materia_plan__materia__clave",
-        "materia_plan__materia__nombre",
+        "programa_asignatura__plan_estudios__clave",
+        "programa_asignatura__materia__clave",
+        "programa_asignatura__materia__nombre",
         "version",
     )
     inlines = [ComponenteEvaluacionInline]
@@ -77,4 +77,4 @@ class EsquemaEvaluacionAdmin(admin.ModelAdmin):
 class ComponenteEvaluacionAdmin(admin.ModelAdmin):
     list_display = ("esquema", "corte_codigo", "nombre", "porcentaje", "es_examen", "orden")
     list_filter = ("corte_codigo", "es_examen")
-    search_fields = ("esquema__materia_plan__materia__clave", "nombre")
+    search_fields = ("esquema__programa_asignatura__materia__clave", "nombre")

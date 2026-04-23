@@ -6,22 +6,22 @@ from django.forms import modelform_factory
 from django.test import TestCase
 from django.utils import timezone
 
-from .admin import GrupoAcademicoAdmin, MateriaAdmin, MateriaPlanAdmin
+from .admin import AntiguedadAdmin, GrupoAcademicoAdmin, MateriaAdmin, ProgramaAsignaturaAdmin
 from .forms import (
-    GeneracionAdminForm,
+    AntiguedadAdminForm,
     MateriaAdminForm,
-    MateriaPlanAdminForm,
+    ProgramaAsignaturaAdminForm,
     PlanEstudiosAdminForm,
     build_year_choices,
 )
 from .models import (
+    Antiguedad,
     Carrera,
-    Generacion,
     GRUPO_SEMESTRE_MAX,
     GRUPO_SEMESTRE_MIN,
     GrupoAcademico,
     Materia,
-    MateriaPlan,
+    ProgramaAsignatura,
     MATERIA_PLAN_SEMESTRE_MAX,
     MATERIA_PLAN_SEMESTRE_MIN,
     PeriodoEscolar,
@@ -39,17 +39,17 @@ class ClaveCatalogosValidationTests(TestCase):
             clave="PLAN-2025_A",
             nombre="Plan 2025",
         )
-        self.generacion = Generacion.objects.create(
+        self.antiguedad = Antiguedad.objects.create(
             plan_estudios=self.plan,
             clave="GEN_2025",
-            nombre="Generacion 2025",
+            nombre="Antiguedad 2025",
             anio_inicio=2025,
             anio_fin=2029,
         )
         self.periodo = PeriodoEscolar.objects.create(
             clave="PERIODO_2025-1",
             anio_escolar="2025-2026",
-            semestre_operativo=1,
+            periodo_academico=1,
             fecha_inicio=date(2025, 8, 1),
             fecha_fin=date(2026, 1, 31),
         )
@@ -58,23 +58,23 @@ class ClaveCatalogosValidationTests(TestCase):
         return [
             Carrera(clave=value, nombre="Carrera prueba"),
             PlanEstudios(carrera=self.carrera, clave=value, nombre="Plan prueba"),
-            Generacion(
+            Antiguedad(
                 plan_estudios=self.plan,
                 clave=value,
-                nombre="Generacion prueba",
+                nombre="Antiguedad prueba",
                 anio_inicio=2025,
                 anio_fin=2029,
             ),
             PeriodoEscolar(
                 clave=value,
                 anio_escolar="2025-2026",
-                semestre_operativo=1,
+                periodo_academico=1,
                 fecha_inicio=date(2025, 8, 1),
                 fecha_fin=date(2026, 1, 31),
             ),
             GrupoAcademico(
                 clave_grupo=value,
-                generacion=self.generacion,
+                antiguedad=self.antiguedad,
                 periodo=self.periodo,
                 semestre_numero=1,
             ),
@@ -131,12 +131,12 @@ class ClaveCatalogosValidationTests(TestCase):
     def test_modelform_rejects_invalid_clave_grupo_value(self):
         grupo_form_class = modelform_factory(
             GrupoAcademico,
-            fields=["clave_grupo", "generacion", "periodo", "semestre_numero", "estado", "cupo_maximo"],
+            fields=["clave_grupo", "antiguedad", "periodo", "semestre_numero", "estado", "cupo_maximo"],
         )
         form = grupo_form_class(
             data={
                 "clave_grupo": "GRUPO/01",
-                "generacion": self.generacion.pk,
+                "antiguedad": self.antiguedad.pk,
                 "periodo": self.periodo.pk,
                 "semestre_numero": 1,
                 "estado": "activo",
@@ -150,18 +150,18 @@ class ClaveCatalogosValidationTests(TestCase):
 
 
 class AntiguedadUiLabelTests(TestCase):
-    def test_generacion_model_uses_antiguedad_labels(self):
-        self.assertEqual(Generacion._meta.verbose_name, "Antigüedad")
-        self.assertEqual(Generacion._meta.verbose_name_plural, "Antigüedades")
+    def test_antiguedad_model_uses_antiguedad_labels(self):
+        self.assertEqual(Antiguedad._meta.verbose_name, "Antigüedad")
+        self.assertEqual(Antiguedad._meta.verbose_name_plural, "Antigüedades")
 
     def test_grupo_academico_form_uses_antiguedad_field_label(self):
         grupo_form_class = modelform_factory(
             GrupoAcademico,
-            fields=["clave_grupo", "generacion", "periodo", "semestre_numero", "estado", "cupo_maximo"],
+            fields=["clave_grupo", "antiguedad", "periodo", "semestre_numero", "estado", "cupo_maximo"],
         )
         form = grupo_form_class()
 
-        self.assertEqual(form.fields["generacion"].label, "Antigüedad")
+        self.assertEqual(form.fields["antiguedad"].label, "Antigüedad")
 
 
 class GrupoAcademicoValidationTests(TestCase):
@@ -172,17 +172,17 @@ class GrupoAcademicoValidationTests(TestCase):
             clave="GA_PLAN",
             nombre="Plan base",
         )
-        self.generacion = Generacion.objects.create(
+        self.antiguedad = Antiguedad.objects.create(
             plan_estudios=self.plan,
             clave="GA_GEN",
-            nombre="Generacion base",
+            nombre="Antiguedad base",
             anio_inicio=2025,
             anio_fin=2029,
         )
         self.periodo = PeriodoEscolar.objects.create(
             clave="GA_PERIODO",
             anio_escolar="2025-2026",
-            semestre_operativo=1,
+            periodo_academico=1,
             fecha_inicio=date(2025, 8, 1),
             fecha_fin=date(2026, 1, 31),
         )
@@ -190,7 +190,7 @@ class GrupoAcademicoValidationTests(TestCase):
     def _build_grupo(self, **overrides):
         payload = {
             "clave_grupo": "GA_GRUPO",
-            "generacion": self.generacion,
+            "antiguedad": self.antiguedad,
             "periodo": self.periodo,
             "semestre_numero": 1,
             "estado": "activo",
@@ -202,7 +202,7 @@ class GrupoAcademicoValidationTests(TestCase):
     def _build_form_data(self, **overrides):
         payload = {
             "clave_grupo": "GA_GRUPO_FORM",
-            "generacion": self.generacion.pk,
+            "antiguedad": self.antiguedad.pk,
             "periodo": self.periodo.pk,
             "semestre_numero": 1,
             "estado": "activo",
@@ -258,7 +258,7 @@ class GrupoAcademicoValidationTests(TestCase):
     def test_grupo_academico_form_rechaza_cupo_maximo_no_positivo(self):
         grupo_form_class = modelform_factory(
             GrupoAcademico,
-            fields=["clave_grupo", "generacion", "periodo", "semestre_numero", "estado", "cupo_maximo"],
+            fields=["clave_grupo", "antiguedad", "periodo", "semestre_numero", "estado", "cupo_maximo"],
         )
         form = grupo_form_class(data=self._build_form_data(cupo_maximo=0))
 
@@ -268,7 +268,7 @@ class GrupoAcademicoValidationTests(TestCase):
     def test_grupo_academico_form_permite_cupo_maximo_vacio(self):
         grupo_form_class = modelform_factory(
             GrupoAcademico,
-            fields=["clave_grupo", "generacion", "periodo", "semestre_numero", "estado", "cupo_maximo"],
+            fields=["clave_grupo", "antiguedad", "periodo", "semestre_numero", "estado", "cupo_maximo"],
         )
         form = grupo_form_class(data=self._build_form_data(cupo_maximo=""))
 
@@ -356,38 +356,38 @@ class AnioUiTests(TestCase):
             nombre="Plan base",
         )
 
-    def test_generacion_model_uses_ano_labels(self):
-        self.assertEqual(Generacion._meta.get_field("anio_inicio").verbose_name, "Año de inicio")
-        self.assertEqual(Generacion._meta.get_field("anio_fin").verbose_name, "Año de fin")
+    def test_antiguedad_model_uses_ano_labels(self):
+        self.assertEqual(Antiguedad._meta.get_field("anio_inicio").verbose_name, "Año de inicio")
+        self.assertEqual(Antiguedad._meta.get_field("anio_fin").verbose_name, "Año de fin")
 
-    def test_generacion_model_uses_ano_error_message(self):
-        generacion = Generacion(
+    def test_antiguedad_model_uses_ano_error_message(self):
+        antiguedad = Antiguedad(
             plan_estudios=self.plan,
             clave="ANIO_ERR",
-            nombre="Generacion invalida",
+            nombre="Antiguedad invalida",
             anio_inicio=2026,
             anio_fin=2025,
         )
 
         with self.assertRaises(ValidationError) as exc:
-            generacion.full_clean()
+            antiguedad.full_clean()
 
         self.assertIn("anio_fin", exc.exception.message_dict)
         self.assertIn("No puede ser menor al año de inicio.", exc.exception.message_dict["anio_fin"])
 
-    def test_generacion_admin_form_uses_select_widgets_for_years(self):
-        form = GeneracionAdminForm()
+    def test_antiguedad_admin_form_uses_select_widgets_for_years(self):
+        form = AntiguedadAdminForm()
 
         self.assertEqual(form.fields["anio_inicio"].label, "Año de inicio")
         self.assertEqual(form.fields["anio_fin"].label, "Año de fin")
         self.assertEqual(form.fields["anio_inicio"].widget.__class__.__name__, "Select")
         self.assertEqual(form.fields["anio_fin"].widget.__class__.__name__, "Select")
 
-    def test_generacion_admin_form_saves_selected_years(self):
-        form = GeneracionAdminForm(
+    def test_antiguedad_admin_form_saves_selected_years(self):
+        form = AntiguedadAdminForm(
             data={
                 "clave": "ANIO_FORM",
-                "nombre": "Generacion formulario",
+                "nombre": "Antiguedad formulario",
                 "plan_estudios": self.plan.pk,
                 "anio_inicio": "2024",
                 "anio_fin": "2028",
@@ -398,21 +398,21 @@ class AnioUiTests(TestCase):
         )
 
         self.assertTrue(form.is_valid(), form.errors)
-        generacion = form.save()
+        antiguedad = form.save()
 
-        self.assertEqual(generacion.anio_inicio, 2024)
-        self.assertEqual(generacion.anio_fin, 2028)
+        self.assertEqual(antiguedad.anio_inicio, 2024)
+        self.assertEqual(antiguedad.anio_fin, 2028)
 
-    def test_generacion_admin_form_keeps_legacy_year_available(self):
-        generacion = Generacion.objects.create(
+    def test_antiguedad_admin_form_keeps_legacy_year_available(self):
+        antiguedad = Antiguedad.objects.create(
             plan_estudios=self.plan,
             clave="ANIO_LEGACY",
-            nombre="Generacion legacy",
+            nombre="Antiguedad legacy",
             anio_inicio=0,
             anio_fin=2029,
         )
 
-        form = GeneracionAdminForm(instance=generacion)
+        form = AntiguedadAdminForm(instance=antiguedad)
         inicio_choices = [value for value, _ in form.fields["anio_inicio"].choices]
 
         self.assertIn(0, inicio_choices)
@@ -430,26 +430,26 @@ class PeriodoEscolarValidationTests(TestCase):
     def test_periodo_escolar_usa_label_periodo_academico(self):
         periodo_form_class = modelform_factory(
             PeriodoEscolar,
-            fields=["clave", "anio_escolar", "semestre_operativo", "fecha_inicio", "fecha_fin", "estado"],
+            fields=["clave", "anio_escolar", "periodo_academico", "fecha_inicio", "fecha_fin", "estado"],
         )
         form = periodo_form_class()
 
         self.assertEqual(
-            PeriodoEscolar._meta.get_field("semestre_operativo").verbose_name,
+            PeriodoEscolar._meta.get_field("periodo_academico").verbose_name,
             "Periodo académico",
         )
-        self.assertEqual(form.fields["semestre_operativo"].label, "Periodo académico")
+        self.assertEqual(form.fields["periodo_academico"].label, "Periodo académico")
 
     def test_periodo_escolar_form_requiere_campos_obligatorios(self):
         periodo_form_class = modelform_factory(
             PeriodoEscolar,
-            fields=["clave", "anio_escolar", "semestre_operativo", "fecha_inicio", "fecha_fin", "estado"],
+            fields=["clave", "anio_escolar", "periodo_academico", "fecha_inicio", "fecha_fin", "estado"],
         )
         form = periodo_form_class(
             data={
                 "clave": "PE_REQ",
                 "anio_escolar": "",
-                "semestre_operativo": "",
+                "periodo_academico": "",
                 "fecha_inicio": "",
                 "fecha_fin": "",
                 "estado": "activo",
@@ -458,7 +458,7 @@ class PeriodoEscolarValidationTests(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn("anio_escolar", form.errors)
-        self.assertIn("semestre_operativo", form.errors)
+        self.assertIn("periodo_academico", form.errors)
         self.assertIn("fecha_inicio", form.errors)
         self.assertIn("fecha_fin", form.errors)
 
@@ -466,7 +466,7 @@ class PeriodoEscolarValidationTests(TestCase):
         periodo = PeriodoEscolar.objects.create(
             clave="PE_VALIDO",
             anio_escolar="2023-2024",
-            semestre_operativo=1,
+            periodo_academico=1,
             fecha_inicio=date(2023, 8, 1),
             fecha_fin=date(2024, 7, 31),
             estado="activo",
@@ -478,7 +478,7 @@ class PeriodoEscolarValidationTests(TestCase):
         periodo = PeriodoEscolar(
             clave="PE_IGUAL",
             anio_escolar="2023-2024",
-            semestre_operativo=1,
+            periodo_academico=1,
             fecha_inicio=date(2023, 8, 1),
             fecha_fin=date(2023, 8, 1),
             estado="activo",
@@ -494,7 +494,7 @@ class PeriodoEscolarValidationTests(TestCase):
         periodo = PeriodoEscolar(
             clave="PE_INICIO",
             anio_escolar="2023-2024",
-            semestre_operativo=1,
+            periodo_academico=1,
             fecha_inicio=date(2023, 7, 31),
             fecha_fin=date(2024, 1, 15),
             estado="activo",
@@ -513,7 +513,7 @@ class PeriodoEscolarValidationTests(TestCase):
         periodo = PeriodoEscolar(
             clave="PE_FIN",
             anio_escolar="2023-2024",
-            semestre_operativo=2,
+            periodo_academico=2,
             fecha_inicio=date(2024, 1, 15),
             fecha_fin=date(2024, 8, 1),
             estado="activo",
@@ -533,7 +533,7 @@ class PeriodoEscolarValidationTests(TestCase):
             PeriodoEscolar.objects.create(
                 clave="PE_BACK",
                 anio_escolar="2023-2024",
-                semestre_operativo=1,
+                periodo_academico=1,
                 fecha_inicio=date(2024, 7, 31),
                 fecha_fin=date(2024, 7, 31),
                 estado="activo",
@@ -615,7 +615,7 @@ class PlanEstudiosCarreraActivaTests(TestCase):
         self.assertIn("est\u00e1 inactiva", form.fields["carrera"].help_text)
 
 
-class MateriaPlanProgramaAsignaturaTests(TestCase):
+class ProgramaAsignaturaTests(TestCase):
     def setUp(self):
         self.carrera = Carrera.objects.create(
             clave="MP_CARRERA",
@@ -647,34 +647,34 @@ class MateriaPlanProgramaAsignaturaTests(TestCase):
             estado="inactivo",
         )
 
-    def _build_materia_plan(self, **overrides):
+    def _build_programa_asignatura(self, **overrides):
         payload = {
             "plan_estudios": self.plan_activo,
             "materia": self.materia_activa,
             "semestre_numero": 1,
-            "anio_escolar_numero": 1,
+            "anio_formacion": 1,
             "obligatoria": True,
         }
         payload.update(overrides)
-        return MateriaPlan(**payload)
+        return ProgramaAsignatura(**payload)
 
     def _build_form_data(self, **overrides):
         payload = {
             "plan_estudios": self.plan_activo.pk,
             "materia": self.materia_activa.pk,
             "semestre_numero": 1,
-            "anio_escolar_numero": 1,
+            "anio_formacion": 1,
             "obligatoria": "on",
         }
         payload.update(overrides)
         return payload
 
-    def test_materia_plan_usa_programas_de_asignatura_en_ui_visible(self):
-        self.assertEqual(MateriaPlan._meta.verbose_name, "Programa de asignatura")
-        self.assertEqual(MateriaPlan._meta.verbose_name_plural, "Programas de asignatura")
+    def test_programa_asignatura_usa_programas_de_asignatura_en_ui_visible(self):
+        self.assertEqual(ProgramaAsignatura._meta.verbose_name, "Programa de asignatura")
+        self.assertEqual(ProgramaAsignatura._meta.verbose_name_plural, "Programas de asignatura")
 
-    def test_materia_plan_admin_form_filtra_planes_y_materias_activas(self):
-        form = MateriaPlanAdminForm()
+    def test_programa_asignatura_admin_form_filtra_planes_y_materias_activas(self):
+        form = ProgramaAsignaturaAdminForm()
 
         self.assertQuerySetEqual(
             form.fields["plan_estudios"].queryset,
@@ -687,16 +687,16 @@ class MateriaPlanProgramaAsignaturaTests(TestCase):
             transform=lambda materia: materia,
         )
 
-    def test_materia_plan_admin_form_muestra_campos_derivados_solo_lectura(self):
-        form = MateriaPlanAdminForm()
+    def test_programa_asignatura_admin_form_muestra_campos_derivados_solo_lectura(self):
+        form = ProgramaAsignaturaAdminForm()
 
         self.assertTrue(form.fields["obligatoria"].disabled)
-        self.assertTrue(form.fields["anio_escolar_numero"].disabled)
+        self.assertTrue(form.fields["anio_formacion"].disabled)
         self.assertTrue(form.fields["obligatoria"].initial)
-        self.assertEqual(form.fields["anio_escolar_numero"].label, "Año de formación")
+        self.assertEqual(form.fields["anio_formacion"].label, "Año de formación")
 
-    def test_materia_plan_admin_usa_semestre_como_lista_del_1_al_12(self):
-        admin = MateriaPlanAdmin(MateriaPlan, AdminSite())
+    def test_programa_asignatura_admin_usa_semestre_como_lista_del_1_al_12(self):
+        admin = ProgramaAsignaturaAdmin(ProgramaAsignatura, AdminSite())
         admin_form_class = admin.get_form(request=None)
         form = admin_form_class()
         choice_values = [value for value, _ in form.fields["semestre_numero"].choices if isinstance(value, int)]
@@ -707,81 +707,85 @@ class MateriaPlanProgramaAsignaturaTests(TestCase):
             list(range(MATERIA_PLAN_SEMESTRE_MIN, MATERIA_PLAN_SEMESTRE_MAX + 1)),
         )
 
-    def test_materia_plan_backend_rechaza_plan_inactivo(self):
-        materia_plan = self._build_materia_plan(plan_estudios=self.plan_inactivo)
+    def test_programa_asignatura_backend_rechaza_plan_inactivo(self):
+        programa_asignatura = self._build_programa_asignatura(plan_estudios=self.plan_inactivo)
 
         with self.assertRaises(ValidationError) as exc:
-            materia_plan.full_clean()
+            programa_asignatura.full_clean()
 
         self.assertEqual(
             exc.exception.message_dict["plan_estudios"],
             ["Solo se puede asignar un plan de estudios activo."],
         )
 
-    def test_materia_plan_backend_rechaza_materia_inactiva(self):
-        materia_plan = self._build_materia_plan(materia=self.materia_inactiva)
+    def test_programa_asignatura_backend_rechaza_materia_inactiva(self):
+        programa_asignatura = self._build_programa_asignatura(materia=self.materia_inactiva)
 
         with self.assertRaises(ValidationError) as exc:
-            materia_plan.full_clean()
+            programa_asignatura.full_clean()
 
         self.assertEqual(
             exc.exception.message_dict["materia"],
             ["Solo se puede asignar una materia activa."],
         )
 
-    def test_materia_plan_rechaza_semestres_fuera_de_rango(self):
+    def test_programa_asignatura_rechaza_semestres_fuera_de_rango(self):
         for value in (0, -1, 13):
             with self.subTest(value=value):
-                materia_plan = self._build_materia_plan(semestre_numero=value)
+                programa_asignatura = self._build_programa_asignatura(semestre_numero=value)
 
                 with self.assertRaises(ValidationError) as exc:
-                    materia_plan.full_clean()
+                    programa_asignatura.full_clean()
 
                 self.assertIn("semestre_numero", exc.exception.message_dict)
 
-    def test_materia_plan_calcula_anio_formacion_desde_semestre(self):
-        materia_plan = self._build_materia_plan(semestre_numero=5, anio_escolar_numero=1)
-        materia_plan.full_clean()
+    def test_programa_asignatura_calcula_anio_formacion_desde_semestre(self):
+        programa_asignatura = self._build_programa_asignatura(semestre_numero=5, anio_formacion=1)
+        programa_asignatura.full_clean()
 
-        self.assertEqual(materia_plan.anio_escolar_numero, 3)
+        self.assertEqual(programa_asignatura.anio_formacion, 3)
 
-    def test_materia_plan_save_fuerza_obligatoria_activa(self):
-        materia_plan = self._build_materia_plan(obligatoria=False, semestre_numero=6, anio_escolar_numero=1)
-        materia_plan.save()
-        materia_plan.refresh_from_db()
+    def test_programa_asignatura_save_fuerza_obligatoria_activa(self):
+        programa_asignatura = self._build_programa_asignatura(
+            obligatoria=False,
+            semestre_numero=6,
+            anio_formacion=1,
+        )
+        programa_asignatura.save()
+        programa_asignatura.refresh_from_db()
 
-        self.assertTrue(materia_plan.obligatoria)
-        self.assertEqual(materia_plan.anio_escolar_numero, 3)
+        self.assertTrue(programa_asignatura.obligatoria)
+        self.assertEqual(programa_asignatura.anio_formacion, 3)
 
-    def test_materia_plan_form_calcula_anio_y_fuerza_obligatoria(self):
-        form = MateriaPlanAdminForm(
+    def test_programa_asignatura_form_calcula_anio_y_fuerza_obligatoria(self):
+        form = ProgramaAsignaturaAdminForm(
             data=self._build_form_data(
                 semestre_numero=12,
-                anio_escolar_numero=2,
+                anio_formacion=2,
             )
         )
 
         self.assertTrue(form.is_valid(), form.errors)
-        materia_plan = form.save()
+        programa_asignatura = form.save()
 
-        self.assertEqual(materia_plan.anio_escolar_numero, 6)
-        self.assertTrue(materia_plan.obligatoria)
+        self.assertEqual(programa_asignatura.anio_formacion, 6)
+        self.assertTrue(programa_asignatura.obligatoria)
 
-    def test_materia_plan_form_de_edicion_legacy_muestra_ayuda_si_hay_relaciones_inactivas(self):
-        materia_plan = MateriaPlan.objects.create(
+    def test_programa_asignatura_form_de_edicion_legacy_muestra_ayuda_si_hay_relaciones_inactivas(self):
+        programa_asignatura = ProgramaAsignatura.objects.create(
             plan_estudios=self.plan_activo,
             materia=self.materia_activa,
             semestre_numero=2,
-            anio_escolar_numero=1,
+            anio_formacion=1,
             obligatoria=True,
         )
-        MateriaPlan.objects.filter(pk=materia_plan.pk).update(
+        ProgramaAsignatura.objects.filter(pk=programa_asignatura.pk).update(
             plan_estudios=self.plan_inactivo,
             materia=self.materia_inactiva,
         )
-        materia_plan.refresh_from_db()
+        programa_asignatura.refresh_from_db()
 
-        form = MateriaPlanAdminForm(instance=materia_plan)
+        form = ProgramaAsignaturaAdminForm(instance=programa_asignatura)
 
         self.assertIn("inactivo", form.fields["plan_estudios"].help_text)
         self.assertIn("inactiva", form.fields["materia"].help_text)

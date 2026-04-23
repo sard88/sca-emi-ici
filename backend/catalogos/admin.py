@@ -1,19 +1,19 @@
 from django.contrib import admin
 
 from .forms import (
-    GeneracionAdminForm,
+    AntiguedadAdminForm,
     MateriaAdminForm,
-    MateriaPlanAdminForm,
+    ProgramaAsignaturaAdminForm,
     PlanEstudiosAdminForm,
 )
 from .models import (
+    Antiguedad,
     Carrera,
-    Generacion,
     GrupoAcademico,
     Materia,
-    MateriaPlan,
     PeriodoEscolar,
     PlanEstudios,
+    ProgramaAsignatura,
 )
 
 
@@ -40,9 +40,9 @@ class PlanEstudiosAdmin(admin.ModelAdmin):
     search_fields = ("clave", "nombre", "version", "carrera__nombre")
 
 
-@admin.register(Generacion)
-class GeneracionAdmin(admin.ModelAdmin):
-    form = GeneracionAdminForm
+@admin.register(Antiguedad)
+class AntiguedadAdmin(admin.ModelAdmin):
+    form = AntiguedadAdminForm
     list_display = (
         "clave",
         "nombre",
@@ -60,7 +60,7 @@ class PeriodoEscolarAdmin(admin.ModelAdmin):
     list_display = (
         "clave",
         "anio_escolar",
-        "semestre_operativo",
+        "periodo_academico",
         "fecha_inicio",
         "fecha_fin",
         "estado",
@@ -73,14 +73,14 @@ class PeriodoEscolarAdmin(admin.ModelAdmin):
 class GrupoAcademicoAdmin(admin.ModelAdmin):
     list_display = (
         "clave_grupo",
-        "generacion",
+        "antiguedad",
         "periodo",
         "semestre_numero",
         "cupo_maximo",
         "estado",
     )
-    list_filter = ("estado", "periodo", "generacion__plan_estudios")
-    search_fields = ("clave_grupo", "generacion__clave", "periodo__clave")
+    list_filter = ("estado", "periodo", "antiguedad__plan_estudios")
+    search_fields = ("clave_grupo", "antiguedad__clave", "periodo__clave")
 
 
 @admin.register(Materia)
@@ -109,22 +109,22 @@ class MateriaAdmin(admin.ModelAdmin):
     search_fields = ("clave", "nombre")
 
 
-@admin.register(MateriaPlan)
-class MateriaPlanAdmin(admin.ModelAdmin):
-    form = MateriaPlanAdminForm
+@admin.register(ProgramaAsignatura)
+class ProgramaAsignaturaAdmin(admin.ModelAdmin):
+    form = ProgramaAsignaturaAdminForm
     fields = (
         "plan_estudios",
         "materia",
         "semestre_numero",
-        "anio_escolar_numero",
+        "anio_formacion",
         "obligatoria",
     )
     list_display = (
         "plan_estudios",
         "materia",
         "semestre_numero",
-        "anio_escolar_numero",
+        "anio_formacion",
         "obligatoria",
     )
-    list_filter = ("obligatoria", "plan_estudios", "anio_escolar_numero", "semestre_numero")
+    list_filter = ("obligatoria", "plan_estudios", "anio_formacion", "semestre_numero")
     search_fields = ("plan_estudios__clave", "materia__clave", "materia__nombre")

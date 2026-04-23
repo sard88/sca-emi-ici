@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.core.exceptions import ValidationError
 
-from catalogos.models import Carrera, Materia, MateriaPlan, PlanEstudios
+from catalogos.models import Carrera, Materia, PlanEstudios, ProgramaAsignatura
 from evaluacion.models import ComponenteEvaluacion, EsquemaEvaluacion
 
 
@@ -14,18 +14,18 @@ class EsquemaEvaluacionTestCase(TestCase):
             nombre="Plan ICI 2026",
         )
         materia = Materia.objects.create(clave="MAT101", nombre="Matemática 1", horas_totales=64)
-        self.materia_plan = MateriaPlan.objects.create(
+        self.programa_asignatura = ProgramaAsignatura.objects.create(
             plan_estudios=plan,
             materia=materia,
             semestre_numero=1,
-            anio_escolar_numero=1,
+            anio_formacion=1,
             obligatoria=True,
         )
 
     def test_permite_esquemas_con_1_2_y_3_parciales(self):
         for num in [1, 2, 3]:
             esquema = EsquemaEvaluacion(
-                materia_plan=self.materia_plan,
+                programa_asignatura=self.programa_asignatura,
                 version=f"v{num}",
                 num_parciales=num,
             )
@@ -36,7 +36,7 @@ class EsquemaEvaluacionTestCase(TestCase):
 
     def test_impide_exencion_cuando_num_parciales_es_1(self):
         esquema = EsquemaEvaluacion(
-            materia_plan=self.materia_plan,
+            programa_asignatura=self.programa_asignatura,
             version="v-exencion",
             num_parciales=1,
             permite_exencion=True,
@@ -46,7 +46,7 @@ class EsquemaEvaluacionTestCase(TestCase):
 
     def test_valida_suma_porcentajes_igual_100_por_corte(self):
         esquema = EsquemaEvaluacion.objects.create(
-            materia_plan=self.materia_plan,
+            programa_asignatura=self.programa_asignatura,
             version="v-suma-ok",
             num_parciales=2,
         )
@@ -84,7 +84,7 @@ class EsquemaEvaluacionTestCase(TestCase):
         esquema.validar_componentes_por_corte()
 
         esquema_invalido = EsquemaEvaluacion.objects.create(
-            materia_plan=self.materia_plan,
+            programa_asignatura=self.programa_asignatura,
             version="v-suma-bad",
             num_parciales=2,
         )
@@ -116,7 +116,7 @@ class EsquemaEvaluacionTestCase(TestCase):
 
     def test_pesos_45_55_por_omision_y_persistencia_configurable(self):
         esquema_default = EsquemaEvaluacion.objects.create(
-            materia_plan=self.materia_plan,
+            programa_asignatura=self.programa_asignatura,
             version="v-default",
             num_parciales=2,
         )
@@ -124,7 +124,7 @@ class EsquemaEvaluacionTestCase(TestCase):
         self.assertEqual(esquema_default.peso_final, 55)
 
         esquema_custom = EsquemaEvaluacion(
-            materia_plan=self.materia_plan,
+            programa_asignatura=self.programa_asignatura,
             version="v-custom",
             num_parciales=3,
             peso_parciales=50,

@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Sum
 
-from catalogos.models import MateriaPlan
+from catalogos.models import ProgramaAsignatura
 
 
 class EsquemaEvaluacion(models.Model):
@@ -18,11 +18,12 @@ class EsquemaEvaluacion(models.Model):
         (PARCIALES_3, "3 parciales"),
     ]
 
-    materia_plan = models.ForeignKey(
-        MateriaPlan,
+    programa_asignatura = models.ForeignKey(
+        ProgramaAsignatura,
         on_delete=models.PROTECT,
+        db_column="materia_plan_id",
         related_name="esquemas_evaluacion",
-        verbose_name="Materia plan",
+        verbose_name="Programa de asignatura",
     )
     version = models.CharField(max_length=20, default="v1", verbose_name="Versión")
     num_parciales = models.PositiveSmallIntegerField(
@@ -52,10 +53,14 @@ class EsquemaEvaluacion(models.Model):
     activo = models.BooleanField(default=True, verbose_name="Activo")
 
     class Meta:
-        ordering = ["-activo", "materia_plan__plan_estudios__clave", "materia_plan__materia__clave"]
+        ordering = [
+            "-activo",
+            "programa_asignatura__plan_estudios__clave",
+            "programa_asignatura__materia__clave",
+        ]
         constraints = [
             models.UniqueConstraint(
-                fields=["materia_plan", "version"],
+                fields=["programa_asignatura", "version"],
                 name="uq_esquemaevaluacion_materiaplan_version",
             )
         ]
@@ -122,7 +127,7 @@ class EsquemaEvaluacion(models.Model):
             )
 
     def __str__(self):
-        return f"{self.materia_plan} - {self.version}"
+        return f"{self.programa_asignatura} - {self.version}"
 
 
 class ComponenteEvaluacion(models.Model):
