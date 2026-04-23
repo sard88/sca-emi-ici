@@ -1,5 +1,5 @@
 from datetime import date
-from decimal import Decimal, ROUND_FLOOR
+from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
@@ -50,9 +50,6 @@ MATERIA_PLAN_SEMESTRE_CHOICES = [
 MAYOR_A_CERO_MESSAGE = "Debe ser mayor a 0."
 
 CREDITOS_FACTOR = Decimal("0.0625")
-CREDITOS_ROUNDING_OFFSET = Decimal("0.5")
-
-
 class CatalogoAcademicoBase(models.Model):
     clave = models.CharField(
         max_length=CLAVE_MAX_LENGTH,
@@ -318,7 +315,12 @@ class GrupoAcademico(models.Model):
 
 
 class Materia(CatalogoAcademicoBase):
-    creditos = models.PositiveIntegerField(default=0, editable=False)
+    creditos = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        editable=False,
+    )
     horas_totales = models.PositiveIntegerField(
         validators=[MinValueValidator(1, message="Debe ser mayor a 0.")],
         help_text="Los creditos se calculan automaticamente a partir de las horas totales.",
@@ -333,9 +335,9 @@ class Materia(CatalogoAcademicoBase):
         ]
 
     @staticmethod
-    def calculate_creditos(horas_totales: int) -> int:
+    def calculate_creditos(horas_totales: int) -> Decimal:
         valor = Decimal(horas_totales) * CREDITOS_FACTOR
-        return int((valor + CREDITOS_ROUNDING_OFFSET).to_integral_value(rounding=ROUND_FLOOR))
+        return round(valor, 2)
 
     def clean(self):
         super().clean()

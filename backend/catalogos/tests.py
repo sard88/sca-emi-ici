@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from decimal import Decimal
 
 from django.contrib.admin.sites import AdminSite
 from django.core.exceptions import ValidationError
@@ -799,7 +800,7 @@ class MateriaCreditosTests(TestCase):
             horas_totales=64,
         )
 
-        self.assertEqual(materia.creditos, 4)
+        self.assertEqual(materia.creditos, Decimal("4.00"))
 
     def test_materia_recalcula_creditos_en_edicion(self):
         materia = Materia.objects.create(
@@ -812,34 +813,34 @@ class MateriaCreditosTests(TestCase):
         materia.save()
         materia.refresh_from_db()
 
-        self.assertEqual(materia.creditos, 3)
+        self.assertEqual(materia.creditos, Decimal("3.00"))
 
-    def test_materia_redondea_al_entero_mas_cercano(self):
+    def test_materia_redondea_creditos_a_dos_decimales(self):
         materia = Materia.objects.create(
             clave="MAT_AUTO_03",
             nombre="Materia redondeo",
             horas_totales=23,
         )
 
-        self.assertEqual(materia.creditos, 1)
+        self.assertEqual(materia.creditos, Decimal("1.44"))
 
-    def test_materia_redondea_medio_hacia_arriba(self):
+    def test_materia_redondea_medio_con_dos_decimales(self):
         materia = Materia.objects.create(
             clave="MAT_AUTO_031",
             nombre="Materia medio arriba",
             horas_totales=8,
         )
 
-        self.assertEqual(materia.creditos, 1)
+        self.assertEqual(materia.creditos, Decimal("0.50"))
 
-    def test_materia_redondea_hacia_abajo_si_no_llega_a_medio(self):
+    def test_materia_redondea_hacia_arriba_en_la_segunda_cifra_decimal(self):
         materia = Materia.objects.create(
             clave="MAT_AUTO_032",
             nombre="Materia abajo",
             horas_totales=7,
         )
 
-        self.assertEqual(materia.creditos, 0)
+        self.assertEqual(materia.creditos, Decimal("0.44"))
 
     def test_materia_rechaza_horas_totales_en_cero(self):
         materia = Materia(
