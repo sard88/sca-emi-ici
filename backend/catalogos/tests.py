@@ -6,8 +6,14 @@ from django.forms import modelform_factory
 from django.test import TestCase
 from django.utils import timezone
 
-from .admin import GrupoAcademicoAdmin, MateriaAdmin
-from .forms import GeneracionAdminForm, MateriaAdminForm, PlanEstudiosAdminForm, build_year_choices
+from .admin import GrupoAcademicoAdmin, MateriaAdmin, MateriaPlanAdmin
+from .forms import (
+    GeneracionAdminForm,
+    MateriaAdminForm,
+    MateriaPlanAdminForm,
+    PlanEstudiosAdminForm,
+    build_year_choices,
+)
 from .models import (
     Carrera,
     Generacion,
@@ -15,6 +21,9 @@ from .models import (
     GRUPO_SEMESTRE_MIN,
     GrupoAcademico,
     Materia,
+    MateriaPlan,
+    MATERIA_PLAN_SEMESTRE_MAX,
+    MATERIA_PLAN_SEMESTRE_MIN,
     PeriodoEscolar,
     PlanEstudios,
     build_anio_escolar_choices,
@@ -604,6 +613,178 @@ class PlanEstudiosCarreraActivaTests(TestCase):
             transform=lambda carrera: carrera,
         )
         self.assertIn("est\u00e1 inactiva", form.fields["carrera"].help_text)
+
+
+class MateriaPlanProgramaAsignaturaTests(TestCase):
+    def setUp(self):
+        self.carrera = Carrera.objects.create(
+            clave="MP_CARRERA",
+            nombre="Carrera MP",
+            estado="activo",
+        )
+        self.plan_activo = PlanEstudios.objects.create(
+            carrera=self.carrera,
+            clave="MP_PLAN_ACT",
+            nombre="Plan activo",
+            estado="activo",
+        )
+        self.plan_inactivo = PlanEstudios.objects.create(
+            carrera=self.carrera,
+            clave="MP_PLAN_INA",
+            nombre="Plan inactivo",
+            estado="inactivo",
+        )
+        self.materia_activa = Materia.objects.create(
+            clave="MP_MAT_ACT",
+            nombre="Materia activa",
+            horas_totales=64,
+            estado="activo",
+        )
+        self.materia_inactiva = Materia.objects.create(
+            clave="MP_MAT_INA",
+            nombre="Materia inactiva",
+            horas_totales=64,
+            estado="inactivo",
+        )
+
+    def _build_materia_plan(self, **overrides):
+        payload = {
+            "plan_estudios": self.plan_activo,
+            "materia": self.materia_activa,
+            "semestre_numero": 1,
+            "anio_escolar_numero": 1,
+            "obligatoria": True,
+        }
+        payload.update(overrides)
+        return MateriaPlan(**payload)
+
+    def _build_form_data(self, **overrides):
+        payload = {
+            "plan_estudios": self.plan_activo.pk,
+            "materia": self.materia_activa.pk,
+            "semestre_numero": 1,
+            "anio_escolar_numero": 1,
+            "obligatoria": "on",
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_materia_plan_usa_programas_de_asignatura_en_ui_visible(self):
+        self.assertEqual(MateriaPlan._meta.verbose_name, "Programa de asignatura")
+        self.assertEqual(MateriaPlan._meta.verbose_name_plural, "Programas de asignatura")
+
+    def test_materia_plan_admin_form_filtra_planes_y_materias_activas(self):
+        form = MateriaPlanAdminForm()
+
+        self.assertQuerySetEqual(
+            form.fields["plan_estudios"].queryset,
+            [self.plan_activo],
+            transform=lambda plan: plan,
+        )
+        self.assertQuerySetEqual(
+            form.fields["materia"].queryset,
+            [self.materia_activa],
+            transform=lambda materia: materia,
+        )
+
+    def test_materia_plan_admin_form_muestra_campos_derivados_solo_lectura(self):
+        form = MateriaPlanAdminForm()
+
+        self.assertTrue(form.fields["obligatoria"].disabled)
+        self.assertTrue(form.fields["anio_escolar_numero"].disabled)
+        self.assertTrue(form.fields["obligatoria"].initial)
+        self.assertEqual(form.fields["anio_escolar_numero"].label, "Año de formación")
+
+    def test_materia_plan_admin_usa_semestre_como_lista_del_1_al_12(self):
+        admin = MateriaPlanAdmin(MateriaPlan, AdminSite())
+        admin_form_class = admin.get_form(request=None)
+        form = admin_form_class()
+        choice_values = [value for value, _ in form.fields["semestre_numero"].choices if isinstance(value, int)]
+
+        self.assertEqual(form.fields["semestre_numero"].widget.__class__.__name__, "Select")
+        self.assertEqual(
+            choice_values,
+            list(range(MATERIA_PLAN_SEMESTRE_MIN, MATERIA_PLAN_SEMESTRE_MAX + 1)),
+        )
+
+    def test_materia_plan_backend_rechaza_plan_inactivo(self):
+        materia_plan = self._build_materia_plan(plan_estudios=self.plan_inactivo)
+
+        with self.assertRaises(ValidationError) as exc:
+            materia_plan.full_clean()
+
+        self.assertEqual(
+            exc.exception.message_dict["plan_estudios"],
+            ["Solo se puede asignar un plan de estudios activo."],
+        )
+
+    def test_materia_plan_backend_rechaza_materia_inactiva(self):
+        materia_plan = self._build_materia_plan(materia=self.materia_inactiva)
+
+        with self.assertRaises(ValidationError) as exc:
+            materia_plan.full_clean()
+
+        self.assertEqual(
+            exc.exception.message_dict["materia"],
+            ["Solo se puede asignar una materia activa."],
+        )
+
+    def test_materia_plan_rechaza_semestres_fuera_de_rango(self):
+        for value in (0, -1, 13):
+            with self.subTest(value=value):
+                materia_plan = self._build_materia_plan(semestre_numero=value)
+
+                with self.assertRaises(ValidationError) as exc:
+                    materia_plan.full_clean()
+
+                self.assertIn("semestre_numero", exc.exception.message_dict)
+
+    def test_materia_plan_calcula_anio_formacion_desde_semestre(self):
+        materia_plan = self._build_materia_plan(semestre_numero=5, anio_escolar_numero=1)
+        materia_plan.full_clean()
+
+        self.assertEqual(materia_plan.anio_escolar_numero, 3)
+
+    def test_materia_plan_save_fuerza_obligatoria_activa(self):
+        materia_plan = self._build_materia_plan(obligatoria=False, semestre_numero=6, anio_escolar_numero=1)
+        materia_plan.save()
+        materia_plan.refresh_from_db()
+
+        self.assertTrue(materia_plan.obligatoria)
+        self.assertEqual(materia_plan.anio_escolar_numero, 3)
+
+    def test_materia_plan_form_calcula_anio_y_fuerza_obligatoria(self):
+        form = MateriaPlanAdminForm(
+            data=self._build_form_data(
+                semestre_numero=12,
+                anio_escolar_numero=2,
+            )
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        materia_plan = form.save()
+
+        self.assertEqual(materia_plan.anio_escolar_numero, 6)
+        self.assertTrue(materia_plan.obligatoria)
+
+    def test_materia_plan_form_de_edicion_legacy_muestra_ayuda_si_hay_relaciones_inactivas(self):
+        materia_plan = MateriaPlan.objects.create(
+            plan_estudios=self.plan_activo,
+            materia=self.materia_activa,
+            semestre_numero=2,
+            anio_escolar_numero=1,
+            obligatoria=True,
+        )
+        MateriaPlan.objects.filter(pk=materia_plan.pk).update(
+            plan_estudios=self.plan_inactivo,
+            materia=self.materia_inactiva,
+        )
+        materia_plan.refresh_from_db()
+
+        form = MateriaPlanAdminForm(instance=materia_plan)
+
+        self.assertIn("inactivo", form.fields["plan_estudios"].help_text)
+        self.assertIn("inactiva", form.fields["materia"].help_text)
 
 
 class MateriaCreditosTests(TestCase):

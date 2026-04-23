@@ -1,6 +1,11 @@
 from django.contrib import admin
 
-from .forms import GeneracionAdminForm, MateriaAdminForm, PlanEstudiosAdminForm
+from .forms import (
+    GeneracionAdminForm,
+    MateriaAdminForm,
+    MateriaPlanAdminForm,
+    PlanEstudiosAdminForm,
+)
 from .models import (
     Carrera,
     Generacion,
@@ -106,6 +111,14 @@ class MateriaAdmin(admin.ModelAdmin):
 
 @admin.register(MateriaPlan)
 class MateriaPlanAdmin(admin.ModelAdmin):
+    form = MateriaPlanAdminForm
+    fields = (
+        "plan_estudios",
+        "materia",
+        "semestre_numero",
+        "anio_escolar_numero",
+        "obligatoria",
+    )
     list_display = (
         "plan_estudios",
         "materia",

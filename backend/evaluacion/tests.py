@@ -13,7 +13,7 @@ class EsquemaEvaluacionTestCase(TestCase):
             clave="PLAN-ICI-2026",
             nombre="Plan ICI 2026",
         )
-        materia = Materia.objects.create(clave="MAT101", nombre="Matemática 1")
+        materia = Materia.objects.create(clave="MAT101", nombre="Matemática 1", horas_totales=64)
         self.materia_plan = MateriaPlan.objects.create(
             plan_estudios=plan,
             materia=materia,

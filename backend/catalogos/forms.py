@@ -1,7 +1,17 @@
 from django import forms
 from django.utils import timezone
 
-from .models import Carrera, ESTADO_ACTIVO, Generacion, Materia, PlanEstudios
+from .models import (
+    Carrera,
+    ESTADO_ACTIVO,
+    Generacion,
+    Materia,
+    MateriaPlan,
+    MATERIA_PLAN_SEMESTRE_CHOICES,
+    MATERIA_PLAN_SEMESTRE_MAX,
+    MATERIA_PLAN_SEMESTRE_MIN,
+    PlanEstudios,
+)
 
 
 def _available_year_choices():
@@ -78,3 +88,85 @@ class MateriaAdminForm(forms.ModelForm):
         if horas_totales is None or horas_totales <= 0:
             raise forms.ValidationError("Debe ser mayor a 0.")
         return horas_totales
+
+
+class MateriaPlanAdminForm(forms.ModelForm):
+    semestre_numero = forms.TypedChoiceField(
+        choices=MATERIA_PLAN_SEMESTRE_CHOICES,
+        coerce=int,
+        label="Semestre",
+    )
+    anio_escolar_numero = forms.IntegerField(
+        required=False,
+        disabled=True,
+        label="Año de formación",
+    )
+    obligatoria = forms.BooleanField(
+        required=False,
+        disabled=True,
+        initial=True,
+        label="Obligatoria",
+    )
+
+    class Meta:
+        model = MateriaPlan
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        plan_field = self.fields["plan_estudios"]
+        plan_field.queryset = PlanEstudios.objects.filter(estado=ESTADO_ACTIVO).order_by(
+            "carrera__clave", "clave"
+        )
+
+        materia_field = self.fields["materia"]
+        materia_field.queryset = Materia.objects.filter(estado=ESTADO_ACTIVO).order_by(
+            "clave", "nombre"
+        )
+
+        if self.instance.pk and self.instance.plan_estudios.estado != ESTADO_ACTIVO:
+            plan_field.help_text = (
+                "El plan de estudios actual está inactivo. Selecciona uno activo "
+                "para guardar cambios."
+            )
+        if self.instance.pk and self.instance.materia.estado != ESTADO_ACTIVO:
+            materia_field.help_text = (
+                "La materia actual está inactiva. Selecciona una activa para guardar cambios."
+            )
+
+        self.initial["obligatoria"] = True
+        self.fields["obligatoria"].initial = True
+        self.fields["anio_escolar_numero"].initial = self._build_anio_formacion_initial()
+
+    def _build_anio_formacion_initial(self):
+        semestre = self.data.get("semestre_numero") if self.is_bound else self.instance.semestre_numero
+
+        try:
+            semestre = int(semestre)
+        except (TypeError, ValueError):
+            semestre = None
+
+        if semestre and MATERIA_PLAN_SEMESTRE_MIN <= semestre <= MATERIA_PLAN_SEMESTRE_MAX:
+            return MateriaPlan.calculate_anio_formacion(semestre)
+
+        return self.instance.anio_escolar_numero or MateriaPlan.calculate_anio_formacion(1)
+
+    def clean_semestre_numero(self):
+        semestre_numero = self.cleaned_data.get("semestre_numero")
+        if semestre_numero is None:
+            raise forms.ValidationError("Este campo es obligatorio.")
+        if not MATERIA_PLAN_SEMESTRE_MIN <= semestre_numero <= MATERIA_PLAN_SEMESTRE_MAX:
+            raise forms.ValidationError(
+                f"Debe estar entre {MATERIA_PLAN_SEMESTRE_MIN} y {MATERIA_PLAN_SEMESTRE_MAX}."
+            )
+        return semestre_numero
+
+    def clean(self):
+        cleaned_data = super().clean()
+        semestre_numero = cleaned_data.get("semestre_numero")
+
+        cleaned_data["obligatoria"] = True
+        if semestre_numero is not None:
+            cleaned_data["anio_escolar_numero"] = MateriaPlan.calculate_anio_formacion(semestre_numero)
+
+        return cleaned_data

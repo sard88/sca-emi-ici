@@ -41,6 +41,12 @@ GRUPO_SEMESTRE_CHOICES = [
     (value, str(value)) for value in range(GRUPO_SEMESTRE_MIN, GRUPO_SEMESTRE_MAX + 1)
 ]
 
+MATERIA_PLAN_SEMESTRE_MIN = 1
+MATERIA_PLAN_SEMESTRE_MAX = 12
+MATERIA_PLAN_SEMESTRE_CHOICES = [
+    (value, str(value)) for value in range(MATERIA_PLAN_SEMESTRE_MIN, MATERIA_PLAN_SEMESTRE_MAX + 1)
+]
+
 MAYOR_A_CERO_MESSAGE = "Debe ser mayor a 0."
 
 CREDITOS_FACTOR = Decimal("0.0625")
@@ -355,23 +361,56 @@ class MateriaPlan(models.Model):
         related_name="planes_estudio",
         verbose_name="Materia",
     )
-    semestre_numero = models.PositiveSmallIntegerField(default=1, verbose_name="Semestre número")
+    semestre_numero = models.PositiveSmallIntegerField(
+        default=1,
+        choices=MATERIA_PLAN_SEMESTRE_CHOICES,
+        verbose_name="Semestre",
+    )
     anio_escolar_numero = models.PositiveSmallIntegerField(
         default=1,
-        verbose_name="Año escolar número",
+        verbose_name="Año de formación",
     )
     obligatoria = models.BooleanField(default=True, verbose_name="Obligatoria")
 
     class Meta:
         ordering = ["plan_estudios__clave", "anio_escolar_numero", "semestre_numero", "materia__clave"]
-        verbose_name = "Plan de materia"
-        verbose_name_plural = "Planes de materias"
+        verbose_name = "Programa de asignatura"
+        verbose_name_plural = "Programas de asignatura"
         constraints = [
             models.UniqueConstraint(
                 fields=["plan_estudios", "materia"],
                 name="uq_materiaplan_plan_materia",
             )
         ]
+
+    @staticmethod
+    def calculate_anio_formacion(semestre_numero: int) -> int:
+        return (semestre_numero + 1) // 2
+
+    def clean(self):
+        errors = {}
+
+        if self.plan_estudios_id and self.plan_estudios.estado != ESTADO_ACTIVO:
+            errors["plan_estudios"] = "Solo se puede asignar un plan de estudios activo."
+        if self.materia_id and self.materia.estado != ESTADO_ACTIVO:
+            errors["materia"] = "Solo se puede asignar una materia activa."
+
+        if self.semestre_numero is None:
+            errors["semestre_numero"] = "Este campo es obligatorio."
+        elif not MATERIA_PLAN_SEMESTRE_MIN <= self.semestre_numero <= MATERIA_PLAN_SEMESTRE_MAX:
+            errors["semestre_numero"] = (
+                f"Debe estar entre {MATERIA_PLAN_SEMESTRE_MIN} y {MATERIA_PLAN_SEMESTRE_MAX}."
+            )
+
+        if errors:
+            raise ValidationError(errors)
+
+        self.obligatoria = True
+        self.anio_escolar_numero = self.calculate_anio_formacion(self.semestre_numero)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.plan_estudios.clave} - {self.materia.clave}"
