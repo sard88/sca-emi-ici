@@ -1,7 +1,9 @@
 from django.forms.formsets import DELETION_FIELD_NAME
 from django.contrib import admin
+from django.contrib.auth import get_user_model
 from django.forms import inlineformset_factory
 from django.test import TestCase
+from django.test.client import RequestFactory
 from django.core.exceptions import ValidationError
 
 from catalogos.models import Carrera, Materia, PlanEstudios, ProgramaAsignatura
@@ -186,6 +188,20 @@ class EvaluacionAdminTests(TestCase):
         self.assertEqual(
             ComponenteEvaluacionInline.template,
             "admin/evaluacion/componenteevaluacion/tabular.html",
+        )
+
+    def test_activo_muestra_un_label_funcional_para_el_admin(self):
+        field = EsquemaEvaluacion._meta.get_field("activo")
+
+        self.assertEqual(field.verbose_name, "Disponible para evaluación")
+        self.assertIn("consulta histórica", field.help_text)
+
+    def test_esquema_admin_carga_script_para_estado_inmediato_del_inline(self):
+        esquema_admin = admin.site._registry[EsquemaEvaluacion]
+
+        self.assertIn(
+            "evaluacion/admin/esquema_evaluacion.js",
+            str(esquema_admin.media),
         )
 
 
@@ -385,6 +401,11 @@ class ComponenteEvaluacionValidationTests(TestCase):
             can_delete=True,
         )
         self.prefix = self.formset_class.get_default_prefix()
+        self.request = RequestFactory().get("/admin/evaluacion/esquemaevaluacion/")
+        self.request.user = get_user_model().objects.create_superuser(
+            username="admin_eval",
+            password="admin",
+        )
 
     def _build_existing_form_data(self, index, componente, **overrides):
         payload = {
@@ -402,6 +423,7 @@ class ComponenteEvaluacionValidationTests(TestCase):
 
     def _build_management_data(self, total_forms, initial_forms, **overrides):
         payload = {
+            "activo": "on",
             "num_parciales": str(self.esquema.num_parciales),
             f"{self.prefix}-TOTAL_FORMS": str(total_forms),
             f"{self.prefix}-INITIAL_FORMS": str(initial_forms),
@@ -501,8 +523,75 @@ class ComponenteEvaluacionValidationTests(TestCase):
 
         self.assertTrue(formset.is_valid(), formset.non_form_errors())
 
+    def test_formset_permite_desactivar_esquema_sin_modificar_componentes(self):
+        data = {}
+        componentes = [
+            self.componente_p1_1,
+            self.componente_p1_2,
+            self.componente_p2,
+            self.componente_final,
+        ]
+
+        for index, componente in enumerate(componentes):
+            data.update(self._build_existing_form_data(index, componente))
+
+        data.update(self._build_management_data(total_forms=4, initial_forms=4))
+        data.pop("activo")
+
+        formset = self.formset_class(data=data, instance=self.esquema)
+
+        self.assertTrue(formset.is_valid(), formset.non_form_errors())
+
+    def test_formset_rechaza_modificar_componentes_si_esquema_se_desactiva(self):
+        data = {}
+        componentes = [
+            self.componente_p1_1,
+            self.componente_p1_2,
+            self.componente_p2,
+            self.componente_final,
+        ]
+
+        for index, componente in enumerate(componentes):
+            overrides = {}
+            if componente.pk == self.componente_p1_2.pk:
+                overrides[f"{self.prefix}-{index}-porcentaje"] = "50.00"
+            data.update(self._build_existing_form_data(index, componente, **overrides))
+
+        data.update(self._build_management_data(total_forms=4, initial_forms=4))
+        data.pop("activo")
+
+        formset = self.formset_class(data=data, instance=self.esquema)
+
+        self.assertFalse(formset.is_valid())
+        self.assertIn(
+            "Los componentes no se pueden modificar si el esquema no está disponible "
+            "para evaluación.",
+            formset.non_form_errors(),
+        )
+
     def test_formset_muestra_labels_claros_para_examen_final_y_eliminacion(self):
         formset = self.formset_class(instance=self.esquema)
 
         self.assertEqual(formset.forms[0].fields["es_examen"].label, "Es examen final")
         self.assertEqual(formset.forms[0].fields[DELETION_FIELD_NAME].label, "Eliminar completamente")
+
+    def test_inline_renderiza_controles_aunque_esquema_este_inactivo(self):
+        self.esquema.activo = False
+        inline = ComponenteEvaluacionInline(
+            EsquemaEvaluacion,
+            admin.site,
+        )
+
+        self.assertTrue(inline.has_add_permission(self.request, self.esquema))
+        self.assertTrue(inline.has_change_permission(self.request, self.esquema))
+        self.assertTrue(inline.has_delete_permission(self.request, self.esquema))
+
+    def test_inline_de_componentes_permite_edicion_si_esquema_esta_activo(self):
+        inline = ComponenteEvaluacionInline(
+            EsquemaEvaluacion,
+            admin.site,
+        )
+
+        self.assertTrue(inline.has_add_permission(self.request, self.esquema))
+        self.assertTrue(inline.has_change_permission(self.request, self.esquema))
+        self.assertTrue(inline.has_delete_permission(self.request, self.esquema))

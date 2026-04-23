@@ -51,7 +51,14 @@ class EsquemaEvaluacion(models.Model):
         verbose_name="Umbral de exención",
         help_text="Calificación mínima para exentar en escala de 0 a 10.",
     )
-    activo = models.BooleanField(default=True, verbose_name="Activo")
+    activo = models.BooleanField(
+        default=True,
+        verbose_name="Disponible para evaluación",
+        help_text=(
+            "Indica si este esquema puede usarse en actas y cálculos. "
+            "Si se desactiva, queda solo para consulta histórica."
+        ),
+    )
 
     class Meta:
         ordering = [

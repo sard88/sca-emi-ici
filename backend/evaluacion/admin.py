@@ -32,9 +32,32 @@ class ComponenteEvaluacionInlineFormSet(BaseInlineFormSet):
 
         return self.instance.num_parciales
 
+    def _get_activo_actual(self):
+        if self.is_bound:
+            return self.data.get("activo") in {"1", "true", "True", "on"}
+
+        return getattr(self.instance, "activo", True)
+
+    def _tiene_cambios_en_componentes(self):
+        for form in self.forms:
+            if getattr(form, "cleaned_data", None) and form.cleaned_data.get("DELETE", False):
+                return True
+            if form.has_changed():
+                return True
+
+        return False
+
     def clean(self):
         super().clean()
         if any(self.errors):
+            return
+
+        if not self._get_activo_actual():
+            if self._tiene_cambios_en_componentes():
+                raise ValidationError(
+                    "Los componentes no se pueden modificar si el esquema no está "
+                    "disponible para evaluación."
+                )
             return
 
         num_parciales = self._get_num_parciales_actual()
@@ -110,3 +133,6 @@ class EsquemaEvaluacionAdmin(admin.ModelAdmin):
         "version",
     )
     inlines = [ComponenteEvaluacionInline]
+
+    class Media:
+        js = ("evaluacion/admin/esquema_evaluacion.js",)
