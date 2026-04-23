@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Sum
 
-from catalogos.models import ProgramaAsignatura
+from catalogos.models import ESTADO_ACTIVO, ProgramaAsignatura
 
 
 class EsquemaEvaluacion(models.Model):
@@ -47,8 +47,9 @@ class EsquemaEvaluacion(models.Model):
     umbral_exencion = models.DecimalField(
         max_digits=5,
         decimal_places=2,
-        default=Decimal("90.00"),
+        default=Decimal("8.00"),
         verbose_name="Umbral de exención",
+        help_text="Calificación mínima para exentar en escala de 0 a 10.",
     )
     activo = models.BooleanField(default=True, verbose_name="Activo")
 
@@ -102,9 +103,23 @@ class EsquemaEvaluacion(models.Model):
         if errores:
             raise ValidationError(list(errores.values()))
 
+    def programa_asignatura_activo(self):
+        if not self.programa_asignatura_id:
+            return True
+
+        return (
+            self.programa_asignatura.plan_estudios.estado == ESTADO_ACTIVO
+            and self.programa_asignatura.materia.estado == ESTADO_ACTIVO
+        )
+
     def clean(self):
         if self.num_parciales not in (self.PARCIALES_1, self.PARCIALES_2, self.PARCIALES_3):
             raise ValidationError({"num_parciales": "Solo se permiten 1, 2 o 3 parciales."})
+
+        if self.programa_asignatura_id and not self.programa_asignatura_activo():
+            raise ValidationError(
+                {"programa_asignatura": "Solo se puede asignar un programa de asignatura activo."}
+            )
 
         total = (self.peso_parciales or Decimal("0.00")) + (self.peso_final or Decimal("0.00"))
         if total != Decimal("100.00"):
@@ -121,13 +136,17 @@ class EsquemaEvaluacion(models.Model):
                 }
             )
 
-        if self.umbral_exencion < Decimal("0.00") or self.umbral_exencion > Decimal("100.00"):
+        if self.umbral_exencion < Decimal("0.00") or self.umbral_exencion > Decimal("10.00"):
             raise ValidationError(
-                {"umbral_exencion": "El umbral de exención debe estar entre 0 y 100."}
+                {"umbral_exencion": "El umbral de exención debe estar entre 0 y 10."}
             )
 
     def __str__(self):
         return f"{self.programa_asignatura} - {self.version}"
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
 
 class ComponenteEvaluacion(models.Model):
@@ -167,17 +186,19 @@ class ComponenteEvaluacion(models.Model):
         verbose_name_plural = "Componentes de evaluación"
 
     def clean(self):
-        if self.porcentaje <= Decimal("0.00") or self.porcentaje > Decimal("100.00"):
+        if self.porcentaje is not None and (
+            self.porcentaje <= Decimal("0.00") or self.porcentaje > Decimal("100.00")
+        ):
             raise ValidationError({"porcentaje": "El porcentaje debe estar entre 0 y 100."})
 
-        if self.esquema_id:
+        if self.esquema_id and self.corte_codigo:
             cortes_validos = self.esquema.cortes_esperados()
             if self.corte_codigo not in cortes_validos:
                 raise ValidationError(
                     {"corte_codigo": f"El corte {self.corte_codigo} no aplica a este esquema."}
                 )
 
-        if self.es_examen and self.corte_codigo != self.CORTE_FINAL:
+        if self.es_examen and self.corte_codigo and self.corte_codigo != self.CORTE_FINAL:
             raise ValidationError(
                 {"es_examen": "El componente de examen debe pertenecer al corte FINAL."}
             )
