@@ -1,11 +1,14 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
+from .forms import UsuarioAdminCreationForm, UsuarioAdminForm
 from .models import AsignacionCargo, Usuario
 
 
 @admin.register(Usuario)
 class UsuarioAdmin(UserAdmin):
+    form = UsuarioAdminForm
+    add_form = UsuarioAdminCreationForm
     list_display = ("username", "correo", "estado_cuenta", "is_staff", "is_active")
     list_filter = ("estado_cuenta", "is_staff", "is_superuser", "is_active")
     search_fields = ("username", "correo", "nombre_completo")
@@ -52,13 +55,33 @@ class UsuarioAdmin(UserAdmin):
 
 @admin.register(AsignacionCargo)
 class AsignacionCargoAdmin(admin.ModelAdmin):
-    list_display = (
+    fields = (
         "usuario",
         "cargo_codigo",
+        "carrera",
         "tipo_designacion",
         "vigente_desde",
         "vigente_hasta",
         "activo",
     )
-    list_filter = ("tipo_designacion", "activo", "cargo_codigo")
-    search_fields = ("usuario__username", "usuario__nombre_completo", "cargo_codigo")
+    list_display = (
+        "usuario",
+        "cargo",
+        "carrera",
+        "tipo_designacion",
+        "vigente_desde",
+        "vigente_hasta",
+        "activo",
+    )
+    list_filter = ("tipo_designacion", "activo", "cargo_codigo", "carrera")
+    search_fields = (
+        "usuario__username",
+        "usuario__nombre_completo",
+        "cargo_codigo",
+        "carrera__clave",
+        "carrera__nombre",
+    )
+
+    @admin.display(description="Cargo", ordering="cargo_codigo")
+    def cargo(self, obj):
+        return obj.cargo_descripcion()

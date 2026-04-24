@@ -1,13 +1,17 @@
 from datetime import timedelta
 
 from django.contrib import admin
+from django.contrib.auth.models import Group
 from django.contrib.auth.signals import user_logged_in
 from django.core.exceptions import ValidationError
 from django.forms import modelform_factory
 from django.test import TestCase
 from django.utils import timezone
 
+from catalogos.models import Carrera
+
 from .admin import UsuarioAdmin
+from .forms import LoginFormulario, UsuarioAdminCreationForm, UsuarioAdminForm
 from .models import AsignacionCargo, Usuario
 
 
@@ -17,11 +21,20 @@ class VigenciaAsignacionCargoTests(TestCase):
             username="usuario_vigencia",
             password="segura123",
         )
+        self.carrera_icis = Carrera.objects.create(
+            clave="ICIS",
+            nombre="Ingenieros en Comunicaciones e Informática",
+        )
+        self.carrera_ices = Carrera.objects.create(
+            clave="ICES",
+            nombre="Ingenieros Constructores",
+        )
 
     def test_creacion_autocompleta_vigente_desde_si_se_omite(self):
         asignacion = AsignacionCargo.objects.create(
             usuario=self.usuario,
-            cargo_codigo="JEFATURA",
+            carrera=self.carrera_icis,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_CARRERA,
             tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
         )
 
@@ -32,8 +45,8 @@ class VigenciaAsignacionCargoTests(TestCase):
         fecha_existente = timezone.localdate() - timedelta(days=15)
         asignacion = AsignacionCargo.objects.create(
             usuario=self.usuario,
-            cargo_codigo="DOCENCIA",
-            tipo_designacion=AsignacionCargo.DESIGNACION_SUPLENTE,
+            cargo_codigo=AsignacionCargo.CARGO_DOCENTE,
+            tipo_designacion=AsignacionCargo.DESIGNACION_ACCIDENTAL,
             vigente_desde=fecha_existente,
         )
 
@@ -46,7 +59,8 @@ class VigenciaAsignacionCargoTests(TestCase):
     def test_edicion_de_registro_legado_sin_vigente_desde_lo_autocompleta(self):
         asignacion = AsignacionCargo.objects.create(
             usuario=self.usuario,
-            cargo_codigo="RELACION",
+            carrera=self.carrera_ices,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_PEDAGOGICA,
             tipo_designacion=AsignacionCargo.DESIGNACION_ACCIDENTAL,
         )
         AsignacionCargo.objects.filter(pk=asignacion.pk).update(vigente_desde=None)
@@ -75,7 +89,7 @@ class VigenciaAsignacionCargoTests(TestCase):
         form = asignacion_form_class(
             data={
                 "usuario": self.usuario.pk,
-                "cargo_codigo": "ADMIN",
+                "cargo_codigo": AsignacionCargo.CARGO_JEFE_ACADEMICO,
                 "tipo_designacion": AsignacionCargo.DESIGNACION_TITULAR,
                 "vigente_desde": "",
                 "vigente_hasta": "",
@@ -93,7 +107,8 @@ class VigenciaAsignacionCargoTests(TestCase):
         hoy = timezone.localdate()
         asignacion = AsignacionCargo(
             usuario=self.usuario,
-            cargo_codigo="MANDO",
+            carrera=self.carrera_ices,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_CARRERA,
             tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
             vigente_desde=hoy,
             vigente_hasta=hoy - timedelta(days=1),
@@ -103,6 +118,110 @@ class VigenciaAsignacionCargoTests(TestCase):
             asignacion.full_clean()
 
         self.assertIn("vigente_hasta", exc.exception.message_dict)
+
+    def test_usuario_puede_tener_multiples_asignaciones_de_cargo(self):
+        asignacion_titular = AsignacionCargo.objects.create(
+            usuario=self.usuario,
+            carrera=self.carrera_icis,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_CARRERA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+        asignacion_accidental = AsignacionCargo.objects.create(
+            usuario=self.usuario,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_ACADEMICO,
+            tipo_designacion=AsignacionCargo.DESIGNACION_ACCIDENTAL,
+        )
+
+        self.assertEqual(self.usuario.asignaciones_cargo.count(), 2)
+        self.assertIn(asignacion_titular, self.usuario.asignaciones_cargo.all())
+        self.assertIn(asignacion_accidental, self.usuario.asignaciones_cargo.all())
+
+    def test_cargo_codigo_es_lista_controlada_y_no_texto_libre(self):
+        asignacion_form_class = modelform_factory(
+            AsignacionCargo,
+            fields=["usuario", "cargo_codigo", "tipo_designacion"],
+        )
+
+        form = asignacion_form_class(
+            data={
+                "usuario": self.usuario.pk,
+                "cargo_codigo": "CARGO_ESCRITO_A_MANO",
+                "tipo_designacion": AsignacionCargo.DESIGNACION_TITULAR,
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("cargo_codigo", form.errors)
+
+    def test_lista_de_cargos_mantiene_jefaturas_dinamicas_y_no_coordinador(self):
+        choices = dict(AsignacionCargo.CARGO_CHOICES)
+
+        self.assertEqual(choices[AsignacionCargo.CARGO_JEFE_CARRERA], "Jefe de carrera")
+        self.assertEqual(choices[AsignacionCargo.CARGO_JEFE_PEDAGOGICA], "Jefe de Pedagógica")
+        self.assertNotIn("JEFE_CARRERA_ICIS", choices)
+        self.assertNotIn("JEFE_CARRERA_ICES", choices)
+        self.assertNotIn("COORDINADOR", choices)
+
+    def test_jefatura_de_carrera_exige_carrera(self):
+        asignacion = AsignacionCargo(
+            usuario=self.usuario,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_CARRERA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
+
+        self.assertIn("carrera", exc.exception.message_dict)
+
+    def test_jefatura_pedagogica_exige_carrera(self):
+        asignacion = AsignacionCargo(
+            usuario=self.usuario,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_PEDAGOGICA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_ACCIDENTAL,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
+
+        self.assertIn("carrera", exc.exception.message_dict)
+
+    def test_cargo_global_no_permite_carrera(self):
+        asignacion = AsignacionCargo(
+            usuario=self.usuario,
+            carrera=self.carrera_icis,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_ACADEMICO,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
+
+        self.assertIn("carrera", exc.exception.message_dict)
+
+    def test_descripcion_de_cargo_incluye_carrera_cuando_aplica(self):
+        asignacion = AsignacionCargo.objects.create(
+            usuario=self.usuario,
+            carrera=self.carrera_icis,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_CARRERA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+
+        self.assertEqual(
+            asignacion.cargo_descripcion(),
+            f"Jefe de carrera de {self.carrera_icis}",
+        )
+
+    def test_tipo_designacion_solo_permite_titular_y_accidental(self):
+        choices = [codigo for codigo, _ in AsignacionCargo.TIPO_DESIGNACION_CHOICES]
+
+        self.assertEqual(
+            choices,
+            [
+                AsignacionCargo.DESIGNACION_TITULAR,
+                AsignacionCargo.DESIGNACION_ACCIDENTAL,
+            ],
+        )
 
 
 class UsuarioUltimoAccesoTests(TestCase):
@@ -152,3 +271,136 @@ class UsuarioUltimoAccesoTests(TestCase):
 
         self.assertIsNotNone(self.usuario.ultimo_acceso)
         self.assertGreaterEqual(self.usuario.ultimo_acceso, antes)
+
+
+class LoginUsuarioEstadoCuentaTests(TestCase):
+    MENSAJE_GENERICO = "Usuario o contraseña incorrectos."
+
+    def _crear_usuario(self, username, **kwargs):
+        return Usuario.objects.create_user(
+            username=username,
+            password="segura123",
+            **kwargs,
+        )
+
+    def _formulario_login(self, username):
+        return LoginFormulario(
+            request=None,
+            data={
+                "username": username,
+                "password": "segura123",
+            },
+        )
+
+    def test_usuario_activo_puede_ingresar(self):
+        self._crear_usuario(
+            "usuario_activo",
+            estado_cuenta=Usuario.ESTADO_ACTIVO,
+        )
+
+        form = self._formulario_login("usuario_activo")
+
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_usuario_inactivo_no_ingresa_y_recibe_mensaje_generico(self):
+        self._crear_usuario(
+            "usuario_inactivo",
+            estado_cuenta=Usuario.ESTADO_INACTIVO,
+        )
+
+        form = self._formulario_login("usuario_inactivo")
+
+        self.assertFalse(form.is_valid())
+        self.assertIn(self.MENSAJE_GENERICO, form.non_field_errors())
+        self.assertNotIn("inactivo", " ".join(form.non_field_errors()).lower())
+
+    def test_usuario_bloqueado_no_ingresa_y_recibe_mensaje_generico(self):
+        self._crear_usuario(
+            "usuario_bloqueado",
+            estado_cuenta=Usuario.ESTADO_BLOQUEADO,
+        )
+
+        form = self._formulario_login("usuario_bloqueado")
+
+        self.assertFalse(form.is_valid())
+        self.assertIn(self.MENSAJE_GENERICO, form.non_field_errors())
+        self.assertNotIn("bloqueado", " ".join(form.non_field_errors()).lower())
+
+    def test_usuario_desactivado_por_django_no_revela_estado(self):
+        self._crear_usuario(
+            "usuario_desactivado",
+            estado_cuenta=Usuario.ESTADO_ACTIVO,
+            is_active=False,
+        )
+
+        form = self._formulario_login("usuario_desactivado")
+
+        self.assertFalse(form.is_valid())
+        self.assertIn(self.MENSAJE_GENERICO, form.non_field_errors())
+        self.assertNotIn("inact", " ".join(form.non_field_errors()).lower())
+
+
+class UsuarioRolUnicoAdminTests(TestCase):
+    def setUp(self):
+        self.rol_docente, _ = Group.objects.get_or_create(name="DOCENTE")
+        self.rol_discente, _ = Group.objects.get_or_create(name="DISCENTE")
+
+    def test_admin_usa_formularios_con_rol_unico(self):
+        usuario_admin = admin.site._registry[Usuario]
+
+        self.assertIs(usuario_admin.form, UsuarioAdminForm)
+        self.assertIs(usuario_admin.add_form, UsuarioAdminCreationForm)
+
+    def test_formulario_de_alta_exige_rol(self):
+        form = UsuarioAdminCreationForm(
+            data={
+                "username": "usuario_sin_rol",
+                "password1": "segura123XYZ",
+                "password2": "segura123XYZ",
+                "estado_cuenta": Usuario.ESTADO_ACTIVO,
+                "nombre_completo": "Usuario sin rol",
+                "correo": "sinrol@example.com",
+                "telefono": "1234567890",
+                "groups": "",
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            form.errors["groups"],
+            ["Debe seleccionar un rol para el usuario."],
+        )
+
+    def test_formulario_de_alta_solo_permite_un_rol(self):
+        form = UsuarioAdminCreationForm()
+
+        self.assertEqual(form.fields["groups"].label, "Rol")
+        self.assertFalse(form.fields["groups"].widget.allow_multiple_selected)
+
+    def test_formulario_de_alta_guarda_unico_rol(self):
+        form = UsuarioAdminCreationForm(
+            data={
+                "username": "usuario_con_rol",
+                "password1": "segura123XYZ",
+                "password2": "segura123XYZ",
+                "estado_cuenta": Usuario.ESTADO_ACTIVO,
+                "nombre_completo": "Usuario con rol",
+                "correo": "conrol@example.com",
+                "telefono": "1234567890",
+                "groups": self.rol_docente.pk,
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        usuario = form.save()
+        form.save_m2m()
+
+        self.assertEqual(list(usuario.groups.all()), [self.rol_docente])
+
+    def test_formulario_de_edicion_muestra_un_unico_rol_actual(self):
+        usuario = Usuario.objects.create_user(username="usuario_edicion", password="segura123")
+        usuario.groups.add(self.rol_discente)
+
+        form = UsuarioAdminForm(instance=usuario)
+
+        self.assertEqual(form.initial["groups"], self.rol_discente.pk)
