@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 
 from django.contrib import admin
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.signals import user_logged_in
 from django.core.exceptions import ValidationError
 from django.forms import modelform_factory
@@ -15,6 +15,7 @@ from relaciones.models import AdscripcionGrupo, AsignacionDocente, Discente, Ins
 from .admin import UsuarioAdmin
 from .forms import LoginFormulario, UsuarioAdminCreationForm, UsuarioAdminForm
 from .models import AsignacionCargo, Usuario
+from .signals import crear_roles_base
 
 
 class VigenciaAsignacionCargoTests(TestCase):
@@ -273,6 +274,75 @@ class UsuarioUltimoAccesoTests(TestCase):
 
         self.assertIsNotNone(self.usuario.ultimo_acceso)
         self.assertGreaterEqual(self.usuario.ultimo_acceso, antes)
+
+
+class RolesPermisosAutomaticosTests(TestCase):
+    def setUp(self):
+        crear_roles_base(sender=None)
+
+    def permiso(self, app_label, modelo, accion):
+        return Permission.objects.get(
+            content_type__app_label=app_label,
+            content_type__model=modelo,
+            codename=f"{accion}_{modelo}",
+        )
+
+    def test_jefatura_carrera_opera_asignacion_docente(self):
+        grupo = Group.objects.get(name="JEFE_CARRERA")
+
+        self.assertIn(
+            self.permiso("relaciones", "asignaciondocente", "add"),
+            grupo.permissions.all(),
+        )
+        self.assertIn(
+            self.permiso("relaciones", "asignaciondocente", "change"),
+            grupo.permissions.all(),
+        )
+        self.assertIn(
+            self.permiso("relaciones", "inscripcionmateria", "view"),
+            grupo.permissions.all(),
+        )
+
+    def test_estadistica_consulta_asignacion_docente_sin_operarla(self):
+        grupo = Group.objects.get(name="ENCARGADO_ESTADISTICA")
+
+        self.assertIn(
+            self.permiso("relaciones", "asignaciondocente", "view"),
+            grupo.permissions.all(),
+        )
+        self.assertNotIn(
+            self.permiso("relaciones", "asignaciondocente", "add"),
+            grupo.permissions.all(),
+        )
+        self.assertNotIn(
+            self.permiso("relaciones", "asignaciondocente", "change"),
+            grupo.permissions.all(),
+        )
+
+    def test_docente_y_discente_reciben_permisos_de_consulta(self):
+        docente = Group.objects.get(name="DOCENTE")
+        discente = Group.objects.get(name="DISCENTE")
+
+        self.assertIn(
+            self.permiso("relaciones", "asignaciondocente", "view"),
+            docente.permissions.all(),
+        )
+        self.assertIn(
+            self.permiso("relaciones", "inscripcionmateria", "view"),
+            discente.permissions.all(),
+        )
+
+    def test_admin_sistema_recibe_permisos_globales(self):
+        grupo = Group.objects.get(name="ADMIN_SISTEMA")
+
+        self.assertIn(
+            self.permiso("usuarios", "usuario", "change"),
+            grupo.permissions.all(),
+        )
+        self.assertIn(
+            self.permiso("auth", "group", "change"),
+            grupo.permissions.all(),
+        )
 
 
 class FrontTemporalValidacionRolTests(TestCase):

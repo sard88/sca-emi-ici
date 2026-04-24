@@ -350,10 +350,22 @@ Implementacion inicial de autenticacion local, roles y base administrativa del b
   - `telefono`
   - `estado_cuenta`
 - Soporte de roles mediante `django.contrib.auth.models.Group` con creacion automatica de roles base:
+  - `ADMIN`
   - `ADMIN_SISTEMA`
+  - `JEFE_CARRERA`
   - `JEFATURA_CARRERA`
+  - `JEFE_ACADEMICO`
   - `JEFATURA_ACADEMICA`
+  - `JEFE_PEDAGOGICA`
+  - `ENCARGADO_ESTADISTICA`
+  - `ESTADISTICA`
   - `DOCENTE`
+  - `DISCENTE`
+- Asociacion automatica de permisos Django por rol durante `post_migrate`:
+  - Administracion tecnica recibe permisos globales.
+  - Jefatura de Carrera opera `AsignacionDocente` y consulta catalogos/carga academica.
+  - Estadistica consulta carga academica y opera movimientos academicos.
+  - Docente y Discente reciben permisos de consulta acordes a sus vistas temporales.
 - Modelo `AsignacionCargo` para cargos institucionales vigentes con:
   - `usuario`
   - `cargo_codigo`
