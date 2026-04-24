@@ -487,3 +487,76 @@ docker compose run --rm backend python manage.py migrate
 ### Prueba de sincronización: rol Discente
 
 Se agregó el rol base DISCENTE al sistema de roles (Groups) mediante seed seguro y migración de datos en usuarios, sin cambiar lógica operativa del negocio.
+
+## Bloque 4
+
+Implementacion de relaciones academicas operativas, sin adelantar actas, trayectoria ni reportes.
+
+### Modelos creados
+
+- `Discente`
+- `AdscripcionGrupo`
+- `AsignacionDocente`
+- `InscripcionMateria`
+- `MovimientoAcademico`
+
+### Reglas implementadas
+
+- `Discente` se vincula con `Usuario`, `PlanEstudios` y `Antiguedad` (`Generacion` en equivalencia documental), y exige usuario activo con rol `DISCENTE`.
+- `AdscripcionGrupo` registra la pertenencia vigente del discente a un grupo academico.
+- `AsignacionDocente` vincula docente con rol `DOCENTE`, grupo academico y programa de asignatura; el periodo se deriva desde `GrupoAcademico`.
+- `InscripcionMateria` se muestra como `Inscripción a asignatura` y representa el registro interno generado desde la asignacion docente.
+- `MovimientoAcademico` conserva cambios de grupo y altas/bajas extemporaneas sin borrar evidencia previa.
+- Las relaciones filtran y validan entidades activas.
+- Se bloquean asignaciones docentes activas duplicadas para el mismo grupo y programa.
+- Se bloquean inscripciones activas duplicadas para el mismo discente y asignacion docente.
+- Los cambios de grupo exigen grupo destino.
+- Las altas y bajas extemporaneas exigen observaciones minimas.
+
+### Bloque 4 – generación automática de carga académica por grupo
+
+El discente no selecciona materias ni profesor. La escuela registra la adscripcion del discente al grupo y asigna un programa de asignatura a un docente para ese grupo.
+
+Al crear o activar una `AsignacionDocente`, el sistema sincroniza automaticamente las `InscripcionMateria` necesarias para los discentes vigentes del grupo. La sincronizacion es idempotente: si la inscripcion activa ya existe para el discente y la asignacion docente, no se duplica.
+
+Tambien existe una accion administrativa en `AsignacionDocente` para sincronizar manualmente la carga academica cuando se agregan discentes al grupo despues de crear la asignacion.
+
+### Vistas minimas
+
+Se agregan vistas autenticadas para listar y crear:
+
+- `AsignacionDocente`: `/relaciones/asignaciones-docentes/`
+- `MovimientoAcademico`: `/relaciones/movimientos-academicos/`
+
+Las `Inscripciones a asignatura` se listan en `/relaciones/inscripciones-materia/`, pero su creacion ordinaria se genera automaticamente desde `AsignacionDocente` y `AdscripcionGrupo`.
+
+El acceso queda restringido a superusuarios/staff, rol `ADMIN_SISTEMA`, rol `ESTADISTICA` o cargo activo equivalente.
+
+### Admin
+
+Se registran en Django admin:
+
+- `Discente`
+- `AdscripcionGrupo`
+- `AsignacionDocente`
+- `InscripcionMateria`
+- `MovimientoAcademico`
+
+### Tests minimos incluidos
+
+- Validaciones de entidades activas.
+- Validaciones de roles `DISCENTE` y `DOCENTE`.
+- Derivacion de periodo desde grupo academico.
+- Duplicados activos de asignacion docente e inscripcion.
+- Generacion automatica e idempotente de inscripciones a asignatura.
+- Reglas de movimientos academicos.
+- Permisos de vistas para anonimo, usuario sin rol y usuario/cargo de estadistica.
+
+### Migraciones
+
+Ejecutar:
+
+```bash
+docker compose run --rm backend python manage.py makemigrations relaciones
+docker compose run --rm backend python manage.py migrate
+```

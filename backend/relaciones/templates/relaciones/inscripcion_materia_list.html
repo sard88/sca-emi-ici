@@ -1,0 +1,35 @@
+{% extends "relaciones/base.html" %}
+
+{% block title %}Inscripciones a asignatura{% endblock %}
+{% block heading %}Inscripciones a asignatura{% endblock %}
+
+{% block content %}
+  <table>
+    <thead>
+      <tr>
+        <th>Discente</th>
+        <th>Asignación docente</th>
+        <th>Estado</th>
+        <th>Intento</th>
+        <th>Resultado</th>
+        <th>Cerrado en</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inscripcion in inscripciones %}
+        <tr>
+          <td>{{ inscripcion.discente }}</td>
+          <td>{{ inscripcion.asignacion_docente }}</td>
+          <td>{{ inscripcion.get_estado_inscripcion_display }}</td>
+          <td>{{ inscripcion.intento_numero }}</td>
+          <td>{{ inscripcion.calificacion_final|default:"" }} {{ inscripcion.codigo_resultado_oficial|default:"" }} {{ inscripcion.codigo_marca|default:"" }}</td>
+          <td>{{ inscripcion.cerrado_en|default:"" }}</td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="6">Sin inscripciones registradas.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

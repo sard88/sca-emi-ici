@@ -1,0 +1,40 @@
+{% extends "relaciones/base.html" %}
+
+{% block title %}Movimientos académicos{% endblock %}
+{% block heading %}Movimientos académicos{% endblock %}
+
+{% block content %}
+  <p>
+    <a class="button" href="{% url 'relaciones:movimiento-academico-create' %}">
+      Nuevo movimiento
+    </a>
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Discente</th>
+        <th>Periodo</th>
+        <th>Tipo</th>
+        <th>Grupo origen</th>
+        <th>Grupo destino</th>
+        <th>Fecha</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for movimiento in movimientos %}
+        <tr>
+          <td>{{ movimiento.discente }}</td>
+          <td>{{ movimiento.periodo }}</td>
+          <td>{{ movimiento.get_tipo_movimiento_display }}</td>
+          <td>{{ movimiento.grupo_origen|default:"" }}</td>
+          <td>{{ movimiento.grupo_destino|default:"" }}</td>
+          <td>{{ movimiento.fecha_movimiento }}</td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="6">Sin movimientos registrados.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

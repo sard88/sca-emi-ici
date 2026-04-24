@@ -1,0 +1,13 @@
+{% extends "relaciones/base.html" %}
+
+{% block title %}Crear movimiento académico{% endblock %}
+{% block heading %}Crear movimiento académico{% endblock %}
+
+{% block content %}
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Guardar</button>
+    <a class="button secondary" href="{% url 'relaciones:movimiento-academico-list' %}">Cancelar</a>
+  </form>
+{% endblock %}

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Relaciones académicas{% endblock %}</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        background: #f5f7fb;
+        color: #1b2430;
+      }
+      .layout {
+        max-width: 1100px;
+        margin: 32px auto;
+        padding: 0 16px;
+      }
+      .panel {
+        background: #fff;
+        border: 1px solid #d8deea;
+        border-radius: 10px;
+        padding: 18px;
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      a.button,
+      button {
+        display: inline-block;
+        padding: 9px 12px;
+        border: 0;
+        border-radius: 8px;
+        background: #1f4fbf;
+        color: #fff;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      a.secondary {
+        background: #526071;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border-bottom: 1px solid #e3e8f2;
+        padding: 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+      form p {
+        display: grid;
+        gap: 6px;
+        margin: 0 0 12px;
+      }
+      input,
+      select,
+      textarea {
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 520px;
+        padding: 9px;
+        border: 1px solid #c8d1df;
+        border-radius: 6px;
+      }
+      .errorlist {
+        color: #9b1c1c;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="layout">
+      <div class="topbar">
+        <h1>{% block heading %}Relaciones académicas{% endblock %}</h1>
+        <div class="links">
+          <a class="button secondary" href="{% url 'usuarios:dashboard' %}">Dashboard</a>
+          <a class="button secondary" href="{% url 'relaciones:asignacion-docente-list' %}">Asignaciones</a>
+          <a class="button secondary" href="{% url 'relaciones:inscripcion-materia-list' %}">Inscripciones</a>
+          <a class="button secondary" href="{% url 'relaciones:movimiento-academico-list' %}">Movimientos</a>
+        </div>
+      </div>
+      <section class="panel">
+        {% block content %}{% endblock %}
+      </section>
+    </main>
+  </body>
+</html>

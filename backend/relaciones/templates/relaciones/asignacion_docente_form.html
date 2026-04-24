@@ -1,0 +1,13 @@
+{% extends "relaciones/base.html" %}
+
+{% block title %}Crear asignación docente{% endblock %}
+{% block heading %}Crear asignación docente{% endblock %}
+
+{% block content %}
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Guardar</button>
+    <a class="button secondary" href="{% url 'relaciones:asignacion-docente-list' %}">Cancelar</a>
+  </form>
+{% endblock %}

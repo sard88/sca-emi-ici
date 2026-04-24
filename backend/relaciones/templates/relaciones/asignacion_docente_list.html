@@ -1,0 +1,40 @@
+{% extends "relaciones/base.html" %}
+
+{% block title %}Asignaciones docentes{% endblock %}
+{% block heading %}Asignaciones docentes{% endblock %}
+
+{% block content %}
+  <p>
+    <a class="button" href="{% url 'relaciones:asignacion-docente-create' %}">
+      Nueva asignación docente
+    </a>
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Docente</th>
+        <th>Grupo</th>
+        <th>Programa</th>
+        <th>Periodo</th>
+        <th>Vigencia</th>
+        <th>Activo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for asignacion in asignaciones %}
+        <tr>
+          <td>{{ asignacion.usuario_docente }}</td>
+          <td>{{ asignacion.grupo_academico }}</td>
+          <td>{{ asignacion.programa_asignatura }}</td>
+          <td>{{ asignacion.periodo }}</td>
+          <td>{{ asignacion.vigente_desde }}{% if asignacion.vigente_hasta %} - {{ asignacion.vigente_hasta }}{% endif %}</td>
+          <td>{{ asignacion.activo|yesno:"Sí,No" }}</td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="6">Sin asignaciones docentes registradas.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}
