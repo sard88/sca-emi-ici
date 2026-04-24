@@ -52,6 +52,13 @@ class UsuarioRolUnicoMixin:
         groups_field = self.fields["groups"]
         groups_field.queryset = Group.objects.order_by("name")
 
+        if "user_permissions" in self.fields:
+            self.fields["user_permissions"].label = "Permisos directos adicionales"
+            self.fields["user_permissions"].help_text = (
+                "Use este campo solo para excepciones puntuales. Los permisos del rol/grupo "
+                "se heredan automaticamente y se consultan en la seccion informativa del usuario."
+            )
+
         if self.instance and self.instance.pk:
             rol_actual = self.instance.groups.order_by("name").first()
             if rol_actual:

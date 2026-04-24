@@ -592,6 +592,7 @@ class UsuarioRolUnicoAdminTests(TestCase):
 
         self.assertIs(usuario_admin.form, UsuarioAdminForm)
         self.assertIs(usuario_admin.add_form, UsuarioAdminCreationForm)
+        self.assertIn("permisos_heredados_por_rol", usuario_admin.readonly_fields)
 
     def test_formulario_de_alta_exige_rol(self):
         form = UsuarioAdminCreationForm(
@@ -618,6 +619,12 @@ class UsuarioRolUnicoAdminTests(TestCase):
 
         self.assertEqual(form.fields["groups"].label, "Rol")
         self.assertFalse(form.fields["groups"].widget.allow_multiple_selected)
+
+    def test_formulario_de_edicion_aclara_permisos_directos(self):
+        form = UsuarioAdminForm()
+
+        self.assertEqual(form.fields["user_permissions"].label, "Permisos directos adicionales")
+        self.assertIn("permisos del rol/grupo", form.fields["user_permissions"].help_text)
 
     def test_formulario_de_alta_guarda_unico_rol(self):
         form = UsuarioAdminCreationForm(
@@ -646,3 +653,18 @@ class UsuarioRolUnicoAdminTests(TestCase):
         form = UsuarioAdminForm(instance=usuario)
 
         self.assertEqual(form.initial["groups"], self.rol_discente.pk)
+
+    def test_admin_muestra_permisos_heredados_por_rol(self):
+        permiso = Permission.objects.get(
+            content_type__app_label="usuarios",
+            codename="view_usuario",
+        )
+        self.rol_docente.permissions.add(permiso)
+        usuario = Usuario.objects.create_user(username="usuario_con_permiso", password="segura123")
+        usuario.groups.add(self.rol_docente)
+        usuario_admin = admin.site._registry[Usuario]
+
+        html = str(usuario_admin.permisos_heredados_por_rol(usuario))
+
+        self.assertIn("DOCENTE", html)
+        self.assertIn("usuarios.view_usuario", html)
