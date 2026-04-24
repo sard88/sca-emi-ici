@@ -7,6 +7,8 @@ from usuarios.models import AsignacionCargo
 ROLES_ADMIN = ("ADMIN_SISTEMA", "ADMIN")
 ROLES_JEFATURA_CARRERA = ("JEFE_CARRERA", "JEFATURA_CARRERA")
 ROLES_ESTADISTICA = ("ENCARGADO_ESTADISTICA", "ESTADISTICA")
+ROLES_DISCENTE = ("DISCENTE",)
+ROLES_DOCENTE = ("DOCENTE",)
 
 CARGOS_ADMIN = ("ADMIN", "ADMIN_SISTEMA")
 CARGOS_JEFATURA_CARRERA = ("JEFE_CARRERA", "JEFATURA_CARRERA")
@@ -58,6 +60,18 @@ def usuario_es_estadistica(user):
         user,
         CARGOS_ESTADISTICA,
     )
+
+
+def usuario_es_discente(user):
+    if not user.is_authenticated:
+        return False
+    return usuario_tiene_rol(user, ROLES_DISCENTE)
+
+
+def usuario_es_docente(user):
+    if not user.is_authenticated:
+        return False
+    return usuario_tiene_rol(user, ROLES_DOCENTE)
 
 
 def puede_consultar_relaciones(user):

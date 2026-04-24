@@ -361,14 +361,15 @@ class RelacionesPermisosViewTests(RelacionesBaseTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Asignaciones docentes")
 
-    def test_vista_permite_cargo_estadistica_activo(self):
+    def test_vista_permite_cargo_jefatura_carrera_activo(self):
         usuario = Usuario.objects.create_user(
-            username="cargo_estadistica",
+            username="cargo_jefatura_carrera",
             password="segura123",
         )
         AsignacionCargo.objects.create(
             usuario=usuario,
-            cargo_codigo="estadistica",
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_CARRERA,
+            carrera=self.carrera,
             tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
             activo=True,
         )

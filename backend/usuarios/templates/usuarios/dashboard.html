@@ -1,110 +1,53 @@
-<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Dashboard</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        background: #f5f7fb;
-      }
-      .layout {
-        max-width: 860px;
-        margin: 32px auto;
-        padding: 0 16px;
-      }
-      .card {
-        background: #fff;
-        border: 1px solid #d8deea;
-        border-radius: 10px;
-        padding: 18px;
-        margin-bottom: 16px;
-      }
-      h1 {
-        margin-top: 0;
-      }
-      .badge {
-        display: inline-block;
-        border-radius: 999px;
-        background: #e9eefb;
-        padding: 4px 10px;
-        margin-right: 6px;
-      }
-      button {
-        padding: 10px 14px;
-        border: 0;
-        border-radius: 8px;
-        background: #1f4fbf;
-        color: #fff;
-        cursor: pointer;
-      }
-      .links {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin: 10px 0 16px;
-      }
-      .link-btn {
-        display: inline-block;
-        padding: 10px 14px;
-        border-radius: 8px;
-        background: #1f4fbf;
-        color: #fff;
-        text-decoration: none;
-      }
-      code {
-        background: #edf2fc;
-        padding: 2px 6px;
-        border-radius: 6px;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="layout">
-      <div class="card">
-        <h1>Dashboard base administrativo</h1>
-        <p>Usuario autenticado: <strong>{{ request.user.username }}</strong></p>
-        <p>Nombre: {{ request.user.nombre_completo|default:"(sin registrar)" }}</p>
-        <p>Correo: {{ request.user.correo|default:"(sin registrar)" }}</p>
-        <p>Telefono: {{ request.user.telefono|default:"(sin registrar)" }}</p>
-        <p>Estado de cuenta: <strong>{{ request.user.estado_cuenta }}</strong></p>
-      </div>
+{% extends "usuarios/validacion/base.html" %}
 
-      <div class="card">
-        <h2>Roles del sistema (incluye DISCENTE)</h2>
-        {% with grupos=request.user.groups.all %}
-          {% if grupos %}
-            {% for grupo in grupos %}
-              <span class="badge">{{ grupo.name }}</span>
-            {% endfor %}
-          {% else %}
-            <p>Sin roles asignados.</p>
-          {% endif %}
-        {% endwith %}
-      </div>
+{% block title %}Dashboard por rol{% endblock %}
+{% block heading %}Dashboard por rol{% endblock %}
 
-      <div class="card">
-        <h2>Enlaces utiles</h2>
-        <p>Abre accesos del sistema sin perder este menu (se abren en otra pestaña).</p>
-        <div class="links">
-          <a class="link-btn" href="/health/" target="_blank" rel="noopener noreferrer">
-            Health
-          </a>
-          <a class="link-btn" href="/admin/" target="_blank" rel="noopener noreferrer">
-            Admin
-          </a>
-          <a class="link-btn" href="/dashboard/">
-            Menú (Dashboard)
-          </a>
-        </div>
-        <p>Rutas: <code>/health/</code> y <code>/admin/</code></p>
-        <form method="post" action="{% url 'usuarios:logout' %}">
-          {% csrf_token %}
-          <button type="submit">Cerrar sesion</button>
-        </form>
-      </div>
+{% block content %}
+  <section class="panel">
+    <h2>Usuario autenticado</h2>
+    <p><strong>{{ request.user.username }}</strong></p>
+    <p>Nombre: {{ request.user.nombre_completo|default:"(sin registrar)" }}</p>
+    <p>Correo: {{ request.user.correo|default:"(sin registrar)" }}</p>
+    <p>Estado de cuenta: {{ request.user.estado_cuenta }}</p>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>Roles activos</h2>
+      {% for rol in roles %}
+        <span class="badge">{{ rol.name }}</span>
+      {% empty %}
+        <p class="muted">Sin roles asignados.</p>
+      {% endfor %}
+    </article>
+
+    <article class="panel">
+      <h2>Cargos activos</h2>
+      {% for cargo in cargos_activos %}
+        <span class="badge">{{ cargo.cargo_descripcion }}</span>
+      {% empty %}
+        <p class="muted">Sin cargos activos.</p>
+      {% endfor %}
+    </article>
+  </section>
+
+  <section class="panel">
+    <h2>Accesos permitidos</h2>
+    <div class="links">
+      {% for etiqueta, ruta in accesos %}
+        <a class="button" href="{% url ruta %}">{{ etiqueta }}</a>
+      {% empty %}
+        <p class="muted">No hay accesos operativos disponibles para este usuario.</p>
+      {% endfor %}
     </div>
-  </body>
-</html>
+  </section>
+
+  <section class="panel">
+    <h2>Sesión</h2>
+    <form method="post" action="{% url 'usuarios:logout' %}">
+      {% csrf_token %}
+      <button type="submit">Cerrar sesión</button>
+    </form>
+  </section>
+{% endblock %}

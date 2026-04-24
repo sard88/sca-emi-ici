@@ -564,3 +564,27 @@ Ejecutar:
 docker compose run --rm backend python manage.py makemigrations relaciones
 docker compose run --rm backend python manage.py migrate
 ```
+
+## Bloque 4.5 – Front temporal de validación por rol
+
+Se agrego un front temporal con Django templates para validar permisos, datos y flujos de los Bloques 1, 2, 3 y 4 sin depender solo de Django Admin.
+
+### Vistas agregadas
+
+- Dashboard por rol/cargo: `/dashboard/`
+- Discente - Mi carga academica: `/validacion/discente/carga/`
+- Docente - Mis asignaciones: `/validacion/docente/asignaciones/`
+- Jefatura de carrera - Asignaciones docentes: `/validacion/jefatura/asignaciones-docentes/`
+- Estadistica - Carga academica y movimientos: `/validacion/estadistica/carga/`
+- Administrador - enlaces tecnicos: `/validacion/admin/tecnico/`
+
+### Reglas de acceso
+
+- Todas las vistas requieren autenticacion.
+- El discente solo consulta su carga academica.
+- El docente solo consulta sus asignaciones y discentes asociados.
+- Jefatura de Carrera opera `AsignacionDocente` y puede sincronizar carga academica del grupo.
+- Estadistica consulta carga academica y movimientos, sin crear ni modificar asignaciones docentes.
+- Superusuario conserva acceso tecnico completo.
+
+Este frente es temporal y no reemplaza el frontend final del sistema.

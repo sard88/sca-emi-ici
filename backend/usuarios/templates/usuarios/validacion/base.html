@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Validación por rol{% endblock %}</title>
+    <style>
+      body {
+        margin: 0;
+        background: #eef3f7;
+        color: #182230;
+        font-family: Arial, sans-serif;
+      }
+      .shell {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 24px 16px 48px;
+      }
+      .topbar,
+      .panel {
+        background: #fff;
+        border: 1px solid #d4dde8;
+        border-radius: 8px;
+        padding: 16px;
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+      h1,
+      h2,
+      h3 {
+        margin-top: 0;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 14px;
+      }
+      .panel {
+        margin-bottom: 16px;
+      }
+      .links,
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .button,
+      button {
+        display: inline-block;
+        padding: 9px 12px;
+        border: 0;
+        border-radius: 6px;
+        background: #1f5d8f;
+        color: #fff;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .button.secondary {
+        background: #536271;
+      }
+      .button.warning {
+        background: #8a5a12;
+      }
+      .badge {
+        display: inline-block;
+        margin: 0 6px 6px 0;
+        padding: 4px 8px;
+        border-radius: 6px;
+        background: #e6eef7;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 9px;
+        border-bottom: 1px solid #e1e7ef;
+        text-align: left;
+        vertical-align: top;
+      }
+      .muted {
+        color: #5c6875;
+      }
+      .messages {
+        margin-bottom: 16px;
+      }
+      .message {
+        padding: 10px 12px;
+        border-radius: 6px;
+        background: #e6f4ea;
+        border: 1px solid #b9dfc4;
+      }
+      form.inline {
+        display: inline;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar">
+        <div>
+          <h1>{% block heading %}Validación por rol{% endblock %}</h1>
+          <p class="muted">Front temporal para validar Bloques 1, 2, 3 y 4.</p>
+        </div>
+        <nav class="links">
+          <a class="button secondary" href="{% url 'usuarios:dashboard' %}">Dashboard</a>
+          <a class="button secondary" href="{% url 'health-check' %}">Health</a>
+          <a class="button secondary" href="{% url 'admin:index' %}">Admin</a>
+        </nav>
+      </section>
+
+      {% if messages %}
+        <section class="messages">
+          {% for message in messages %}
+            <div class="message">{{ message }}</div>
+          {% endfor %}
+        </section>
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

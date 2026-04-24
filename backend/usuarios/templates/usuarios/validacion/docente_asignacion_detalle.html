@@ -1,0 +1,39 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Discentes asociados{% endblock %}
+{% block heading %}Discentes asociados{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h2>{{ asignacion.programa_asignatura }} - {{ asignacion.programa_asignatura.materia.nombre }}</h2>
+    <p>Grupo: {{ asignacion.grupo_academico.clave_grupo }}</p>
+    <p>Periodo académico: {{ asignacion.periodo }}</p>
+    <p class="muted">La captura de calificaciones estará disponible en Bloque 5.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Lista de discentes</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Matrícula</th>
+          <th>Discente</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inscripcion in inscripciones %}
+          <tr>
+            <td>{{ inscripcion.discente.matricula }}</td>
+            <td>{{ inscripcion.discente.usuario.nombre_completo|default:inscripcion.discente.usuario.username }}</td>
+            <td>{{ inscripcion.get_estado_inscripcion_display }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="3">Sin discentes asociados a esta asignación.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.contrib import admin
 from django.contrib.auth.models import Group
@@ -9,6 +9,8 @@ from django.test import TestCase
 from django.utils import timezone
 
 from catalogos.models import Carrera
+from catalogos.models import Antiguedad, GrupoAcademico, Materia, PeriodoEscolar, PlanEstudios, ProgramaAsignatura
+from relaciones.models import AdscripcionGrupo, AsignacionDocente, Discente, InscripcionMateria
 
 from .admin import UsuarioAdmin
 from .forms import LoginFormulario, UsuarioAdminCreationForm, UsuarioAdminForm
@@ -271,6 +273,176 @@ class UsuarioUltimoAccesoTests(TestCase):
 
         self.assertIsNotNone(self.usuario.ultimo_acceso)
         self.assertGreaterEqual(self.usuario.ultimo_acceso, antes)
+
+
+class FrontTemporalValidacionRolTests(TestCase):
+    def setUp(self):
+        self.rol_discente, _ = Group.objects.get_or_create(name="DISCENTE")
+        self.rol_docente, _ = Group.objects.get_or_create(name="DOCENTE")
+        self.rol_jefatura, _ = Group.objects.get_or_create(name="JEFE_CARRERA")
+        self.rol_estadistica, _ = Group.objects.get_or_create(name="ENCARGADO_ESTADISTICA")
+
+        self.carrera = Carrera.objects.create(clave="FRONT_ICI", nombre="ICI")
+        self.plan = PlanEstudios.objects.create(
+            carrera=self.carrera,
+            clave="FRONT_PLAN",
+            nombre="Plan front",
+        )
+        self.antiguedad = Antiguedad.objects.create(
+            plan_estudios=self.plan,
+            clave="FRONT_ANT",
+            nombre="Antiguedad front",
+            anio_inicio=2025,
+            anio_fin=2029,
+        )
+        self.periodo = PeriodoEscolar.objects.create(
+            clave="FRONT_PER",
+            anio_escolar="2025-2026",
+            periodo_academico=1,
+            fecha_inicio=date(2025, 8, 1),
+            fecha_fin=date(2026, 1, 31),
+        )
+        self.grupo = GrupoAcademico.objects.create(
+            clave_grupo="FRONT_G1",
+            antiguedad=self.antiguedad,
+            periodo=self.periodo,
+            semestre_numero=1,
+        )
+        self.materia = Materia.objects.create(
+            clave="FRONT_M1",
+            nombre="Materia front 1",
+            horas_totales=64,
+        )
+        self.programa = ProgramaAsignatura.objects.create(
+            plan_estudios=self.plan,
+            materia=self.materia,
+            semestre_numero=1,
+        )
+        self.materia_dos = Materia.objects.create(
+            clave="FRONT_M2",
+            nombre="Materia front 2",
+            horas_totales=64,
+        )
+        self.programa_dos = ProgramaAsignatura.objects.create(
+            plan_estudios=self.plan,
+            materia=self.materia_dos,
+            semestre_numero=1,
+        )
+
+        self.usuario_discente = self.crear_usuario("discente_front", self.rol_discente)
+        self.usuario_otro_discente = self.crear_usuario("discente_otro", self.rol_discente)
+        self.usuario_docente = self.crear_usuario("docente_front", self.rol_docente)
+        self.usuario_otro_docente = self.crear_usuario("docente_otro", self.rol_docente)
+        self.usuario_jefatura = self.crear_usuario("jefatura_front", self.rol_jefatura)
+        self.usuario_estadistica = self.crear_usuario("estadistica_front", self.rol_estadistica)
+
+        self.discente = Discente.objects.create(
+            usuario=self.usuario_discente,
+            matricula="F0001",
+            plan_estudios=self.plan,
+            antiguedad=self.antiguedad,
+        )
+        self.otro_discente = Discente.objects.create(
+            usuario=self.usuario_otro_discente,
+            matricula="F0002",
+            plan_estudios=self.plan,
+            antiguedad=self.antiguedad,
+        )
+        AdscripcionGrupo.objects.create(discente=self.discente, grupo_academico=self.grupo)
+        AdscripcionGrupo.objects.create(discente=self.otro_discente, grupo_academico=self.grupo)
+        self.asignacion = AsignacionDocente.objects.create(
+            usuario_docente=self.usuario_docente,
+            grupo_academico=self.grupo,
+            programa_asignatura=self.programa,
+        )
+
+    def crear_usuario(self, username, rol):
+        usuario = Usuario.objects.create_user(username=username, password="segura123")
+        usuario.groups.add(rol)
+        return usuario
+
+    def test_usuario_discente_solo_ve_su_carga(self):
+        self.client.force_login(self.usuario_discente)
+
+        response = self.client.get("/validacion/discente/carga/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "F0001")
+        self.assertNotContains(response, "F0002")
+        self.assertContains(response, "Materia front 1")
+
+    def test_usuario_docente_solo_ve_sus_asignaciones(self):
+        AsignacionDocente.objects.create(
+            usuario_docente=self.usuario_otro_docente,
+            grupo_academico=self.grupo,
+            programa_asignatura=self.programa_dos,
+        )
+        self.client.force_login(self.usuario_docente)
+
+        response = self.client.get("/validacion/docente/asignaciones/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Materia front 1")
+        self.assertNotContains(response, "Materia front 2")
+
+    def test_jefe_carrera_puede_operar_asignaciones_docentes(self):
+        self.client.force_login(self.usuario_jefatura)
+
+        response = self.client.get("/relaciones/asignaciones-docentes/crear/")
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_jefatura_crea_asignacion_y_genera_inscripciones(self):
+        self.client.force_login(self.usuario_jefatura)
+
+        response = self.client.post(
+            "/relaciones/asignaciones-docentes/crear/",
+            data={
+                "usuario_docente": self.usuario_otro_docente.pk,
+                "grupo_academico": self.grupo.pk,
+                "programa_asignatura": self.programa_dos.pk,
+                "vigente_desde": "",
+                "vigente_hasta": "",
+                "activo": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        asignacion = AsignacionDocente.objects.get(programa_asignatura=self.programa_dos)
+        self.assertEqual(
+            InscripcionMateria.objects.filter(asignacion_docente=asignacion).count(),
+            2,
+        )
+
+    def test_estadistica_consulta_carga_pero_no_crea_asignaciones(self):
+        self.client.force_login(self.usuario_estadistica)
+
+        consulta = self.client.get("/validacion/estadistica/carga/")
+        crear = self.client.get("/relaciones/asignaciones-docentes/crear/")
+
+        self.assertEqual(consulta.status_code, 200)
+        self.assertContains(consulta, "Carga académica y movimientos")
+        self.assertEqual(crear.status_code, 403)
+
+    def test_usuario_sin_permisos_recibe_403(self):
+        usuario = Usuario.objects.create_user(username="sin_permiso", password="segura123")
+        self.client.force_login(usuario)
+
+        response = self.client.get("/validacion/estadistica/carga/")
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_superusuario_conserva_acceso_total(self):
+        usuario = Usuario.objects.create_superuser(username="super_front", password="segura123")
+        self.client.force_login(usuario)
+
+        dashboard = self.client.get("/dashboard/")
+        crear = self.client.get("/relaciones/asignaciones-docentes/crear/")
+        tecnico = self.client.get("/validacion/admin/tecnico/")
+
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertEqual(crear.status_code, 200)
+        self.assertEqual(tecnico.status_code, 200)
 
 
 class LoginUsuarioEstadoCuentaTests(TestCase):

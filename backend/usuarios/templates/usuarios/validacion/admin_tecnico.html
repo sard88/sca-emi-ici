@@ -1,0 +1,36 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Administración técnica{% endblock %}
+{% block heading %}Administración técnica{% endblock %}
+
+{% block content %}
+  <section class="grid">
+    <article class="panel">
+      <h2>Usuarios y cargos</h2>
+      <div class="links">
+        <a class="button" href="{% url 'admin:usuarios_usuario_changelist' %}">Usuarios</a>
+        <a class="button" href="{% url 'admin:auth_group_changelist' %}">Roles</a>
+        <a class="button" href="{% url 'admin:usuarios_asignacioncargo_changelist' %}">Cargos</a>
+      </div>
+    </article>
+
+    <article class="panel">
+      <h2>Catálogos</h2>
+      <div class="links">
+        <a class="button" href="{% url 'admin:catalogos_carrera_changelist' %}">Carreras</a>
+        <a class="button" href="{% url 'admin:catalogos_planestudios_changelist' %}">Planes de estudio</a>
+        <a class="button" href="{% url 'admin:catalogos_programaasignatura_changelist' %}">Programas de asignatura</a>
+        <a class="button" href="{% url 'admin:catalogos_grupoacademico_changelist' %}">Grupos académicos</a>
+      </div>
+    </article>
+
+    <article class="panel">
+      <h2>Bloques operativos</h2>
+      <div class="links">
+        <a class="button" href="{% url 'usuarios:jefatura-asignaciones' %}">Asignaciones docentes</a>
+        <a class="button" href="{% url 'usuarios:estadistica-carga' %}">Carga académica</a>
+        <a class="button secondary" href="{% url 'admin:index' %}">Django Admin</a>
+      </div>
+    </article>
+  </section>
+{% endblock %}

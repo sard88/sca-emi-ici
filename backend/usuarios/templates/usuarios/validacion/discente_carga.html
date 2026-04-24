@@ -1,0 +1,64 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Mi carga académica{% endblock %}
+{% block heading %}Mi carga académica{% endblock %}
+
+{% block content %}
+  {% if discente %}
+    <section class="panel">
+      <h2>Perfil académico</h2>
+      <p>Matrícula: <strong>{{ discente.matricula }}</strong></p>
+      <p>Plan de estudio: {{ discente.plan_estudios }}</p>
+      <p>Antigüedad: {{ discente.antiguedad }}</p>
+      <p>Situación actual: {{ discente.get_situacion_actual_display }}</p>
+    </section>
+
+    <section class="panel">
+      <h2>Grupo académico vigente</h2>
+      {% if adscripcion %}
+        <p>Grupo: <strong>{{ adscripcion.grupo_academico.clave_grupo }}</strong></p>
+        <p>Periodo académico: {{ adscripcion.grupo_academico.periodo }}</p>
+        <p>Vigente desde: {{ adscripcion.vigente_desde }}</p>
+      {% else %}
+        <p class="muted">No hay adscripción vigente a grupo académico.</p>
+      {% endif %}
+    </section>
+
+    <section class="panel">
+      <h2>Inscripciones a asignatura</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Programa de asignatura</th>
+            <th>Docente</th>
+            <th>Grupo</th>
+            <th>Periodo académico</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inscripcion in inscripciones %}
+            <tr>
+              <td>
+                {{ inscripcion.asignacion_docente.programa_asignatura }}
+                - {{ inscripcion.asignacion_docente.programa_asignatura.materia.nombre }}
+              </td>
+              <td>{{ inscripcion.asignacion_docente.usuario_docente }}</td>
+              <td>{{ inscripcion.asignacion_docente.grupo_academico.clave_grupo }}</td>
+              <td>{{ inscripcion.asignacion_docente.periodo }}</td>
+              <td>{{ inscripcion.get_estado_inscripcion_display }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5">Sin inscripciones a asignatura generadas.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% else %}
+    <section class="panel">
+      <p class="muted">Este usuario no tiene perfil académico de discente activo.</p>
+    </section>
+  {% endif %}
+{% endblock %}

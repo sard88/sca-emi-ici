@@ -1,0 +1,63 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Asignaciones docentes{% endblock %}
+{% block heading %}Asignaciones docentes{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <div class="actions">
+      {% if puede_operar_asignacion_docente %}
+        <a class="button" href="{% url 'relaciones:asignacion-docente-create' %}">
+          Nueva asignación docente
+        </a>
+      {% else %}
+        <p class="muted">Consulta disponible. La operación corresponde a Jefatura de Carrera.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <table>
+      <thead>
+        <tr>
+          <th>Docente</th>
+          <th>Grupo</th>
+          <th>Programa de asignatura</th>
+          <th>Periodo académico</th>
+          <th>Activo</th>
+          {% if puede_operar_asignacion_docente %}
+            <th>Operación</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for asignacion in asignaciones %}
+          <tr>
+            <td>{{ asignacion.usuario_docente }}</td>
+            <td>{{ asignacion.grupo_academico.clave_grupo }}</td>
+            <td>{{ asignacion.programa_asignatura }} - {{ asignacion.programa_asignatura.materia.nombre }}</td>
+            <td>{{ asignacion.periodo }}</td>
+            <td>{{ asignacion.activo|yesno:"Sí,No" }}</td>
+            {% if puede_operar_asignacion_docente %}
+              <td>
+                <a href="{% url 'relaciones:asignacion-docente-update' asignacion.pk %}">
+                  Editar
+                </a>
+                <form class="inline" method="post" action="{% url 'usuarios:jefatura-asignacion-sincronizar' asignacion.pk %}">
+                  {% csrf_token %}
+                  <button class="warning" type="submit">Sincronizar carga</button>
+                </form>
+              </td>
+            {% endif %}
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="{% if puede_operar_asignacion_docente %}6{% else %}5{% endif %}">
+              Sin asignaciones docentes registradas.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}
