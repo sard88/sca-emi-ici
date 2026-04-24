@@ -1,50 +1,22 @@
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
 from django.urls import reverse_lazy
-from django.utils import timezone
-from django.views.generic import CreateView, ListView
-
-from usuarios.models import AsignacionCargo
+from django.views.generic import CreateView, ListView, UpdateView
 
 from .forms import AsignacionDocenteForm, MovimientoAcademicoForm
 from .models import AsignacionDocente, InscripcionMateria, MovimientoAcademico
-
-
-ROL_ADMIN = "ADMIN_SISTEMA"
-ROL_ESTADISTICA = "ESTADISTICA"
-CARGOS_AUTORIZADOS = ("ADMIN", "ADMIN_SISTEMA", "ESTADISTICA")
-
-
-def usuario_autorizado_relaciones(user):
-    if not user.is_authenticated:
-        return False
-
-    if user.is_superuser or user.is_staff:
-        return True
-
-    if user.groups.filter(name__in=(ROL_ADMIN, ROL_ESTADISTICA)).exists():
-        return True
-
-    hoy = timezone.localdate()
-    cargos_filter = Q()
-    for cargo in CARGOS_AUTORIZADOS:
-        cargos_filter |= Q(cargo_codigo__iexact=cargo)
-
-    return AsignacionCargo.objects.filter(
-        Q(vigente_desde__isnull=True) | Q(vigente_desde__lte=hoy),
-        Q(vigente_hasta__isnull=True) | Q(vigente_hasta__gte=hoy),
-        cargos_filter,
-        usuario=user,
-        activo=True,
-    ).exists()
+from .permisos import (
+    puede_consultar_asignacion_docente,
+    puede_consultar_relaciones,
+    puede_operar_asignacion_docente,
+)
 
 
 class RelacionesAutorizadasMixin(LoginRequiredMixin, UserPassesTestMixin):
     login_url = reverse_lazy("usuarios:login")
 
     def test_func(self):
-        return usuario_autorizado_relaciones(self.request.user)
+        return puede_consultar_relaciones(self.request.user)
 
     def handle_no_permission(self):
         if self.request.user.is_authenticated:
@@ -52,7 +24,17 @@ class RelacionesAutorizadasMixin(LoginRequiredMixin, UserPassesTestMixin):
         return super().handle_no_permission()
 
 
-class AsignacionDocenteListView(RelacionesAutorizadasMixin, ListView):
+class AsignacionDocenteConsultaMixin(RelacionesAutorizadasMixin):
+    def test_func(self):
+        return puede_consultar_asignacion_docente(self.request.user)
+
+
+class AsignacionDocenteOperacionMixin(RelacionesAutorizadasMixin):
+    def test_func(self):
+        return puede_operar_asignacion_docente(self.request.user)
+
+
+class AsignacionDocenteListView(AsignacionDocenteConsultaMixin, ListView):
     model = AsignacionDocente
     template_name = "relaciones/asignacion_docente_list.html"
     context_object_name = "asignaciones"
@@ -69,8 +51,22 @@ class AsignacionDocenteListView(RelacionesAutorizadasMixin, ListView):
             .all()
         )
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["puede_operar_asignacion_docente"] = puede_operar_asignacion_docente(
+            self.request.user
+        )
+        return context
 
-class AsignacionDocenteCreateView(RelacionesAutorizadasMixin, CreateView):
+
+class AsignacionDocenteCreateView(AsignacionDocenteOperacionMixin, CreateView):
+    model = AsignacionDocente
+    form_class = AsignacionDocenteForm
+    template_name = "relaciones/asignacion_docente_form.html"
+    success_url = reverse_lazy("relaciones:asignacion-docente-list")
+
+
+class AsignacionDocenteUpdateView(AsignacionDocenteOperacionMixin, UpdateView):
     model = AsignacionDocente
     form_class = AsignacionDocenteForm
     template_name = "relaciones/asignacion_docente_form.html"

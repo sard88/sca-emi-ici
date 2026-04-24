@@ -521,6 +521,10 @@ Al crear o activar una `AsignacionDocente`, el sistema sincroniza automaticament
 
 Tambien existe una accion administrativa en `AsignacionDocente` para sincronizar manualmente la carga academica cuando se agregan discentes al grupo despues de crear la asignacion.
 
+### Bloque 4: AsignacionDocente operada por Jefatura de Carrera
+
+`AsignacionDocente` queda operada por Jefatura de Carrera (`JEFE_CARRERA` / `JEFATURA_CARRERA`) o por administracion tecnica/superusuario. Estadistica (`ENCARGADO_ESTADISTICA` / `ESTADISTICA`) conserva acceso de consulta y consolidacion, pero no crea ni modifica asignaciones docentes en el flujo ordinario.
+
 ### Vistas minimas
 
 Se agregan vistas autenticadas para listar y crear:

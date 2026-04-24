@@ -1,8 +1,9 @@
 from datetime import date
 
+from django.contrib import admin as django_admin
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from catalogos.models import (
@@ -33,6 +34,8 @@ class RelacionesBaseTestCase(TestCase):
     def setUp(self):
         self.grupo_docente, _ = Group.objects.get_or_create(name=ROL_DOCENTE)
         self.grupo_discente, _ = Group.objects.get_or_create(name=ROL_DISCENTE)
+        self.grupo_jefatura_carrera, _ = Group.objects.get_or_create(name="JEFE_CARRERA")
+        self.grupo_estadistica, _ = Group.objects.get_or_create(name="ENCARGADO_ESTADISTICA")
 
         self.carrera = Carrera.objects.create(
             clave="REL_ICI",
@@ -114,6 +117,28 @@ class RelacionesBaseTestCase(TestCase):
         usuario = Usuario.objects.create_user(username=username, password="segura123")
         usuario.groups.add(self.grupo_docente)
         return usuario
+
+    def crear_usuario_jefatura_carrera(self, username):
+        usuario = Usuario.objects.create_user(username=username, password="segura123")
+        usuario.groups.add(self.grupo_jefatura_carrera)
+        return usuario
+
+    def crear_usuario_estadistica(self, username):
+        usuario = Usuario.objects.create_user(username=username, password="segura123")
+        usuario.groups.add(self.grupo_estadistica)
+        return usuario
+
+    def datos_asignacion_docente(self, **overrides):
+        payload = {
+            "usuario_docente": self.usuario_docente.pk,
+            "grupo_academico": self.grupo_destino.pk,
+            "programa_asignatura": self.programa.pk,
+            "vigente_desde": "",
+            "vigente_hasta": "",
+            "activo": "on",
+        }
+        payload.update(overrides)
+        return payload
 
 
 class RelacionesModeloTests(RelacionesBaseTestCase):
@@ -328,12 +353,7 @@ class RelacionesPermisosViewTests(RelacionesBaseTestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_vista_permite_grupo_estadistica(self):
-        usuario = Usuario.objects.create_user(
-            username="estadistica",
-            password="segura123",
-        )
-        grupo, _ = Group.objects.get_or_create(name="ESTADISTICA")
-        usuario.groups.add(grupo)
+        usuario = self.crear_usuario_estadistica("estadistica")
         self.client.force_login(usuario)
 
         response = self.client.get(self.url)
@@ -357,3 +377,130 @@ class RelacionesPermisosViewTests(RelacionesBaseTestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
+
+    def test_jefatura_carrera_puede_crear_asignacion_docente(self):
+        usuario = self.crear_usuario_jefatura_carrera("jefe_carrera")
+        self.client.force_login(usuario)
+
+        response = self.client.post(
+            reverse("relaciones:asignacion-docente-create"),
+            data=self.datos_asignacion_docente(),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            AsignacionDocente.objects.filter(
+                grupo_academico=self.grupo_destino,
+                programa_asignatura=self.programa,
+            ).exists()
+        )
+
+    def test_estadistica_no_puede_crear_asignacion_docente(self):
+        usuario = self.crear_usuario_estadistica("estadistica_crea")
+        self.client.force_login(usuario)
+
+        response = self.client.post(
+            reverse("relaciones:asignacion-docente-create"),
+            data=self.datos_asignacion_docente(),
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(
+            AsignacionDocente.objects.filter(
+                grupo_academico=self.grupo_destino,
+                programa_asignatura=self.programa,
+            ).exists()
+        )
+
+    def test_estadistica_no_puede_modificar_asignacion_docente(self):
+        usuario = self.crear_usuario_estadistica("estadistica_edita")
+        self.client.force_login(usuario)
+
+        response = self.client.post(
+            reverse("relaciones:asignacion-docente-update", args=[self.asignacion.pk]),
+            data=self.datos_asignacion_docente(
+                grupo_academico=self.grupo.pk,
+                vigente_hasta="",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_superusuario_puede_modificar_asignacion_docente(self):
+        usuario = Usuario.objects.create_superuser(
+            username="admin_relaciones",
+            password="segura123",
+        )
+        self.client.force_login(usuario)
+
+        response = self.client.post(
+            reverse("relaciones:asignacion-docente-update", args=[self.asignacion.pk]),
+            data=self.datos_asignacion_docente(
+                grupo_academico=self.grupo.pk,
+                vigente_hasta="",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 302)
+
+    def test_superusuario_puede_crear_asignacion_docente(self):
+        usuario = Usuario.objects.create_superuser(
+            username="admin_crea_relaciones",
+            password="segura123",
+        )
+        self.client.force_login(usuario)
+
+        response = self.client.post(
+            reverse("relaciones:asignacion-docente-create"),
+            data=self.datos_asignacion_docente(),
+        )
+
+        self.assertEqual(response.status_code, 302)
+
+    def test_usuario_sin_cargo_no_puede_crear_asignacion_docente(self):
+        usuario = Usuario.objects.create_user(
+            username="sin_cargo_asignacion",
+            password="segura123",
+        )
+        self.client.force_login(usuario)
+
+        response = self.client.post(
+            reverse("relaciones:asignacion-docente-create"),
+            data=self.datos_asignacion_docente(),
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+
+class AsignacionDocenteAdminPermisosTests(RelacionesBaseTestCase):
+    def setUp(self):
+        super().setUp()
+        self.factory = RequestFactory()
+        self.model_admin = django_admin.site._registry[AsignacionDocente]
+
+    def build_request(self, usuario):
+        request = self.factory.get("/admin/relaciones/asignaciondocente/")
+        request.user = usuario
+        return request
+
+    def test_admin_estadistica_solo_consulta_asignacion_docente(self):
+        usuario = self.crear_usuario_estadistica("admin_estadistica")
+        usuario.is_staff = True
+        usuario.save()
+        request = self.build_request(usuario)
+
+        self.assertTrue(self.model_admin.has_view_permission(request))
+        self.assertFalse(self.model_admin.has_add_permission(request))
+        self.assertFalse(self.model_admin.has_change_permission(request, self.asignacion))
+        self.assertNotIn("sincronizar_carga_academica", self.model_admin.get_actions(request))
+
+    def test_admin_jefatura_carrera_opera_asignacion_docente(self):
+        usuario = self.crear_usuario_jefatura_carrera("admin_jefatura")
+        usuario.is_staff = True
+        usuario.save()
+        request = self.build_request(usuario)
+
+        self.assertTrue(self.model_admin.has_view_permission(request))
+        self.assertTrue(self.model_admin.has_add_permission(request))
+        self.assertTrue(self.model_admin.has_change_permission(request, self.asignacion))
+        self.assertIn("sincronizar_carga_academica", self.model_admin.get_actions(request))

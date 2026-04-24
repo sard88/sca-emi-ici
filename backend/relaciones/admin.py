@@ -8,6 +8,7 @@ from .forms import (
     MovimientoAcademicoForm,
 )
 from .models import AdscripcionGrupo, Discente, AsignacionDocente, InscripcionMateria, MovimientoAcademico
+from .permisos import puede_consultar_asignacion_docente, puede_operar_asignacion_docente
 from .services import sincronizar_carga_academica as sincronizar_carga_academica_service
 
 
@@ -55,6 +56,25 @@ class AdscripcionGrupoAdmin(admin.ModelAdmin):
 class AsignacionDocenteAdmin(admin.ModelAdmin):
     form = AsignacionDocenteForm
     actions = ("sincronizar_carga_academica",)
+    fieldsets = (
+        (
+            "Asignación docente por Jefatura de Carrera",
+            {
+                "description": (
+                    "Asignación de docente a asignatura y grupo. "
+                    "Estadística consulta y consolida esta información."
+                ),
+                "fields": (
+                    "usuario_docente",
+                    "grupo_academico",
+                    "programa_asignatura",
+                    "vigente_desde",
+                    "vigente_hasta",
+                    "activo",
+                ),
+            },
+        ),
+    )
     list_display = (
         "usuario_docente",
         "grupo_academico",
@@ -87,6 +107,27 @@ class AsignacionDocenteAdmin(admin.ModelAdmin):
             request,
             f"Sincronización completada. Inscripciones a asignatura creadas: {total}.",
         )
+
+    def has_module_permission(self, request):
+        return puede_consultar_asignacion_docente(request.user)
+
+    def has_view_permission(self, request, obj=None):
+        return puede_consultar_asignacion_docente(request.user)
+
+    def has_add_permission(self, request):
+        return puede_operar_asignacion_docente(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return puede_operar_asignacion_docente(request.user)
+
+    def has_delete_permission(self, request, obj=None):
+        return puede_operar_asignacion_docente(request.user)
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        if not puede_operar_asignacion_docente(request.user):
+            actions.pop("sincronizar_carga_academica", None)
+        return actions
 
 
 @admin.register(InscripcionMateria)
