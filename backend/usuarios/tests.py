@@ -1,28 +1,53 @@
 from datetime import date, timedelta
+from io import StringIO
 
 from django.contrib import admin
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.signals import user_logged_in
 from django.core.exceptions import ValidationError
+from django.core.management import call_command
 from django.forms import modelform_factory
 from django.test import TestCase
 from django.utils import timezone
 
-from catalogos.models import Carrera
+from catalogos.models import ESTADO_INACTIVO, Carrera
 from catalogos.models import Antiguedad, GrupoAcademico, Materia, PeriodoEscolar, PlanEstudios, ProgramaAsignatura
 from relaciones.models import AdscripcionGrupo, AsignacionDocente, Discente, InscripcionMateria
 
 from .admin import UsuarioAdmin
 from .forms import LoginFormulario, UsuarioAdminCreationForm, UsuarioAdminForm
-from .models import AsignacionCargo, Usuario
+from .models import AsignacionCargo, UnidadOrganizacional, Usuario
 from .signals import crear_roles_base
 
 
 class VigenciaAsignacionCargoTests(TestCase):
     def setUp(self):
+        self.grupo_discente, _ = Group.objects.get_or_create(name=AsignacionCargo.ROL_DISCENTE)
+        self.grupo_docente, _ = Group.objects.get_or_create(name=AsignacionCargo.ROL_DOCENTE)
+        self.grupo_jefe_pedagogica, _ = Group.objects.get_or_create(
+            name=AsignacionCargo.ROL_JEFE_PEDAGOGICA
+        )
+        self.grupo_jefe_academico, _ = Group.objects.get_or_create(
+            name=AsignacionCargo.ROL_JEFE_ACADEMICO
+        )
+        self.grupo_jefatura_academica, _ = Group.objects.get_or_create(
+            name=AsignacionCargo.ROL_JEFATURA_ACADEMICA
+        )
+        self.grupo_jefe_carrera, _ = Group.objects.get_or_create(
+            name=AsignacionCargo.ROL_JEFE_CARRERA
+        )
+        self.grupo_jefatura_carrera, _ = Group.objects.get_or_create(
+            name=AsignacionCargo.ROL_JEFATURA_CARRERA
+        )
         self.usuario = Usuario.objects.create_user(
             username="usuario_vigencia",
             password="segura123",
+        )
+        self.usuario.groups.add(
+            self.grupo_docente,
+            self.grupo_jefe_pedagogica,
+            self.grupo_jefe_academico,
+            self.grupo_jefe_carrera,
         )
         self.carrera_icis = Carrera.objects.create(
             clave="ICIS",
@@ -32,17 +57,130 @@ class VigenciaAsignacionCargoTests(TestCase):
             clave="ICES",
             nombre="Ingenieros Constructores",
         )
+        self.seccion_pedagogica = UnidadOrganizacional.objects.create(
+            clave=UnidadOrganizacional.CLAVE_SECCION_PEDAGOGICA,
+            nombre="Sección Pedagógica",
+            tipo_unidad=UnidadOrganizacional.TIPO_SECCION,
+        )
+        self.seccion_academica = UnidadOrganizacional.objects.create(
+            clave=UnidadOrganizacional.CLAVE_SECCION_ACADEMICA,
+            nombre="Sección Académica",
+            tipo_unidad=UnidadOrganizacional.TIPO_SECCION,
+        )
+        self.subseccion_academica_icis = UnidadOrganizacional.objects.create(
+            clave="SUB_ACAD_ICIS",
+            nombre="Subsección de Ejecución y Control ICI",
+            tipo_unidad=UnidadOrganizacional.TIPO_SUBSECCION,
+            padre=self.seccion_academica,
+            carrera=self.carrera_icis,
+        )
+        self.subseccion_pedagogica_icis = UnidadOrganizacional.objects.create(
+            clave="SUB_PED_ICIS",
+            nombre="Subsección de Planeación y Evaluación ICI",
+            tipo_unidad=UnidadOrganizacional.TIPO_SUBSECCION,
+            padre=self.seccion_pedagogica,
+            carrera=self.carrera_icis,
+        )
 
     def test_creacion_autocompleta_vigente_desde_si_se_omite(self):
         asignacion = AsignacionCargo.objects.create(
             usuario=self.usuario,
             carrera=self.carrera_icis,
+            unidad_organizacional=self.subseccion_academica_icis,
             cargo_codigo=AsignacionCargo.CARGO_JEFE_CARRERA,
             tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
         )
 
         self.assertEqual(asignacion.vigente_desde, timezone.localdate())
         self.assertIsNone(asignacion.vigente_hasta)
+
+    def test_crea_unidad_organizacional_basica(self):
+        unidad = UnidadOrganizacional.objects.create(
+            clave="SEC_PED",
+            nombre="Sección Pedagógica",
+            tipo_unidad=UnidadOrganizacional.TIPO_SECCION,
+        )
+
+        self.assertEqual(str(unidad), "Sección Pedagógica")
+        self.assertTrue(unidad.activo)
+
+    def test_unidad_no_permite_subseccion_sin_padre(self):
+        unidad = UnidadOrganizacional(
+            clave="SUB_SIN_PADRE",
+            nombre="Subsección sin padre",
+            tipo_unidad=UnidadOrganizacional.TIPO_SUBSECCION,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            unidad.full_clean()
+
+        self.assertIn("padre", exc.exception.message_dict)
+
+    def test_unidad_no_permite_subseccion_con_padre_subseccion(self):
+        seccion = UnidadOrganizacional.objects.create(
+            clave="SEC_BASE",
+            nombre="Sección base",
+            tipo_unidad=UnidadOrganizacional.TIPO_SECCION,
+        )
+        subseccion_padre = UnidadOrganizacional.objects.create(
+            clave="SUB_PADRE",
+            nombre="Subsección padre",
+            tipo_unidad=UnidadOrganizacional.TIPO_SUBSECCION,
+            padre=seccion,
+        )
+        unidad = UnidadOrganizacional(
+            clave="SUB_HIJA",
+            nombre="Subsección hija",
+            tipo_unidad=UnidadOrganizacional.TIPO_SUBSECCION,
+            padre=subseccion_padre,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            unidad.full_clean()
+
+        self.assertIn("padre", exc.exception.message_dict)
+
+    def test_unidad_no_permite_seccion_con_carrera(self):
+        unidad = UnidadOrganizacional(
+            clave="SEC_CARRERA",
+            nombre="Sección con carrera",
+            tipo_unidad=UnidadOrganizacional.TIPO_SECCION,
+            carrera=self.carrera_icis,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            unidad.full_clean()
+
+        self.assertIn("carrera", exc.exception.message_dict)
+
+    def test_unidad_permite_subseccion_con_padre_seccion(self):
+        seccion = UnidadOrganizacional.objects.create(
+            clave="SEC_PLAN",
+            nombre="Sección Planeación",
+            tipo_unidad=UnidadOrganizacional.TIPO_SECCION,
+        )
+        unidad = UnidadOrganizacional.objects.create(
+            clave="SUB_PLAN_ICIS",
+            nombre="Subsección de Planeación y Evaluación",
+            tipo_unidad=UnidadOrganizacional.TIPO_SUBSECCION,
+            padre=seccion,
+            carrera=self.carrera_icis,
+        )
+
+        self.assertEqual(unidad.padre, seccion)
+        self.assertEqual(unidad.carrera, self.carrera_icis)
+
+    def test_asignacion_cargo_conserva_carrera_y_acepta_unidad_opcional(self):
+        asignacion = AsignacionCargo.objects.create(
+            usuario=self.usuario,
+            carrera=self.carrera_icis,
+            unidad_organizacional=self.subseccion_academica_icis,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_CARRERA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+
+        self.assertEqual(asignacion.carrera, self.carrera_icis)
+        self.assertEqual(asignacion.unidad_organizacional, self.subseccion_academica_icis)
 
     def test_edicion_respeta_vigente_desde_existente(self):
         fecha_existente = timezone.localdate() - timedelta(days=15)
@@ -51,6 +189,7 @@ class VigenciaAsignacionCargoTests(TestCase):
             cargo_codigo=AsignacionCargo.CARGO_DOCENTE,
             tipo_designacion=AsignacionCargo.DESIGNACION_ACCIDENTAL,
             vigente_desde=fecha_existente,
+            vigente_hasta=fecha_existente + timedelta(days=5),
         )
 
         asignacion.activo = False
@@ -62,9 +201,8 @@ class VigenciaAsignacionCargoTests(TestCase):
     def test_edicion_de_registro_legado_sin_vigente_desde_lo_autocompleta(self):
         asignacion = AsignacionCargo.objects.create(
             usuario=self.usuario,
-            carrera=self.carrera_ices,
-            cargo_codigo=AsignacionCargo.CARGO_JEFE_PEDAGOGICA,
-            tipo_designacion=AsignacionCargo.DESIGNACION_ACCIDENTAL,
+            cargo_codigo=AsignacionCargo.CARGO_DOCENTE,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
         )
         AsignacionCargo.objects.filter(pk=asignacion.pk).update(vigente_desde=None)
 
@@ -92,7 +230,7 @@ class VigenciaAsignacionCargoTests(TestCase):
         form = asignacion_form_class(
             data={
                 "usuario": self.usuario.pk,
-                "cargo_codigo": AsignacionCargo.CARGO_JEFE_ACADEMICO,
+                "cargo_codigo": AsignacionCargo.CARGO_DOCENTE,
                 "tipo_designacion": AsignacionCargo.DESIGNACION_TITULAR,
                 "vigente_desde": "",
                 "vigente_hasta": "",
@@ -110,8 +248,7 @@ class VigenciaAsignacionCargoTests(TestCase):
         hoy = timezone.localdate()
         asignacion = AsignacionCargo(
             usuario=self.usuario,
-            carrera=self.carrera_ices,
-            cargo_codigo=AsignacionCargo.CARGO_JEFE_CARRERA,
+            cargo_codigo=AsignacionCargo.CARGO_DOCENTE,
             tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
             vigente_desde=hoy,
             vigente_hasta=hoy - timedelta(days=1),
@@ -126,13 +263,15 @@ class VigenciaAsignacionCargoTests(TestCase):
         asignacion_titular = AsignacionCargo.objects.create(
             usuario=self.usuario,
             carrera=self.carrera_icis,
+            unidad_organizacional=self.subseccion_academica_icis,
             cargo_codigo=AsignacionCargo.CARGO_JEFE_CARRERA,
             tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
         )
         asignacion_accidental = AsignacionCargo.objects.create(
             usuario=self.usuario,
-            cargo_codigo=AsignacionCargo.CARGO_JEFE_ACADEMICO,
+            cargo_codigo=AsignacionCargo.CARGO_DOCENTE,
             tipo_designacion=AsignacionCargo.DESIGNACION_ACCIDENTAL,
+            vigente_hasta=timezone.localdate() + timedelta(days=10),
         )
 
         self.assertEqual(self.usuario.asignaciones_cargo.count(), 2)
@@ -161,11 +300,42 @@ class VigenciaAsignacionCargoTests(TestCase):
 
         self.assertEqual(choices[AsignacionCargo.CARGO_JEFE_CARRERA], "Jefe de carrera")
         self.assertEqual(choices[AsignacionCargo.CARGO_JEFE_PEDAGOGICA], "Jefe de Pedagógica")
+        self.assertEqual(
+            choices[AsignacionCargo.CARGO_JEFE_SUBSECCION_PEDAGOGICA],
+            "Jefe de subsección de Planeación y Evaluación",
+        )
         self.assertNotIn("JEFE_CARRERA_ICIS", choices)
         self.assertNotIn("JEFE_CARRERA_ICES", choices)
+        self.assertNotIn("JEFE_SUBSECCION", choices)
         self.assertNotIn("COORDINADOR", choices)
 
-    def test_jefatura_de_carrera_exige_carrera(self):
+    def test_admin_asignacion_cargo_carga_js_para_ocultar_carrera_si_no_aplica(self):
+        asignacion_admin = admin.site._registry[AsignacionCargo]
+
+        self.assertIn(
+            "usuarios/admin/asignacion_cargo.js",
+            asignacion_admin.media._js,
+        )
+
+    def test_admin_unidad_organizacional_muestra_jerarquia_en_dropdown(self):
+        asignacion_admin = admin.site._registry[AsignacionCargo]
+        db_field = AsignacionCargo._meta.get_field("unidad_organizacional")
+        formfield = asignacion_admin.formfield_for_foreignkey(db_field, request=None)
+
+        self.assertEqual(
+            formfield.label_from_instance(self.seccion_academica),
+            "Sección Académica",
+        )
+        self.assertEqual(
+            formfield.label_from_instance(self.subseccion_academica_icis),
+            "Sección Académica -> Subsección de Ejecución y Control ICI",
+        )
+        self.assertEqual(
+            formfield.label_from_instance(self.subseccion_pedagogica_icis),
+            "Sección Pedagógica -> Subsección de Planeación y Evaluación ICI",
+        )
+
+    def test_jefe_carrera_exige_subseccion_academica_con_carrera(self):
         asignacion = AsignacionCargo(
             usuario=self.usuario,
             cargo_codigo=AsignacionCargo.CARGO_JEFE_CARRERA,
@@ -175,13 +345,75 @@ class VigenciaAsignacionCargoTests(TestCase):
         with self.assertRaises(ValidationError) as exc:
             asignacion.full_clean()
 
-        self.assertIn("carrera", exc.exception.message_dict)
+        self.assertIn("unidad_organizacional", exc.exception.message_dict)
 
-    def test_jefatura_pedagogica_exige_carrera(self):
+        subseccion_sin_carrera = UnidadOrganizacional.objects.create(
+            clave="SUB_ACAD_SIN_CARR",
+            nombre="Subsección académica sin carrera",
+            tipo_unidad=UnidadOrganizacional.TIPO_SUBSECCION,
+            padre=self.seccion_academica,
+        )
+        asignacion.unidad_organizacional = subseccion_sin_carrera
+
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
+
+        self.assertIn("unidad_organizacional", exc.exception.message_dict)
+
+    def test_jefe_pedagogica_es_cargo_de_seccion_sin_carrera(self):
         asignacion = AsignacionCargo(
             usuario=self.usuario,
+            unidad_organizacional=self.seccion_pedagogica,
             cargo_codigo=AsignacionCargo.CARGO_JEFE_PEDAGOGICA,
-            tipo_designacion=AsignacionCargo.DESIGNACION_ACCIDENTAL,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+
+        asignacion.full_clean()
+
+        asignacion.carrera = self.carrera_icis
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
+        self.assertIn("carrera", exc.exception.message_dict)
+
+    def test_jefe_academico_requiere_seccion_academica(self):
+        asignacion = AsignacionCargo(
+            usuario=self.usuario,
+            unidad_organizacional=self.seccion_pedagogica,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_ACADEMICO,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
+
+        self.assertIn("unidad_organizacional", exc.exception.message_dict)
+
+        asignacion.unidad_organizacional = self.seccion_academica
+        asignacion.full_clean()
+
+    def test_jefe_subseccion_pedagogica_requiere_subseccion_de_pedagogica_con_carrera(self):
+        asignacion = AsignacionCargo(
+            usuario=self.usuario,
+            unidad_organizacional=self.subseccion_academica_icis,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_SUBSECCION_PEDAGOGICA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
+
+        self.assertIn("unidad_organizacional", exc.exception.message_dict)
+
+        asignacion.unidad_organizacional = self.subseccion_pedagogica_icis
+        asignacion.full_clean()
+
+    def test_carrera_de_asignacion_debe_coincidir_con_unidad(self):
+        asignacion = AsignacionCargo(
+            usuario=self.usuario,
+            carrera=self.carrera_ices,
+            unidad_organizacional=self.subseccion_academica_icis,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_CARRERA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
         )
 
         with self.assertRaises(ValidationError) as exc:
@@ -189,11 +421,92 @@ class VigenciaAsignacionCargoTests(TestCase):
 
         self.assertIn("carrera", exc.exception.message_dict)
 
+    def test_discente_no_puede_recibir_cargos_institucionales(self):
+        usuario_discente = Usuario.objects.create_user(username="discente_cargo", password="segura123")
+        usuario_discente.groups.add(self.grupo_discente)
+        asignacion = AsignacionCargo(
+            usuario=usuario_discente,
+            unidad_organizacional=self.seccion_pedagogica,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_PEDAGOGICA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
+
+        self.assertIn("usuario", exc.exception.message_dict)
+
+    def test_docente_requiere_grupo_docente(self):
+        usuario_sin_docente = Usuario.objects.create_user(
+            username="sin_rol_docente",
+            password="segura123",
+        )
+        usuario_sin_docente.groups.add(self.grupo_jefe_carrera)
+        asignacion = AsignacionCargo(
+            usuario=usuario_sin_docente,
+            cargo_codigo=AsignacionCargo.CARGO_DOCENTE,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
+
+        self.assertIn("usuario", exc.exception.message_dict)
+
+        usuario_sin_docente.groups.add(self.grupo_docente)
+        asignacion.full_clean()
+
+    def test_jefaturas_requieren_grupo_compatible(self):
+        usuario_docente = Usuario.objects.create_user(username="docente_no_jefe", password="segura123")
+        usuario_docente.groups.add(self.grupo_docente)
+        asignacion = AsignacionCargo(
+            usuario=usuario_docente,
+            unidad_organizacional=self.seccion_academica,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_ACADEMICO,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
+
+        self.assertIn("usuario", exc.exception.message_dict)
+
+        usuario_docente.groups.add(self.grupo_jefatura_academica)
+        asignacion.full_clean()
+
+    def test_jefe_subseccion_pedagogica_acepta_temporalmente_grupo_jefe_pedagogica(self):
+        usuario_jefe_pedagogica = Usuario.objects.create_user(
+            username="jefe_sub_ped",
+            password="segura123",
+        )
+        usuario_jefe_pedagogica.groups.add(self.grupo_jefe_pedagogica)
+        asignacion = AsignacionCargo(
+            usuario=usuario_jefe_pedagogica,
+            unidad_organizacional=self.subseccion_pedagogica_icis,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_SUBSECCION_PEDAGOGICA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+
+        asignacion.full_clean()
+
+    def test_jefe_carrera_acepta_alias_jefatura_carrera(self):
+        usuario_jefatura = Usuario.objects.create_user(username="jefatura_carrera", password="segura123")
+        usuario_jefatura.groups.add(self.grupo_jefatura_carrera)
+        asignacion = AsignacionCargo(
+            usuario=usuario_jefatura,
+            carrera=self.carrera_icis,
+            unidad_organizacional=self.subseccion_academica_icis,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_CARRERA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+
+        asignacion.full_clean()
+
     def test_cargo_global_no_permite_carrera(self):
         asignacion = AsignacionCargo(
             usuario=self.usuario,
             carrera=self.carrera_icis,
-            cargo_codigo=AsignacionCargo.CARGO_JEFE_ACADEMICO,
+            cargo_codigo=AsignacionCargo.CARGO_DOCENTE,
             tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
         )
 
@@ -206,6 +519,7 @@ class VigenciaAsignacionCargoTests(TestCase):
         asignacion = AsignacionCargo.objects.create(
             usuario=self.usuario,
             carrera=self.carrera_icis,
+            unidad_organizacional=self.subseccion_academica_icis,
             cargo_codigo=AsignacionCargo.CARGO_JEFE_CARRERA,
             tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
         )
@@ -214,6 +528,109 @@ class VigenciaAsignacionCargoTests(TestCase):
             asignacion.cargo_descripcion(),
             f"Jefe de carrera de {self.carrera_icis}",
         )
+
+    def test_no_permite_dos_titulares_activos_traslapados_mismo_cargo_unidad(self):
+        AsignacionCargo.objects.create(
+            usuario=self.usuario,
+            unidad_organizacional=self.seccion_academica,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_ACADEMICO,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+            vigente_desde=date(2026, 1, 1),
+        )
+        otro_usuario = Usuario.objects.create_user(username="otro_titular", password="segura123")
+        asignacion = AsignacionCargo(
+            usuario=otro_usuario,
+            unidad_organizacional=self.seccion_academica,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_ACADEMICO,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+            vigente_desde=date(2026, 6, 1),
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
+
+        self.assertIn("tipo_designacion", exc.exception.message_dict)
+
+    def test_permite_titular_y_accidental_mismo_cargo_unidad(self):
+        AsignacionCargo.objects.create(
+            usuario=self.usuario,
+            unidad_organizacional=self.seccion_pedagogica,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_PEDAGOGICA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+            vigente_desde=date(2026, 1, 1),
+        )
+        otro_usuario = Usuario.objects.create_user(username="jefe_accidental", password="segura123")
+        otro_usuario.groups.add(self.grupo_jefe_pedagogica)
+        asignacion = AsignacionCargo(
+            usuario=otro_usuario,
+            unidad_organizacional=self.seccion_pedagogica,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_PEDAGOGICA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_ACCIDENTAL,
+            vigente_desde=date(2026, 3, 1),
+            vigente_hasta=date(2026, 3, 31),
+        )
+
+        asignacion.full_clean()
+
+    def test_accidental_exige_vigente_hasta(self):
+        asignacion = AsignacionCargo(
+            usuario=self.usuario,
+            unidad_organizacional=self.seccion_pedagogica,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_PEDAGOGICA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_ACCIDENTAL,
+            vigente_desde=date(2026, 3, 1),
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
+
+        self.assertIn("vigente_hasta", exc.exception.message_dict)
+
+    def test_no_permite_accidentales_traslapados_mismo_cargo_unidad(self):
+        AsignacionCargo.objects.create(
+            usuario=self.usuario,
+            unidad_organizacional=self.seccion_pedagogica,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_PEDAGOGICA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_ACCIDENTAL,
+            vigente_desde=date(2026, 3, 1),
+            vigente_hasta=date(2026, 3, 31),
+        )
+        otro_usuario = Usuario.objects.create_user(username="otro_accidental", password="segura123")
+        asignacion = AsignacionCargo(
+            usuario=otro_usuario,
+            unidad_organizacional=self.seccion_pedagogica,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_PEDAGOGICA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_ACCIDENTAL,
+            vigente_desde=date(2026, 3, 15),
+            vigente_hasta=date(2026, 4, 15),
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
+
+        self.assertIn("tipo_designacion", exc.exception.message_dict)
+
+    def test_permite_accidentales_no_traslapados_mismo_cargo_unidad(self):
+        AsignacionCargo.objects.create(
+            usuario=self.usuario,
+            unidad_organizacional=self.seccion_pedagogica,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_PEDAGOGICA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_ACCIDENTAL,
+            vigente_desde=date(2026, 3, 1),
+            vigente_hasta=date(2026, 3, 31),
+        )
+        otro_usuario = Usuario.objects.create_user(username="accidental_posterior", password="segura123")
+        otro_usuario.groups.add(self.grupo_jefe_pedagogica)
+        asignacion = AsignacionCargo(
+            usuario=otro_usuario,
+            unidad_organizacional=self.seccion_pedagogica,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_PEDAGOGICA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_ACCIDENTAL,
+            vigente_desde=date(2026, 4, 1),
+            vigente_hasta=date(2026, 4, 30),
+        )
+
+        asignacion.full_clean()
 
     def test_tipo_designacion_solo_permite_titular_y_accidental(self):
         choices = [codigo for codigo, _ in AsignacionCargo.TIPO_DESIGNACION_CHOICES]
@@ -225,6 +642,66 @@ class VigenciaAsignacionCargoTests(TestCase):
                 AsignacionCargo.DESIGNACION_ACCIDENTAL,
             ],
         )
+
+
+class SeedUnidadesOrganizacionalesCommandTests(TestCase):
+    def setUp(self):
+        self.carrera_activa = Carrera.objects.create(
+            clave="ICIS",
+            nombre="Ingenieros en Comunicaciones e Informática",
+        )
+        self.carrera_inactiva = Carrera.objects.create(
+            clave="INACT",
+            nombre="Carrera inactiva",
+            estado=ESTADO_INACTIVO,
+        )
+
+    def test_comando_crea_unidades_base_para_carreras_activas(self):
+        salida = StringIO()
+
+        call_command("seed_unidades_organizacionales", stdout=salida)
+
+        seccion_pedagogica = UnidadOrganizacional.objects.get(
+            clave=UnidadOrganizacional.CLAVE_SECCION_PEDAGOGICA
+        )
+        seccion_academica = UnidadOrganizacional.objects.get(
+            clave=UnidadOrganizacional.CLAVE_SECCION_ACADEMICA
+        )
+        subseccion_pedagogica = UnidadOrganizacional.objects.get(
+            clave="SUB_PLAN_EVAL_ICIS"
+        )
+        subseccion_academica = UnidadOrganizacional.objects.get(
+            clave="SUB_EJEC_CTRL_ICIS"
+        )
+
+        self.assertEqual(seccion_pedagogica.tipo_unidad, UnidadOrganizacional.TIPO_SECCION)
+        self.assertIsNone(seccion_pedagogica.padre)
+        self.assertIsNone(seccion_pedagogica.carrera)
+        self.assertEqual(seccion_academica.tipo_unidad, UnidadOrganizacional.TIPO_SECCION)
+        self.assertIsNone(seccion_academica.padre)
+        self.assertIsNone(seccion_academica.carrera)
+
+        self.assertEqual(subseccion_pedagogica.tipo_unidad, UnidadOrganizacional.TIPO_SUBSECCION)
+        self.assertEqual(subseccion_pedagogica.padre, seccion_pedagogica)
+        self.assertEqual(subseccion_pedagogica.carrera, self.carrera_activa)
+        self.assertEqual(subseccion_academica.tipo_unidad, UnidadOrganizacional.TIPO_SUBSECCION)
+        self.assertEqual(subseccion_academica.padre, seccion_academica)
+        self.assertEqual(subseccion_academica.carrera, self.carrera_activa)
+
+        self.assertFalse(
+            UnidadOrganizacional.objects.filter(clave="SUB_PLAN_EVAL_INACT").exists()
+        )
+        self.assertFalse(
+            UnidadOrganizacional.objects.filter(clave="SUB_EJEC_CTRL_INACT").exists()
+        )
+
+    def test_comando_es_idempotente_y_no_duplica_unidades(self):
+        call_command("seed_unidades_organizacionales", stdout=StringIO())
+        total_inicial = UnidadOrganizacional.objects.count()
+
+        call_command("seed_unidades_organizacionales", stdout=StringIO())
+
+        self.assertEqual(UnidadOrganizacional.objects.count(), total_inicial)
 
 
 class UsuarioUltimoAccesoTests(TestCase):

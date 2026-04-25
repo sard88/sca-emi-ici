@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.utils.html import format_html, format_html_join
 
 from .forms import UsuarioAdminCreationForm, UsuarioAdminForm
-from .models import AsignacionCargo, Usuario
+from .models import AsignacionCargo, UnidadOrganizacional, Usuario
 
 
 @admin.register(Usuario)
@@ -131,12 +131,37 @@ class UsuarioAdmin(UserAdmin):
         return format_html_join("", "{}", ((bloque,) for bloque in bloques))
 
 
+@admin.register(UnidadOrganizacional)
+class UnidadOrganizacionalAdmin(admin.ModelAdmin):
+    list_display = (
+        "clave",
+        "nombre",
+        "tipo_unidad",
+        "padre",
+        "carrera",
+        "activo",
+        "orden",
+    )
+    list_filter = ("tipo_unidad", "activo", "carrera")
+    search_fields = ("clave", "nombre", "padre__nombre", "carrera__clave", "carrera__nombre")
+    ordering = ("orden", "tipo_unidad", "nombre")
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "padre":
+            kwargs["label"] = "Depende de (Sección)"
+            kwargs["queryset"] = UnidadOrganizacional.objects.filter(
+                tipo_unidad=UnidadOrganizacional.TIPO_SECCION
+            ).order_by("orden", "nombre")
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
 @admin.register(AsignacionCargo)
 class AsignacionCargoAdmin(admin.ModelAdmin):
     fields = (
         "usuario",
         "cargo_codigo",
         "carrera",
+        "unidad_organizacional",
         "tipo_designacion",
         "vigente_desde",
         "vigente_hasta",
@@ -146,6 +171,7 @@ class AsignacionCargoAdmin(admin.ModelAdmin):
         "usuario",
         "cargo",
         "carrera",
+        "unidad_organizacional",
         "tipo_designacion",
         "vigente_desde",
         "vigente_hasta",
@@ -158,8 +184,24 @@ class AsignacionCargoAdmin(admin.ModelAdmin):
         "cargo_codigo",
         "carrera__clave",
         "carrera__nombre",
+        "unidad_organizacional__clave",
+        "unidad_organizacional__nombre",
     )
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        formfield = super().formfield_for_foreignkey(db_field, request, **kwargs)
+        if db_field.name == "unidad_organizacional":
+            formfield.label_from_instance = self.unidad_organizacional_label
+        return formfield
 
     @admin.display(description="Cargo", ordering="cargo_codigo")
     def cargo(self, obj):
         return obj.cargo_descripcion()
+
+    def unidad_organizacional_label(self, obj):
+        if obj.tipo_unidad == UnidadOrganizacional.TIPO_SUBSECCION and obj.padre_id:
+            return f"{obj.padre.nombre} -> {obj.nombre}"
+        return obj.nombre
+
+    class Media:
+        js = ("usuarios/admin/asignacion_cargo.js",)

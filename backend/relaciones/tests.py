@@ -15,7 +15,7 @@ from catalogos.models import (
     PlanEstudios,
     ProgramaAsignatura,
 )
-from usuarios.models import AsignacionCargo, Usuario
+from usuarios.models import AsignacionCargo, UnidadOrganizacional, Usuario
 
 from .forms import InscripcionMateriaForm
 from .models import (
@@ -40,6 +40,18 @@ class RelacionesBaseTestCase(TestCase):
         self.carrera = Carrera.objects.create(
             clave="REL_ICI",
             nombre="Ingenieria en Computacion",
+        )
+        self.seccion_academica = UnidadOrganizacional.objects.create(
+            clave=UnidadOrganizacional.CLAVE_SECCION_ACADEMICA,
+            nombre="Sección Académica",
+            tipo_unidad=UnidadOrganizacional.TIPO_SECCION,
+        )
+        self.subseccion_academica = UnidadOrganizacional.objects.create(
+            clave="REL_SUB_ACAD",
+            nombre="Subsección de Ejecución y Control",
+            tipo_unidad=UnidadOrganizacional.TIPO_SUBSECCION,
+            padre=self.seccion_academica,
+            carrera=self.carrera,
         )
         self.plan = PlanEstudios.objects.create(
             carrera=self.carrera,
@@ -366,10 +378,12 @@ class RelacionesPermisosViewTests(RelacionesBaseTestCase):
             username="cargo_jefatura_carrera",
             password="segura123",
         )
+        usuario.groups.add(self.grupo_jefatura_carrera)
         AsignacionCargo.objects.create(
             usuario=usuario,
             cargo_codigo=AsignacionCargo.CARGO_JEFE_CARRERA,
             carrera=self.carrera,
+            unidad_organizacional=self.subseccion_academica,
             tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
             activo=True,
         )
