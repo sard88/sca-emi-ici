@@ -600,3 +600,56 @@ Se agrego un front temporal con Django templates para validar permisos, datos y 
 - Superusuario conserva acceso tecnico completo.
 
 Este frente es temporal y no reemplaza el frontend final del sistema.
+
+## Bloque 5 - Captura basica y calculo academico preliminar
+
+Se implementa la captura preliminar de calificaciones para validar el calculo academico antes de construir el flujo formal de actas.
+
+### Que se implemento
+
+- Modelo `CapturaCalificacionPreliminar` para registrar valores por `InscripcionMateria`, `ComponenteEvaluacion`, corte academico, usuario capturador y fecha de actualizacion.
+- Servicio `ServicioCalculoAcademico` para calcular resultado por corte, promedio de parciales, exencion preliminar, evaluacion final, resultado final preliminar y estado preliminar.
+- Sustitucion del componente de evaluacion final por promedio de parciales cuando la exencion preliminar aplica.
+- Vistas simples con Django templates para captura por corte y resumen de calculo por asignacion docente.
+- Registro tecnico de capturas preliminares en Django Admin.
+
+### Rutas nuevas
+
+- `GET/POST /evaluacion/docente/asignaciones/<id>/captura/<corte>/`
+- `GET /evaluacion/docente/asignaciones/<id>/resumen/`
+
+Desde `/validacion/docente/asignaciones/` se enlazan las acciones de captura y resumen.
+
+### Reglas principales
+
+- La escala valida de captura es 0.0 a 10.0.
+- Las materias pueden tener 1, 2 o 3 parciales.
+- Materias con 1 parcial no exentan examen final.
+- La exencion preliminar solo aplica si la materia la permite, tiene 2 o 3 parciales, el promedio de parciales es al menos 9.0 y existe componente de examen en el corte FINAL, mostrado al usuario como evaluacion final.
+- La formula preliminar usa los pesos configurados en `EsquemaEvaluacion`; por omision se conserva 45/55.
+- El resultado final preliminar se muestra redondeado a un decimal.
+
+### Fuera de este bloque
+
+No se crean ni actualizan todavia `Acta`, `DetalleActa`, calificaciones oficiales de acta, conformidad de discente, validacion de acta, extraordinarios, historial academico, kardex, reportes formales ni exportaciones PDF/Excel.
+
+Tampoco se actualizan automaticamente los campos oficiales de `InscripcionMateria`:
+
+- `calificacion_final`
+- `codigo_resultado_oficial`
+- `codigo_marca`
+- `cerrado_en`
+
+### Como probar
+
+1. Entrar como docente asignado.
+2. Abrir `Mis asignaciones`.
+3. Usar `Capturar` para registrar valores por corte.
+4. Usar `Resumen` para revisar promedio de parciales, exencion, evaluacion final, resultado final preliminar y estado preliminar.
+
+Validaciones recomendadas:
+
+```bash
+docker compose exec -T backend python manage.py check
+docker compose exec -T backend python manage.py test evaluacion
+```

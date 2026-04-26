@@ -7,6 +7,39 @@ from catalogos.models import Carrera
 from catalogos.validators import CLAVE_MAX_LENGTH, clave_format_validator
 
 
+class GradoEmpleo(models.Model):
+    TIPO_MILITAR_ACTIVO = "MILITAR_ACTIVO"
+    TIPO_MILITAR_RETIRADO = "MILITAR_RETIRADO"
+    TIPO_CIVIL = "CIVIL"
+    TIPO_OTRO = "OTRO"
+
+    TIPO_CHOICES = [
+        (TIPO_MILITAR_ACTIVO, "Militar activo"),
+        (TIPO_MILITAR_RETIRADO, "Militar retirado"),
+        (TIPO_CIVIL, "Civil"),
+        (TIPO_OTRO, "Otro"),
+    ]
+
+    clave = models.CharField(
+        max_length=CLAVE_MAX_LENGTH,
+        validators=[clave_format_validator],
+        unique=True,
+        verbose_name="Clave",
+    )
+    abreviatura = models.CharField(max_length=80, verbose_name="Abreviatura")
+    nombre = models.CharField(max_length=255, verbose_name="Nombre")
+    tipo = models.CharField(max_length=30, choices=TIPO_CHOICES, verbose_name="Tipo")
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+
+    class Meta:
+        ordering = ["tipo", "abreviatura", "nombre"]
+        verbose_name = "Grado/empleo"
+        verbose_name_plural = "Grados/empleos"
+
+    def __str__(self) -> str:
+        return self.abreviatura
+
+
 class Usuario(AbstractUser):
     ESTADO_ACTIVO = "activo"
     ESTADO_INACTIVO = "inactivo"
@@ -35,6 +68,14 @@ class Usuario(AbstractUser):
         default=ESTADO_ACTIVO,
     )
     nombre_completo = models.CharField(max_length=255, blank=True)
+    grado_empleo = models.ForeignKey(
+        GradoEmpleo,
+        on_delete=models.SET_NULL,
+        related_name="usuarios",
+        null=True,
+        blank=True,
+        verbose_name="Grado/empleo",
+    )
     correo = models.EmailField(blank=True)
     telefono = models.CharField(max_length=30, blank=True)
     ultimo_acceso = models.DateTimeField(
@@ -50,6 +91,16 @@ class Usuario(AbstractUser):
 
     def tiene_rol(self, nombre_rol: str) -> bool:
         return self.groups.filter(name=nombre_rol).exists()
+
+    @property
+    def nombre_visible(self) -> str:
+        return self.nombre_completo or self.username
+
+    @property
+    def nombre_institucional(self) -> str:
+        if self.grado_empleo_id and self.grado_empleo.abreviatura:
+            return f"{self.grado_empleo.abreviatura} {self.nombre_visible}".strip()
+        return self.nombre_visible
 
     def save(self, *args, **kwargs):
         if self.correo and not self.email:

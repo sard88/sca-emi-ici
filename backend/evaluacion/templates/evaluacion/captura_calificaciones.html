@@ -1,0 +1,117 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Captura preliminar de calificaciones{% endblock %}
+{% block heading %}Captura preliminar de calificaciones{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h2>{{ asignacion.programa_asignatura }} - {{ asignacion.programa_asignatura.materia.nombre }}</h2>
+    <p>Grupo: {{ asignacion.grupo_academico.clave_grupo }}</p>
+    <p>Periodo académico: {{ asignacion.periodo }}</p>
+    {% if esquema %}
+      <p>Esquema de evaluación: {{ esquema.version }} · {{ esquema.get_num_parciales_display }}</p>
+    {% endif %}
+    <p class="muted">
+      Esta captura es preliminar. No genera acta ni actualiza calificaciones oficiales.
+    </p>
+    <div class="actions">
+      <a class="button secondary" href="{% url 'usuarios:docente-asignaciones' %}">Mis asignaciones</a>
+      <a class="button secondary" href="{% url 'evaluacion:resumen-calculo' asignacion.pk %}">Resumen de cálculo</a>
+    </div>
+  </section>
+
+  {% if errores_calculo %}
+    <section class="panel">
+      <h2>Validaciones pendientes</h2>
+      {% for error in errores_calculo %}
+        <p>{{ error }}</p>
+      {% endfor %}
+    </section>
+  {% else %}
+    <section class="panel">
+      <h2>Corte académico</h2>
+      <div class="actions">
+        {% for corte in cortes %}
+          <a
+            class="button {% if corte != corte_actual %}secondary{% endif %}"
+            href="{% url 'evaluacion:captura-calificaciones' asignacion.pk corte %}"
+          >
+            {% if corte == "FINAL" %}Evaluación final{% else %}{{ corte }}{% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+
+    <form method="post">
+      {% csrf_token %}
+      <section class="panel">
+        <h2>
+          Capturar {% if corte_actual == "FINAL" %}Evaluación final{% else %}corte {{ corte_actual }}{% endif %}
+        </h2>
+        {{ form.non_field_errors }}
+        <table>
+          <thead>
+            <tr>
+              <th>Grado y empleo</th>
+              <th>Nombre</th>
+              {% for componente in componentes %}
+                <th>{{ componente.nombre }}<br><span class="muted">{{ componente.porcentaje }}%</span></th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for fila in captura_filas %}
+              <tr>
+                <td>{{ fila.inscripcion.discente.usuario.grado_empleo.abreviatura|default:"-" }}</td>
+                <td>{{ fila.inscripcion.discente.usuario.nombre_visible }}</td>
+                {% for campo in fila.campos %}
+                  <td>
+                    {{ campo }}
+                    {{ campo.errors }}
+                  </td>
+                {% endfor %}
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="{{ componentes|length|add:2 }}">No hay discentes inscritos.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div class="actions" style="margin-top: 14px;">
+          <button type="submit">Guardar captura preliminar</button>
+        </div>
+      </section>
+    </form>
+
+    <section class="panel">
+      <h2>Resultado calculado por corte</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Grado y empleo</th>
+            <th>Nombre</th>
+            <th>
+              Resultado {% if corte_actual == "FINAL" %}Evaluación final{% else %}corte {{ corte_actual }}{% endif %}
+            </th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for resultado in resultados_corte %}
+            <tr>
+              <td>{{ resultado.inscripcion.discente.usuario.grado_empleo.abreviatura|default:"-" }}</td>
+              <td>{{ resultado.inscripcion.discente.usuario.nombre_visible }}</td>
+              <td>{{ resultado.corte.resultado_visual|default_if_none:"Pendiente" }}</td>
+              <td>{% if resultado.corte.completo %}Completo{% else %}Incompleto{% endif %}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="4">No hay resultados para mostrar.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% endif %}
+{% endblock %}

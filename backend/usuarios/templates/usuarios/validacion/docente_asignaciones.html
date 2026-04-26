@@ -5,7 +5,9 @@
 
 {% block content %}
   <section class="panel">
-    <p class="muted">La captura de calificaciones estará disponible en Bloque 5.</p>
+    <p class="muted">
+      Captura preliminar de calificaciones para validar el cálculo académico antes del flujo formal de actas.
+    </p>
     <table>
       <thead>
         <tr>
@@ -14,6 +16,7 @@
           <th>Año de formación</th>
           <th>Periodo académico</th>
           <th>Discentes</th>
+          <th>Calificaciones</th>
         </tr>
       </thead>
       <tbody>
@@ -28,10 +31,19 @@
                 Ver discentes
               </a>
             </td>
+            <td>
+              <a href="{% url 'evaluacion:captura-calificaciones' asignacion.pk 'P1' %}">
+                Capturar
+              </a>
+              ·
+              <a href="{% url 'evaluacion:resumen-calculo' asignacion.pk %}">
+                Resumen
+              </a>
+            </td>
           </tr>
         {% empty %}
           <tr>
-            <td colspan="5">Sin asignaciones docentes activas.</td>
+            <td colspan="6">Sin asignaciones docentes activas.</td>
           </tr>
         {% endfor %}
       </tbody>

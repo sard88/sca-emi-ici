@@ -1,6 +1,8 @@
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Sum
 
@@ -212,3 +214,90 @@ class ComponenteEvaluacion(models.Model):
 
     def __str__(self):
         return f"{self.esquema} - {self.corte_codigo} - {self.nombre}"
+
+
+class CapturaCalificacionPreliminar(models.Model):
+    inscripcion_materia = models.ForeignKey(
+        "relaciones.InscripcionMateria",
+        on_delete=models.PROTECT,
+        related_name="capturas_preliminares",
+        verbose_name="Inscripción a asignatura",
+    )
+    componente = models.ForeignKey(
+        ComponenteEvaluacion,
+        on_delete=models.PROTECT,
+        related_name="capturas_preliminares",
+        verbose_name="Componente de evaluación",
+    )
+    corte_codigo = models.CharField(
+        max_length=10,
+        choices=ComponenteEvaluacion.CORTE_CHOICES,
+        editable=False,
+        verbose_name="Corte académico",
+    )
+    valor = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        validators=[
+            MinValueValidator(Decimal("0.0"), message="La calificación mínima es 0.0."),
+            MaxValueValidator(Decimal("10.0"), message="La calificación máxima es 10.0."),
+        ],
+        verbose_name="Valor capturado",
+    )
+    capturado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="capturas_calificacion_preliminar",
+        verbose_name="Usuario que captura",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de captura")
+    actualizado_en = models.DateTimeField(auto_now=True, verbose_name="Última actualización")
+
+    class Meta:
+        ordering = [
+            "inscripcion_materia__discente__matricula",
+            "corte_codigo",
+            "componente__orden",
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["inscripcion_materia", "componente"],
+                name="uq_capturacalificacionpreliminar_inscripcion_componente",
+            )
+        ]
+        verbose_name = "Captura preliminar de calificación"
+        verbose_name_plural = "Capturas preliminares de calificaciones"
+
+    def clean(self):
+        errors = {}
+
+        if self.componente_id:
+            self.corte_codigo = self.componente.corte_codigo
+
+            if not self.componente.esquema.activo:
+                errors["componente"] = "Solo se puede capturar con un esquema de evaluación activo."
+
+        if self.valor is not None and (
+            self.valor < Decimal("0.0") or self.valor > Decimal("10.0")
+        ):
+            errors["valor"] = "La calificación debe estar entre 0.0 y 10.0."
+
+        if self.inscripcion_materia_id and self.componente_id:
+            programa_inscripcion_id = (
+                self.inscripcion_materia.asignacion_docente.programa_asignatura_id
+            )
+            programa_componente_id = self.componente.esquema.programa_asignatura_id
+            if programa_inscripcion_id != programa_componente_id:
+                errors["componente"] = (
+                    "El componente no pertenece al programa de asignatura de la inscripción."
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.inscripcion_materia} - {self.componente}: {self.valor}"

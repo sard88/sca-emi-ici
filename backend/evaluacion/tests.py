@@ -1,19 +1,39 @@
+from datetime import date
+from decimal import Decimal
+
 from django.forms.formsets import DELETION_FIELD_NAME
 from django.contrib import admin
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.forms import inlineformset_factory
 from django.test import TestCase
 from django.test.client import RequestFactory
 from django.core.exceptions import ValidationError
+from django.urls import reverse
 
-from catalogos.models import Carrera, Materia, PlanEstudios, ProgramaAsignatura
+from catalogos.models import (
+    Antiguedad,
+    Carrera,
+    GrupoAcademico,
+    Materia,
+    PeriodoEscolar,
+    PlanEstudios,
+    ProgramaAsignatura,
+)
 from evaluacion.admin import (
     ComponenteEvaluacionInline,
     ComponenteEvaluacionInlineFormSet,
     EsquemaEvaluacionAdmin,
 )
 from evaluacion.forms import EsquemaEvaluacionAdminForm
-from evaluacion.models import ComponenteEvaluacion, EsquemaEvaluacion
+from evaluacion.models import (
+    CapturaCalificacionPreliminar,
+    ComponenteEvaluacion,
+    EsquemaEvaluacion,
+)
+from evaluacion.services import ServicioCalculoAcademico, redondear_visualizacion_un_decimal
+from relaciones.models import AdscripcionGrupo, AsignacionDocente, Discente, InscripcionMateria
+from usuarios.models import GradoEmpleo
 
 
 class EsquemaEvaluacionTestCase(TestCase):
@@ -595,3 +615,310 @@ class ComponenteEvaluacionValidationTests(TestCase):
         self.assertTrue(inline.has_add_permission(self.request, self.esquema))
         self.assertTrue(inline.has_change_permission(self.request, self.esquema))
         self.assertTrue(inline.has_delete_permission(self.request, self.esquema))
+
+
+class CapturaCalificacionPreliminarBaseTests(TestCase):
+    def setUp(self):
+        self.grupo_docente, _ = Group.objects.get_or_create(name="DOCENTE")
+        self.grupo_discente, _ = Group.objects.get_or_create(name="DISCENTE")
+        self.carrera = Carrera.objects.create(clave="CAP_ICI", nombre="Carrera captura")
+        self.plan = PlanEstudios.objects.create(
+            carrera=self.carrera,
+            clave="CAP_PLAN",
+            nombre="Plan captura",
+        )
+        self.antiguedad = Antiguedad.objects.create(
+            plan_estudios=self.plan,
+            clave="CAP_ANT",
+            nombre="Antigüedad captura",
+            anio_inicio=2025,
+            anio_fin=2029,
+        )
+        self.periodo = PeriodoEscolar.objects.create(
+            clave="CAP_PER",
+            anio_escolar="2025-2026",
+            periodo_academico=1,
+            fecha_inicio=date(2025, 8, 1),
+            fecha_fin=date(2026, 1, 31),
+        )
+        self.grupo = GrupoAcademico.objects.create(
+            clave_grupo="CAP_G1",
+            antiguedad=self.antiguedad,
+            periodo=self.periodo,
+            semestre_numero=1,
+        )
+        self.materia = Materia.objects.create(
+            clave="CAP_MAT",
+            nombre="Materia captura",
+            horas_totales=64,
+        )
+        self.programa = ProgramaAsignatura.objects.create(
+            plan_estudios=self.plan,
+            materia=self.materia,
+            semestre_numero=1,
+        )
+        usuario_model = get_user_model()
+        self.usuario_docente = usuario_model.objects.create_user(
+            username="docente_cap",
+            password="segura123",
+        )
+        self.usuario_docente.groups.add(self.grupo_docente)
+        self.otro_docente = usuario_model.objects.create_user(
+            username="otro_docente_cap",
+            password="segura123",
+        )
+        self.otro_docente.groups.add(self.grupo_docente)
+        self.usuario_discente = usuario_model.objects.create_user(
+            username="discente_cap",
+            password="segura123",
+        )
+        self.usuario_discente.groups.add(self.grupo_discente)
+        self.discente = Discente.objects.create(
+            usuario=self.usuario_discente,
+            matricula="CAP0001",
+            plan_estudios=self.plan,
+            antiguedad=self.antiguedad,
+        )
+        AdscripcionGrupo.objects.create(
+            discente=self.discente,
+            grupo_academico=self.grupo,
+        )
+        self.asignacion = AsignacionDocente.objects.create(
+            usuario_docente=self.usuario_docente,
+            grupo_academico=self.grupo,
+            programa_asignatura=self.programa,
+        )
+        self.inscripcion = InscripcionMateria.objects.get(
+            discente=self.discente,
+            asignacion_docente=self.asignacion,
+        )
+        self.esquema = EsquemaEvaluacion.objects.create(
+            programa_asignatura=self.programa,
+            version="v-cap",
+            num_parciales=2,
+            permite_exencion=True,
+        )
+        self.componente_p1_tareas = ComponenteEvaluacion.objects.create(
+            esquema=self.esquema,
+            corte_codigo=ComponenteEvaluacion.CORTE_P1,
+            nombre="Tareas",
+            porcentaje=40,
+            orden=1,
+        )
+        self.componente_p1_examen = ComponenteEvaluacion.objects.create(
+            esquema=self.esquema,
+            corte_codigo=ComponenteEvaluacion.CORTE_P1,
+            nombre="Examen",
+            porcentaje=60,
+            orden=2,
+        )
+        self.componente_p2 = ComponenteEvaluacion.objects.create(
+            esquema=self.esquema,
+            corte_codigo=ComponenteEvaluacion.CORTE_P2,
+            nombre="Proyecto",
+            porcentaje=100,
+            orden=1,
+        )
+        self.componente_final = ComponenteEvaluacion.objects.create(
+            esquema=self.esquema,
+            corte_codigo=ComponenteEvaluacion.CORTE_FINAL,
+            nombre="Examen final",
+            porcentaje=100,
+            es_examen=True,
+            orden=1,
+        )
+
+    def capturar(self, componente, valor):
+        return CapturaCalificacionPreliminar.objects.create(
+            inscripcion_materia=self.inscripcion,
+            componente=componente,
+            valor=Decimal(str(valor)),
+            capturado_por=self.usuario_docente,
+        )
+
+    def capturar_parciales(self, p1_tareas="9.0", p1_examen="9.0", p2="9.0"):
+        self.capturar(self.componente_p1_tareas, p1_tareas)
+        self.capturar(self.componente_p1_examen, p1_examen)
+        self.capturar(self.componente_p2, p2)
+
+
+class CapturaCalificacionPreliminarTests(CapturaCalificacionPreliminarBaseTests):
+    def test_rechaza_calificaciones_fuera_de_escala(self):
+        for valor in (Decimal("-0.1"), Decimal("10.1")):
+            captura = CapturaCalificacionPreliminar(
+                inscripcion_materia=self.inscripcion,
+                componente=self.componente_p1_tareas,
+                valor=valor,
+                capturado_por=self.usuario_docente,
+            )
+
+            with self.assertRaises(ValidationError):
+                captura.full_clean()
+
+    def test_permite_guardar_valores_validos(self):
+        captura = self.capturar(self.componente_p1_tareas, "9.5")
+
+        self.assertEqual(captura.valor, Decimal("9.5"))
+        self.assertEqual(captura.corte_codigo, ComponenteEvaluacion.CORTE_P1)
+
+    def test_calcula_corte_con_componentes_ponderados(self):
+        self.capturar(self.componente_p1_tareas, "8.0")
+        self.capturar(self.componente_p1_examen, "10.0")
+
+        resultado = ServicioCalculoAcademico(self.inscripcion).calcular()
+
+        self.assertEqual(
+            resultado["cortes"][ComponenteEvaluacion.CORTE_P1]["resultado"],
+            Decimal("9.2"),
+        )
+
+    def test_no_redondea_resultados_intermedios_ni_promedio_para_exencion(self):
+        self.componente_p1_tareas.porcentaje = Decimal("33.33")
+        self.componente_p1_tareas.save()
+        self.componente_p1_examen.porcentaje = Decimal("66.67")
+        self.componente_p1_examen.save()
+        self.capturar(self.componente_p1_tareas, "8.9")
+        self.capturar(self.componente_p1_examen, "9.0")
+        self.capturar(self.componente_p2, "9.0")
+        self.capturar(self.componente_final, "9.0")
+
+        resultado = ServicioCalculoAcademico(self.inscripcion).calcular()
+
+        self.assertEqual(
+            resultado["cortes"][ComponenteEvaluacion.CORTE_P1]["resultado"],
+            Decimal("8.96667"),
+        )
+        self.assertEqual(
+            resultado["cortes"][ComponenteEvaluacion.CORTE_P1]["resultado_visual"],
+            Decimal("9.0"),
+        )
+        self.assertEqual(resultado["promedio_parciales"], Decimal("8.983335"))
+        self.assertEqual(resultado["promedio_parciales_visual"], Decimal("9.0"))
+        self.assertFalse(resultado["exencion_aplica"])
+        self.assertEqual(resultado["resultado_final"], Decimal("9.0"))
+        self.assertEqual(resultado["resultado_final_visual"], Decimal("9.0"))
+        self.assertEqual(resultado["calificacion_final_preliminar"], Decimal("8.99250075"))
+        self.assertEqual(resultado["calificacion_final_preliminar_visual"], Decimal("9.0"))
+
+    def test_visualizacion_final_redondea_a_un_decimal_sin_banker_rounding(self):
+        self.assertEqual(redondear_visualizacion_un_decimal(Decimal("8.9999")), Decimal("9.0"))
+        self.assertEqual(redondear_visualizacion_un_decimal(Decimal("8.94")), Decimal("8.9"))
+        self.assertEqual(redondear_visualizacion_un_decimal(Decimal("8.95")), Decimal("9.0"))
+
+    def test_calcula_promedio_de_parciales(self):
+        self.capturar(self.componente_p1_tareas, "8.0")
+        self.capturar(self.componente_p1_examen, "10.0")
+        self.capturar(self.componente_p2, "8.8")
+
+        resultado = ServicioCalculoAcademico(self.inscripcion).calcular()
+
+        self.assertEqual(resultado["promedio_parciales"], Decimal("9.0"))
+
+    def test_impide_exencion_en_materia_de_un_parcial(self):
+        self.esquema.num_parciales = EsquemaEvaluacion.PARCIALES_1
+        self.esquema.permite_exencion = False
+        self.esquema.save()
+        self.capturar(self.componente_p1_tareas, "10.0")
+        self.capturar(self.componente_p1_examen, "10.0")
+        self.capturar(self.componente_final, "6.0")
+
+        resultado = ServicioCalculoAcademico(self.inscripcion).calcular()
+
+        self.assertFalse(resultado["exencion_aplica"])
+        self.assertEqual(resultado["resultado_final"], Decimal("6.0"))
+
+    def test_aplica_exencion_con_dos_parciales_y_promedio_mayor_o_igual_a_nueve(self):
+        self.capturar_parciales("9.0", "9.0", "9.0")
+
+        resultado = ServicioCalculoAcademico(self.inscripcion).calcular()
+
+        self.assertTrue(resultado["exencion_aplica"])
+        self.assertEqual(resultado["resultado_final"], Decimal("9.0"))
+        self.assertEqual(resultado["calificacion_final_preliminar"], Decimal("9.0"))
+
+    def test_respeta_pesos_configurados(self):
+        self.esquema.permite_exencion = False
+        self.esquema.peso_parciales = Decimal("50.00")
+        self.esquema.peso_final = Decimal("50.00")
+        self.esquema.save()
+        self.capturar_parciales("8.0", "8.0", "8.0")
+        self.capturar(self.componente_final, "10.0")
+
+        resultado = ServicioCalculoAcademico(self.inscripcion).calcular()
+
+        self.assertEqual(resultado["calificacion_final_preliminar"], Decimal("9.0"))
+
+    def test_docente_no_puede_capturar_asignacion_de_otro_docente(self):
+        self.client.force_login(self.otro_docente)
+        field_name = f"cal_{self.inscripcion.pk}_{self.componente_p1_tareas.pk}"
+
+        response = self.client.post(
+            reverse(
+                "evaluacion:captura-calificaciones",
+                args=[self.asignacion.pk, ComponenteEvaluacion.CORTE_P1],
+            ),
+            data={field_name: "9.0"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(CapturaCalificacionPreliminar.objects.exists())
+
+    def test_docente_asignado_puede_ver_pantalla_de_captura(self):
+        self.client.force_login(self.usuario_docente)
+
+        response = self.client.get(
+            reverse(
+                "evaluacion:captura-calificaciones",
+                args=[self.asignacion.pk, ComponenteEvaluacion.CORTE_P1],
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Captura preliminar")
+
+    def test_docente_asignado_puede_ver_resumen_de_calculo(self):
+        grado = GradoEmpleo.objects.create(
+            clave="CADETE",
+            abreviatura="Cadete",
+            nombre="Cadete",
+            tipo=GradoEmpleo.TIPO_MILITAR_ACTIVO,
+        )
+        self.usuario_discente.grado_empleo = grado
+        self.usuario_discente.nombre_completo = "Discente Captura"
+        self.usuario_discente.save()
+        self.client.force_login(self.usuario_docente)
+
+        response = self.client.get(
+            reverse("evaluacion:resumen-calculo", args=[self.asignacion.pk])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Resumen de cálculo")
+        self.assertContains(response, "Evaluación final")
+        self.assertContains(response, "Resultado final preliminar")
+        self.assertContains(response, "Estado preliminar")
+        self.assertContains(response, "Cadete")
+        self.assertContains(response, "Discente Captura")
+
+    def test_corte_final_se_muestra_como_evaluacion_final(self):
+        self.client.force_login(self.usuario_docente)
+
+        response = self.client.get(
+            reverse(
+                "evaluacion:captura-calificaciones",
+                args=[self.asignacion.pk, ComponenteEvaluacion.CORTE_FINAL],
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Evaluación final")
+
+    def test_no_actualiza_campos_oficiales_de_inscripcion_materia(self):
+        self.capturar_parciales("9.0", "9.0", "9.0")
+        ServicioCalculoAcademico(self.inscripcion).calcular()
+        self.inscripcion.refresh_from_db()
+
+        self.assertIsNone(self.inscripcion.calificacion_final)
+        self.assertIsNone(self.inscripcion.codigo_resultado_oficial)
+        self.assertIsNone(self.inscripcion.codigo_marca)
+        self.assertIsNone(self.inscripcion.cerrado_en)

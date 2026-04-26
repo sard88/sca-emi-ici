@@ -8,7 +8,17 @@
     <h2>{{ asignacion.programa_asignatura }} - {{ asignacion.programa_asignatura.materia.nombre }}</h2>
     <p>Grupo: {{ asignacion.grupo_academico.clave_grupo }}</p>
     <p>Periodo académico: {{ asignacion.periodo }}</p>
-    <p class="muted">La captura de calificaciones estará disponible en Bloque 5.</p>
+    <p class="muted">
+      Desde esta asignación puedes capturar calificaciones preliminares o revisar el resumen de cálculo.
+    </p>
+    <div class="actions">
+      <a class="button" href="{% url 'evaluacion:captura-calificaciones' asignacion.pk 'P1' %}">
+        Capturar calificaciones
+      </a>
+      <a class="button secondary" href="{% url 'evaluacion:resumen-calculo' asignacion.pk %}">
+        Resumen de cálculo
+      </a>
+    </div>
   </section>
 
   <section class="panel">
@@ -16,16 +26,16 @@
     <table>
       <thead>
         <tr>
-          <th>Matrícula</th>
-          <th>Discente</th>
+          <th>Grado y empleo</th>
+          <th>Nombre</th>
           <th>Estado</th>
         </tr>
       </thead>
       <tbody>
         {% for inscripcion in inscripciones %}
           <tr>
-            <td>{{ inscripcion.discente.matricula }}</td>
-            <td>{{ inscripcion.discente.usuario.nombre_completo|default:inscripcion.discente.usuario.username }}</td>
+            <td>{{ inscripcion.discente.usuario.grado_empleo.abreviatura|default:"-" }}</td>
+            <td>{{ inscripcion.discente.usuario.nombre_visible }}</td>
             <td>{{ inscripcion.get_estado_inscripcion_display }}</td>
           </tr>
         {% empty %}

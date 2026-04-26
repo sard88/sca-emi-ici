@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.forms import modelform_factory
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from catalogos.models import ESTADO_INACTIVO, Carrera
@@ -16,7 +17,7 @@ from relaciones.models import AdscripcionGrupo, AsignacionDocente, Discente, Ins
 
 from .admin import UsuarioAdmin
 from .forms import LoginFormulario, UsuarioAdminCreationForm, UsuarioAdminForm
-from .models import AsignacionCargo, UnidadOrganizacional, Usuario
+from .models import AsignacionCargo, GradoEmpleo, UnidadOrganizacional, Usuario
 from .signals import crear_roles_base
 
 
@@ -1071,6 +1072,58 @@ class UsuarioRolUnicoAdminTests(TestCase):
         self.assertIs(usuario_admin.add_form, UsuarioAdminCreationForm)
         self.assertIn("permisos_heredados_por_rol", usuario_admin.readonly_fields)
 
+    def test_usuario_con_grado_muestra_nombre_institucional(self):
+        grado = GradoEmpleo.objects.create(
+            clave="TTE_COR_ICI",
+            abreviatura="Tte. Cor. I.C.I.",
+            nombre="Teniente Coronel Ingeniero en Computación e Informática",
+            tipo=GradoEmpleo.TIPO_MILITAR_ACTIVO,
+        )
+        usuario = Usuario.objects.create_user(
+            username="usuario_grado",
+            password="segura123",
+            nombre_completo="Juan Pérez",
+            grado_empleo=grado,
+        )
+
+        self.assertEqual(usuario.nombre_institucional, "Tte. Cor. I.C.I. Juan Pérez")
+
+    def test_usuario_sin_grado_muestra_solo_nombre_visible(self):
+        usuario = Usuario.objects.create_user(
+            username="usuario_sin_grado",
+            password="segura123",
+            nombre_completo="Juan Pérez",
+        )
+
+        self.assertEqual(usuario.nombre_institucional, "Juan Pérez")
+
+    def test_admin_alta_usuario_no_incluye_usable_password(self):
+        usuario_admin = admin.site._registry[Usuario]
+        campos = [
+            field
+            for _name, opciones in usuario_admin.add_fieldsets
+            for field in opciones["fields"]
+        ]
+
+        self.assertNotIn("usable_password", campos)
+        self.assertIn("password1", campos)
+        self.assertIn("password2", campos)
+
+    def test_admin_popup_alta_usuario_renderiza_desde_discente(self):
+        admin_user = Usuario.objects.create_superuser(
+            username="admin_popup_usuario",
+            password="segura123XYZ",
+        )
+        self.client.force_login(admin_user)
+
+        response = self.client.get(
+            reverse("admin:usuarios_usuario_add"),
+            {"_to_field": "id", "_popup": "1"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Rol")
+
     def test_formulario_de_alta_exige_rol(self):
         form = UsuarioAdminCreationForm(
             data={
@@ -1096,6 +1149,7 @@ class UsuarioRolUnicoAdminTests(TestCase):
 
         self.assertEqual(form.fields["groups"].label, "Rol")
         self.assertFalse(form.fields["groups"].widget.allow_multiple_selected)
+        self.assertIn("grado_empleo", form.fields)
 
     def test_formulario_de_edicion_aclara_permisos_directos(self):
         form = UsuarioAdminForm()

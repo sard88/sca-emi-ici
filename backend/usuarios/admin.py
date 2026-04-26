@@ -3,16 +3,38 @@ from django.contrib.auth.admin import UserAdmin
 from django.utils.html import format_html, format_html_join
 
 from .forms import UsuarioAdminCreationForm, UsuarioAdminForm
-from .models import AsignacionCargo, UnidadOrganizacional, Usuario
+from .models import AsignacionCargo, GradoEmpleo, UnidadOrganizacional, Usuario
+
+
+@admin.register(GradoEmpleo)
+class GradoEmpleoAdmin(admin.ModelAdmin):
+    list_display = ("clave", "abreviatura", "nombre", "tipo", "activo")
+    list_filter = ("tipo", "activo")
+    search_fields = ("clave", "abreviatura", "nombre")
+    ordering = ("tipo", "abreviatura", "nombre")
 
 
 @admin.register(Usuario)
 class UsuarioAdmin(UserAdmin):
     form = UsuarioAdminForm
     add_form = UsuarioAdminCreationForm
-    list_display = ("username", "correo", "estado_cuenta", "is_staff", "is_active")
-    list_filter = ("estado_cuenta", "is_staff", "is_superuser", "is_active")
-    search_fields = ("username", "correo", "nombre_completo")
+    list_display = (
+        "username",
+        "grado_empleo",
+        "correo",
+        "estado_cuenta",
+        "is_staff",
+        "is_active",
+    )
+    list_filter = ("estado_cuenta", "grado_empleo", "is_staff", "is_superuser", "is_active")
+    search_fields = (
+        "username",
+        "correo",
+        "nombre_completo",
+        "grado_empleo__clave",
+        "grado_empleo__abreviatura",
+        "grado_empleo__nombre",
+    )
     readonly_fields = tuple(
         dict.fromkeys(
             (
@@ -31,6 +53,7 @@ class UsuarioAdmin(UserAdmin):
             {
                 "fields": (
                     "estado_cuenta",
+                    "grado_empleo",
                     "nombre_completo",
                     "correo",
                     "telefono",
@@ -49,12 +72,20 @@ class UsuarioAdmin(UserAdmin):
             },
         ),
     )
-    add_fieldsets = UserAdmin.add_fieldsets + (
+    add_fieldsets = (
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": ("username", "password1", "password2"),
+            },
+        ),
         (
             "Informacion adicional",
             {
                 "fields": (
                     "estado_cuenta",
+                    "grado_empleo",
                     "nombre_completo",
                     "correo",
                     "telefono",

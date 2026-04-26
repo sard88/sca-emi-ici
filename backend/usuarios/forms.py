@@ -1,8 +1,9 @@
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm, UserChangeForm, UserCreationForm
 from django.contrib.auth.models import Group
+from django.db.models import Q
 
-from .models import Usuario
+from .models import GradoEmpleo, Usuario
 
 
 def rol_field():
@@ -52,6 +53,19 @@ class UsuarioRolUnicoMixin:
         groups_field = self.fields["groups"]
         groups_field.queryset = Group.objects.order_by("name")
 
+        if "grado_empleo" in self.fields:
+            grado_queryset = GradoEmpleo.objects.filter(activo=True)
+            grado_actual_id = getattr(self.instance, "grado_empleo_id", None)
+            if grado_actual_id:
+                grado_queryset = GradoEmpleo.objects.filter(
+                    Q(activo=True) | Q(pk=grado_actual_id)
+                )
+            self.fields["grado_empleo"].queryset = grado_queryset.order_by(
+                "tipo",
+                "abreviatura",
+                "nombre",
+            )
+
         if "user_permissions" in self.fields:
             self.fields["user_permissions"].label = "Permisos directos adicionales"
             self.fields["user_permissions"].help_text = (
@@ -88,6 +102,7 @@ class UsuarioAdminCreationForm(UsuarioRolUnicoMixin, UserCreationForm):
         fields = (
             "username",
             "estado_cuenta",
+            "grado_empleo",
             "nombre_completo",
             "correo",
             "telefono",

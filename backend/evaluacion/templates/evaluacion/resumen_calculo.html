@@ -1,0 +1,76 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Resumen de cálculo{% endblock %}
+{% block heading %}Resumen de cálculo{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h2>{{ asignacion.programa_asignatura }} - {{ asignacion.programa_asignatura.materia.nombre }}</h2>
+    <p>Grupo: {{ asignacion.grupo_academico.clave_grupo }}</p>
+    <p>Periodo académico: {{ asignacion.periodo }}</p>
+    {% if esquema %}
+      <p>
+        Esquema de evaluación: {{ esquema.version }} ·
+        pesos {{ esquema.peso_parciales }} / {{ esquema.peso_final }}
+      </p>
+    {% endif %}
+    <p class="muted">
+      Resultado preliminar para validar el cálculo académico. No sustituye el flujo formal de actas.
+    </p>
+    <div class="actions">
+      <a class="button secondary" href="{% url 'usuarios:docente-asignaciones' %}">Mis asignaciones</a>
+      {% if esquema %}
+        <a class="button" href="{% url 'evaluacion:captura-calificaciones' asignacion.pk 'P1' %}">Capturar calificaciones</a>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if errores_calculo %}
+    <section class="panel">
+      <h2>Validaciones pendientes</h2>
+      {% for error in errores_calculo %}
+        <p>{{ error }}</p>
+      {% endfor %}
+    </section>
+  {% endif %}
+
+  <section class="panel">
+    <h2>Resumen por discente</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Grado y empleo</th>
+          <th>Nombre</th>
+          <th>P1</th>
+          <th>P2</th>
+          <th>P3</th>
+          <th>Promedio parciales</th>
+          <th>Exención</th>
+          <th>Evaluación final</th>
+          <th>Resultado final preliminar</th>
+          <th>Estado preliminar</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for resultado in resultados %}
+          <tr>
+            <td>{{ resultado.inscripcion.discente.usuario.grado_empleo.abreviatura|default:"-" }}</td>
+            <td>{{ resultado.inscripcion.discente.usuario.nombre_visible }}</td>
+            <td>{{ resultado.cortes.P1.resultado_visual|default_if_none:"Pendiente" }}</td>
+            <td>{{ resultado.cortes.P2.resultado_visual|default_if_none:"No aplica" }}</td>
+            <td>{{ resultado.cortes.P3.resultado_visual|default_if_none:"No aplica" }}</td>
+            <td>{{ resultado.promedio_parciales_visual|default_if_none:"Pendiente" }}</td>
+            <td>{% if resultado.exencion_aplica %}Sí{% else %}No{% endif %}</td>
+            <td>{{ resultado.resultado_final_visual|default_if_none:"Pendiente" }}</td>
+            <td>{{ resultado.calificacion_final_preliminar_visual|default_if_none:"Pendiente" }}</td>
+            <td>{{ resultado.resultado_preliminar }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="10">No hay discentes inscritos para esta asignación.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

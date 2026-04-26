@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.forms.models import BaseInlineFormSet
 
 from .forms import EsquemaEvaluacionAdminForm
-from .models import ComponenteEvaluacion, EsquemaEvaluacion
+from .models import CapturaCalificacionPreliminar, ComponenteEvaluacion, EsquemaEvaluacion
 
 
 class ComponenteEvaluacionInlineFormSet(BaseInlineFormSet):
@@ -136,3 +136,48 @@ class EsquemaEvaluacionAdmin(admin.ModelAdmin):
 
     class Media:
         js = ("evaluacion/admin/esquema_evaluacion.js",)
+
+
+@admin.register(CapturaCalificacionPreliminar)
+class CapturaCalificacionPreliminarAdmin(admin.ModelAdmin):
+    readonly_fields = ("corte_codigo", "creado_en", "actualizado_en")
+    list_display = (
+        "inscripcion_materia",
+        "componente",
+        "corte_codigo",
+        "valor",
+        "capturado_por",
+        "actualizado_en",
+    )
+    list_filter = (
+        "corte_codigo",
+        "componente__esquema",
+        "inscripcion_materia__asignacion_docente__grupo_academico__periodo",
+    )
+    search_fields = (
+        "inscripcion_materia__discente__matricula",
+        "inscripcion_materia__discente__usuario__username",
+        "inscripcion_materia__discente__usuario__nombre_completo",
+        "componente__nombre",
+        "capturado_por__username",
+    )
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .select_related(
+                "inscripcion_materia",
+                "inscripcion_materia__discente",
+                "inscripcion_materia__discente__usuario",
+                "inscripcion_materia__asignacion_docente",
+                "componente",
+                "componente__esquema",
+                "capturado_por",
+            )
+        )
+
+    def save_model(self, request, obj, form, change):
+        if not obj.capturado_por_id:
+            obj.capturado_por = request.user
+        super().save_model(request, obj, form, change)
