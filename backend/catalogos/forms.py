@@ -137,6 +137,10 @@ class ProgramaAsignaturaAdminForm(forms.ModelForm):
         self.initial["obligatoria"] = True
         self.fields["obligatoria"].initial = True
         self.fields["anio_formacion"].initial = self._build_anio_formacion_initial()
+        self.fields["semestre_numero"].help_text = (
+            "Para materias normales, este es el semestre en que se cursa. "
+            "Si activas ubicación excepcional, se conserva como semestre de referencia."
+        )
 
     def _build_anio_formacion_initial(self):
         semestre = self.data.get("semestre_numero") if self.is_bound else self.instance.semestre_numero

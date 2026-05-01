@@ -14,6 +14,7 @@ from catalogos.models import (
     PeriodoEscolar,
     PlanEstudios,
     ProgramaAsignatura,
+    ProgramaAsignaturaUbicacion,
 )
 from usuarios.models import AsignacionCargo, UnidadOrganizacional, Usuario
 
@@ -235,6 +236,84 @@ class RelacionesModeloTests(RelacionesBaseTestCase):
 
         with self.assertRaises(ValidationError) as exc:
             duplicada.full_clean()
+
+        self.assertIn("programa_asignatura", exc.exception.message_dict)
+
+    def test_asignacion_docente_normal_rechaza_semestre_distinto_al_grupo(self):
+        grupo_segundo = GrupoAcademico.objects.create(
+            clave_grupo="REL_G3",
+            antiguedad=self.antiguedad,
+            periodo=self.periodo,
+            semestre_numero=2,
+        )
+        asignacion = AsignacionDocente(
+            usuario_docente=self.crear_usuario_docente("docente_rel_3"),
+            grupo_academico=grupo_segundo,
+            programa_asignatura=self.programa,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
+
+        self.assertIn("programa_asignatura", exc.exception.message_dict)
+
+    def test_asignacion_docente_excepcional_permite_ubicacion_activa(self):
+        grupo_segundo = GrupoAcademico.objects.create(
+            clave_grupo="REL_G4",
+            antiguedad=self.antiguedad,
+            periodo=self.periodo,
+            semestre_numero=2,
+        )
+        materia = Materia.objects.create(
+            clave="REL_MAT_EXC",
+            nombre="Materia excepcional",
+            horas_totales=64,
+        )
+        programa = ProgramaAsignatura.objects.create(
+            plan_estudios=self.plan,
+            materia=materia,
+            semestre_numero=1,
+            ubicacion_excepcional=True,
+        )
+        ProgramaAsignaturaUbicacion.objects.create(
+            programa_asignatura=programa,
+            antiguedad=self.antiguedad,
+            semestre_numero=2,
+        )
+        asignacion = AsignacionDocente(
+            usuario_docente=self.crear_usuario_docente("docente_rel_4"),
+            grupo_academico=grupo_segundo,
+            programa_asignatura=programa,
+        )
+
+        asignacion.full_clean()
+
+    def test_asignacion_docente_excepcional_rechaza_si_no_hay_ubicacion_activa(self):
+        grupo_segundo = GrupoAcademico.objects.create(
+            clave_grupo="REL_G5",
+            antiguedad=self.antiguedad,
+            periodo=self.periodo,
+            semestre_numero=2,
+        )
+        materia = Materia.objects.create(
+            clave="REL_MAT_NOEX",
+            nombre="Materia excepcional sin ubicacion",
+            horas_totales=64,
+        )
+        programa = ProgramaAsignatura.objects.create(
+            plan_estudios=self.plan,
+            materia=materia,
+            semestre_numero=1,
+            ubicacion_excepcional=True,
+        )
+        asignacion = AsignacionDocente(
+            usuario_docente=self.crear_usuario_docente("docente_rel_5"),
+            grupo_academico=grupo_segundo,
+            programa_asignatura=programa,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
 
         self.assertIn("programa_asignatura", exc.exception.message_dict)
 

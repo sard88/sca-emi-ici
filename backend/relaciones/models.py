@@ -295,17 +295,16 @@ class AsignacionDocente(models.Model):
                 errors["programa_asignatura"] = (
                     "El programa de asignatura debe pertenecer al plan del grupo."
                 )
-            elif self.programa_asignatura.semestre_numero != self.grupo_academico.semestre_numero:
-                errors["programa_asignatura"] = (
-                    "El semestre del programa debe coincidir con el semestre del grupo."
-                )
-            elif (
-                self.programa_asignatura.anio_formacion
-                != ProgramaAsignatura.calculate_anio_formacion(self.grupo_academico.semestre_numero)
-            ):
-                errors["programa_asignatura"] = (
-                    "El año de formación del programa debe corresponder al semestre del grupo."
-                )
+            elif not self.programa_asignatura.aplica_para_grupo(self.grupo_academico):
+                if self.programa_asignatura.ubicacion_excepcional:
+                    errors["programa_asignatura"] = (
+                        "No existe una ubicación excepcional activa para la antigüedad "
+                        "y semestre del grupo."
+                    )
+                else:
+                    errors["programa_asignatura"] = (
+                        "El semestre del programa debe coincidir con el semestre del grupo."
+                    )
 
         if self.vigente_hasta and self.vigente_desde and self.vigente_hasta < self.vigente_desde:
             errors["vigente_hasta"] = "No puede ser anterior a 'vigente_desde'."

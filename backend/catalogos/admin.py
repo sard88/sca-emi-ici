@@ -14,6 +14,7 @@ from .models import (
     PeriodoEscolar,
     PlanEstudios,
     ProgramaAsignatura,
+    ProgramaAsignaturaUbicacion,
 )
 
 
@@ -109,15 +110,23 @@ class MateriaAdmin(admin.ModelAdmin):
     search_fields = ("clave", "nombre")
 
 
+class ProgramaAsignaturaUbicacionInline(admin.TabularInline):
+    model = ProgramaAsignaturaUbicacion
+    extra = 0
+    fields = ("antiguedad", "semestre_numero", "activo")
+
+
 @admin.register(ProgramaAsignatura)
 class ProgramaAsignaturaAdmin(admin.ModelAdmin):
     form = ProgramaAsignaturaAdminForm
+    inlines = (ProgramaAsignaturaUbicacionInline,)
     fields = (
         "plan_estudios",
         "materia",
         "semestre_numero",
         "anio_formacion",
         "obligatoria",
+        "ubicacion_excepcional",
     )
     list_display = (
         "plan_estudios",
@@ -125,6 +134,13 @@ class ProgramaAsignaturaAdmin(admin.ModelAdmin):
         "semestre_numero",
         "anio_formacion",
         "obligatoria",
+        "ubicacion_excepcional",
     )
-    list_filter = ("obligatoria", "plan_estudios", "anio_formacion", "semestre_numero")
+    list_filter = (
+        "obligatoria",
+        "ubicacion_excepcional",
+        "plan_estudios",
+        "anio_formacion",
+        "semestre_numero",
+    )
     search_fields = ("plan_estudios__clave", "materia__clave", "materia__nombre")

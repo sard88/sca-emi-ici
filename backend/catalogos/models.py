@@ -377,6 +377,14 @@ class ProgramaAsignatura(models.Model):
         verbose_name="Año de formación",
     )
     obligatoria = models.BooleanField(default=True, verbose_name="Obligatoria")
+    ubicacion_excepcional = models.BooleanField(
+        default=False,
+        verbose_name="Usar ubicación excepcional por antigüedad",
+        help_text=(
+            "Activa esta opción solo para materias que pueden cursarse en semestres "
+            "distintos según la antigüedad. Si está desactivada, se usa el semestre normal."
+        ),
+    )
 
     class Meta:
         db_table = "catalogos_materiaplan"
@@ -393,6 +401,22 @@ class ProgramaAsignatura(models.Model):
     @staticmethod
     def calculate_anio_formacion(semestre_numero: int) -> int:
         return (semestre_numero + 1) // 2
+
+    def aplica_para_grupo(self, grupo) -> bool:
+        if not grupo or not grupo.antiguedad_id:
+            return False
+
+        if self.plan_estudios_id != grupo.antiguedad.plan_estudios_id:
+            return False
+
+        if self.ubicacion_excepcional:
+            return self.ubicaciones_excepcionales.filter(
+                antiguedad_id=grupo.antiguedad_id,
+                semestre_numero=grupo.semestre_numero,
+                activo=True,
+            ).exists()
+
+        return self.semestre_numero == grupo.semestre_numero
 
     def clean(self):
         errors = {}
@@ -421,3 +445,88 @@ class ProgramaAsignatura(models.Model):
 
     def __str__(self) -> str:
         return f"{self.plan_estudios.clave} - {self.materia.clave}"
+
+
+class ProgramaAsignaturaUbicacion(models.Model):
+    programa_asignatura = models.ForeignKey(
+        ProgramaAsignatura,
+        on_delete=models.CASCADE,
+        related_name="ubicaciones_excepcionales",
+        verbose_name="Programa de asignatura",
+    )
+    antiguedad = models.ForeignKey(
+        Antiguedad,
+        on_delete=models.PROTECT,
+        related_name="ubicaciones_programas_asignatura",
+        verbose_name="Antigüedad",
+    )
+    semestre_numero = models.PositiveSmallIntegerField(
+        choices=MATERIA_PLAN_SEMESTRE_CHOICES,
+        verbose_name="Semestre",
+    )
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+
+    class Meta:
+        db_table = "catalogos_programa_asignatura_ubicacion"
+        ordering = [
+            "programa_asignatura__plan_estudios__clave",
+            "programa_asignatura__materia__clave",
+            "antiguedad__clave",
+            "semestre_numero",
+        ]
+        verbose_name = "Ubicación excepcional de programa"
+        verbose_name_plural = "Ubicaciones excepcionales de programas"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["programa_asignatura", "antiguedad", "semestre_numero"],
+                name="uq_programa_ubicacion_antiguedad_semestre",
+            )
+        ]
+
+    @property
+    def anio_formacion(self):
+        return ProgramaAsignatura.calculate_anio_formacion(self.semestre_numero)
+
+    def clean(self):
+        errors = {}
+
+        if self.programa_asignatura_id:
+            if not self.programa_asignatura.ubicacion_excepcional:
+                errors["programa_asignatura"] = (
+                    "Activa 'Usar ubicación excepcional por antigüedad' antes de registrar ubicaciones."
+                )
+            if self.programa_asignatura.plan_estudios.estado != ESTADO_ACTIVO:
+                errors["programa_asignatura"] = "Solo se puede usar un plan de estudios activo."
+            if self.programa_asignatura.materia.estado != ESTADO_ACTIVO:
+                errors["programa_asignatura"] = "Solo se puede usar una materia activa."
+
+        if self.antiguedad_id:
+            if self.antiguedad.estado != ESTADO_ACTIVO:
+                errors["antiguedad"] = "Solo se puede asignar una antigüedad activa."
+            elif (
+                self.programa_asignatura_id
+                and self.antiguedad.plan_estudios_id != self.programa_asignatura.plan_estudios_id
+            ):
+                errors["antiguedad"] = (
+                    "La antigüedad debe pertenecer al mismo plan de estudios del programa."
+                )
+
+        if self.semestre_numero is None:
+            errors["semestre_numero"] = "Este campo es obligatorio."
+        elif not MATERIA_PLAN_SEMESTRE_MIN <= self.semestre_numero <= MATERIA_PLAN_SEMESTRE_MAX:
+            errors["semestre_numero"] = (
+                f"Debe estar entre {MATERIA_PLAN_SEMESTRE_MIN} y {MATERIA_PLAN_SEMESTRE_MAX}."
+            )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return (
+            f"{self.programa_asignatura} - {self.antiguedad.clave} - "
+            f"Semestre {self.semestre_numero}"
+        )

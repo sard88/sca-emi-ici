@@ -23,6 +23,7 @@ from .models import (
     GrupoAcademico,
     Materia,
     ProgramaAsignatura,
+    ProgramaAsignaturaUbicacion,
     MATERIA_PLAN_SEMESTRE_MAX,
     MATERIA_PLAN_SEMESTRE_MIN,
     PeriodoEscolar,
@@ -647,6 +648,13 @@ class ProgramaAsignaturaTests(TestCase):
             horas_totales=64,
             estado="inactivo",
         )
+        self.antiguedad = Antiguedad.objects.create(
+            plan_estudios=self.plan_activo,
+            clave="MP_ANT",
+            nombre="Antigüedad MP",
+            anio_inicio=2025,
+            anio_fin=2029,
+        )
 
     def _build_programa_asignatura(self, **overrides):
         payload = {
@@ -790,6 +798,80 @@ class ProgramaAsignaturaTests(TestCase):
 
         self.assertIn("inactivo", form.fields["plan_estudios"].help_text)
         self.assertIn("inactiva", form.fields["materia"].help_text)
+
+    def test_programa_asignatura_usa_ubicacion_normal_por_defecto(self):
+        programa_asignatura = self._build_programa_asignatura()
+        programa_asignatura.full_clean()
+
+        self.assertFalse(programa_asignatura.ubicacion_excepcional)
+
+    def test_ubicacion_excepcional_exige_activar_bandera_en_programa(self):
+        programa_asignatura = ProgramaAsignatura.objects.create(
+            plan_estudios=self.plan_activo,
+            materia=self.materia_activa,
+            semestre_numero=1,
+        )
+        ubicacion = ProgramaAsignaturaUbicacion(
+            programa_asignatura=programa_asignatura,
+            antiguedad=self.antiguedad,
+            semestre_numero=3,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            ubicacion.full_clean()
+
+        self.assertIn("programa_asignatura", exc.exception.message_dict)
+
+    def test_ubicacion_excepcional_valida_antiguedad_del_mismo_plan(self):
+        otra_carrera = Carrera.objects.create(
+            clave="MP_CARR_2",
+            nombre="Carrera MP 2",
+            estado="activo",
+        )
+        otro_plan = PlanEstudios.objects.create(
+            carrera=otra_carrera,
+            clave="MP_PLAN_2",
+            nombre="Plan activo 2",
+            estado="activo",
+        )
+        otra_antiguedad = Antiguedad.objects.create(
+            plan_estudios=otro_plan,
+            clave="MP_ANT_2",
+            nombre="Antigüedad MP 2",
+            anio_inicio=2025,
+            anio_fin=2029,
+        )
+        programa_asignatura = ProgramaAsignatura.objects.create(
+            plan_estudios=self.plan_activo,
+            materia=self.materia_activa,
+            semestre_numero=1,
+            ubicacion_excepcional=True,
+        )
+        ubicacion = ProgramaAsignaturaUbicacion(
+            programa_asignatura=programa_asignatura,
+            antiguedad=otra_antiguedad,
+            semestre_numero=3,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            ubicacion.full_clean()
+
+        self.assertIn("antiguedad", exc.exception.message_dict)
+
+    def test_ubicacion_excepcional_permite_semestre_por_antiguedad(self):
+        programa_asignatura = ProgramaAsignatura.objects.create(
+            plan_estudios=self.plan_activo,
+            materia=self.materia_activa,
+            semestre_numero=1,
+            ubicacion_excepcional=True,
+        )
+        ubicacion = ProgramaAsignaturaUbicacion.objects.create(
+            programa_asignatura=programa_asignatura,
+            antiguedad=self.antiguedad,
+            semestre_numero=3,
+        )
+
+        self.assertEqual(ubicacion.anio_formacion, 2)
 
 
 class MateriaCreditosTests(TestCase):
