@@ -40,6 +40,12 @@ class VigenciaAsignacionCargoTests(TestCase):
         self.grupo_jefatura_carrera, _ = Group.objects.get_or_create(
             name=AsignacionCargo.ROL_JEFATURA_CARRERA
         )
+        self.grupo_jefe_sub_plan_eval, _ = Group.objects.get_or_create(
+            name=AsignacionCargo.ROL_JEFE_SUB_PLAN_EVAL
+        )
+        self.grupo_jefe_sub_ejec_ctr, _ = Group.objects.get_or_create(
+            name=AsignacionCargo.ROL_JEFE_SUB_EJEC_CTR
+        )
         self.usuario = Usuario.objects.create_user(
             username="usuario_vigencia",
             password="segura123",
@@ -49,6 +55,8 @@ class VigenciaAsignacionCargoTests(TestCase):
             self.grupo_jefe_pedagogica,
             self.grupo_jefe_academico,
             self.grupo_jefe_carrera,
+            self.grupo_jefe_sub_plan_eval,
+            self.grupo_jefe_sub_ejec_ctr,
         )
         self.carrera_icis = Carrera.objects.create(
             clave="ICIS",
@@ -305,6 +313,14 @@ class VigenciaAsignacionCargoTests(TestCase):
             choices[AsignacionCargo.CARGO_JEFE_SUBSECCION_PEDAGOGICA],
             "Jefe de subsección de Planeación y Evaluación",
         )
+        self.assertEqual(
+            choices[AsignacionCargo.CARGO_JEFE_SUB_PLAN_EVAL],
+            "Jefe de subsección de Planeación y Evaluación",
+        )
+        self.assertEqual(
+            choices[AsignacionCargo.CARGO_JEFE_SUB_EJEC_CTR],
+            "Jefe de subsección de Ejecución y Control",
+        )
         self.assertNotIn("JEFE_CARRERA_ICIS", choices)
         self.assertNotIn("JEFE_CARRERA_ICES", choices)
         self.assertNotIn("JEFE_SUBSECCION", choices)
@@ -408,6 +424,42 @@ class VigenciaAsignacionCargoTests(TestCase):
         asignacion.unidad_organizacional = self.subseccion_pedagogica_icis
         asignacion.full_clean()
 
+    def test_jefe_sub_plan_eval_requiere_subseccion_pedagogica_con_carrera(self):
+        usuario = Usuario.objects.create_user(username="jefe_plan_eval", password="segura123")
+        usuario.groups.add(self.grupo_jefe_sub_plan_eval)
+        asignacion = AsignacionCargo(
+            usuario=usuario,
+            unidad_organizacional=self.subseccion_academica_icis,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_SUB_PLAN_EVAL,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
+
+        self.assertIn("unidad_organizacional", exc.exception.message_dict)
+
+        asignacion.unidad_organizacional = self.subseccion_pedagogica_icis
+        asignacion.full_clean()
+
+    def test_jefe_sub_ejec_ctr_requiere_subseccion_academica_con_carrera(self):
+        usuario = Usuario.objects.create_user(username="jefe_ejec_ctr", password="segura123")
+        usuario.groups.add(self.grupo_jefe_sub_ejec_ctr)
+        asignacion = AsignacionCargo(
+            usuario=usuario,
+            unidad_organizacional=self.subseccion_pedagogica_icis,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_SUB_EJEC_CTR,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
+
+        self.assertIn("unidad_organizacional", exc.exception.message_dict)
+
+        asignacion.unidad_organizacional = self.subseccion_academica_icis
+        asignacion.full_clean()
+
     def test_carrera_de_asignacion_debe_coincidir_con_unidad(self):
         asignacion = AsignacionCargo(
             usuario=self.usuario,
@@ -501,6 +553,28 @@ class VigenciaAsignacionCargoTests(TestCase):
             tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
         )
 
+        asignacion.full_clean()
+
+    def test_nuevos_cargos_de_subseccion_requieren_rol_especifico(self):
+        usuario_jefe_carrera = Usuario.objects.create_user(
+            username="jefe_carrera_no_ejec",
+            password="segura123",
+        )
+        usuario_jefe_carrera.groups.add(self.grupo_jefe_carrera)
+        asignacion = AsignacionCargo(
+            usuario=usuario_jefe_carrera,
+            carrera=self.carrera_icis,
+            unidad_organizacional=self.subseccion_academica_icis,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_SUB_EJEC_CTR,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            asignacion.full_clean()
+
+        self.assertIn("usuario", exc.exception.message_dict)
+
+        usuario_jefe_carrera.groups.add(self.grupo_jefe_sub_ejec_ctr)
         asignacion.full_clean()
 
     def test_cargo_global_no_permite_carrera(self):
@@ -779,6 +853,19 @@ class RolesPermisosAutomaticosTests(TestCase):
         self.assertIn(
             self.permiso("relaciones", "inscripcionmateria", "view"),
             grupo.permissions.all(),
+        )
+
+    def test_roles_de_subsecciones_institucionales_se_crean_con_permisos_base(self):
+        jefe_ejecucion = Group.objects.get(name="JEFE_SUB_EJEC_CTR")
+        jefe_planeacion = Group.objects.get(name="JEFE_SUB_PLAN_EVAL")
+
+        self.assertIn(
+            self.permiso("relaciones", "asignaciondocente", "add"),
+            jefe_ejecucion.permissions.all(),
+        )
+        self.assertIn(
+            self.permiso("relaciones", "asignaciondocente", "view"),
+            jefe_planeacion.permissions.all(),
         )
 
     def test_estadistica_consulta_asignacion_docente_sin_operarla(self):

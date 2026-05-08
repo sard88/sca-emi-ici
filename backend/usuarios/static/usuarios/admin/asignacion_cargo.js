@@ -4,6 +4,8 @@
   const CARGOS_CON_CARRERA = new Set([
     "JEFE_CARRERA",
     "JEFE_SUBSECCION_PEDAGOGICA",
+    "JEFE_SUB_PLAN_EVAL",
+    "JEFE_SUB_EJEC_CTR",
   ]);
 
   function toggleCarreraField() {
