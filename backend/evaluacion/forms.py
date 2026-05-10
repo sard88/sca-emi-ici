@@ -57,6 +57,8 @@ class CapturaCalificacionesCorteForm(forms.Form):
                 componente__in=self.componentes,
             )
         }
+        self._capturas_existentes = capturas
+        self.deleted_count = 0
 
         for inscripcion in self.inscripciones:
             for componente in self.componentes:
@@ -89,16 +91,26 @@ class CapturaCalificacionesCorteForm(forms.Form):
         capturas = []
         for field_name, (inscripcion, componente) in self._field_map.items():
             valor = self.cleaned_data.get(field_name)
+            captura_existente = self._capturas_existentes.get(
+                (inscripcion.pk, componente.pk)
+            )
             if valor is None:
+                if captura_existente:
+                    captura_existente.delete()
+                    self.deleted_count += 1
                 continue
 
-            captura, _created = CapturaCalificacionPreliminar.objects.update_or_create(
-                inscripcion_materia=inscripcion,
-                componente=componente,
-                defaults={
-                    "valor": valor,
-                    "capturado_por": self.usuario,
-                },
-            )
+            if captura_existente:
+                captura_existente.valor = valor
+                captura_existente.capturado_por = self.usuario
+                captura_existente.save()
+                captura = captura_existente
+            else:
+                captura = CapturaCalificacionPreliminar.objects.create(
+                    inscripcion_materia=inscripcion,
+                    componente=componente,
+                    valor=valor,
+                    capturado_por=self.usuario,
+                )
             capturas.append(captura)
         return capturas

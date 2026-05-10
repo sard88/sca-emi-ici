@@ -143,7 +143,8 @@ class ServicioCalculoAcademico:
                 EsquemaEvaluacion.PARCIALES_2,
                 EsquemaEvaluacion.PARCIALES_3,
             )
-            and promedio_parciales >= UMBRAL_EXENCION_INSTITUCIONAL
+            and promedio_parciales
+            >= (self.esquema.umbral_exencion or UMBRAL_EXENCION_INSTITUCIONAL)
             and tiene_examen_final
         )
 

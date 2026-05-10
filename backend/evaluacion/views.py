@@ -155,6 +155,7 @@ class CapturaCalificacionesCorteView(AsignacionEvaluacionMixin, View):
                 {
                     "inscripcion": resultado["inscripcion"],
                     "corte": resultado["cortes"].get(corte_codigo),
+                    "exencion_aplica": resultado["exencion_aplica"],
                 }
                 for resultado in resultados
             ],
@@ -181,7 +182,11 @@ class CapturaCalificacionesCorteView(AsignacionEvaluacionMixin, View):
             capturas = form.save()
             messages.success(
                 request,
-                f"Captura preliminar guardada. Registros actualizados: {len(capturas)}.",
+                (
+                    "Captura preliminar guardada. "
+                    f"Registros actualizados: {len(capturas)}. "
+                    f"Registros limpiados: {form.deleted_count}."
+                ),
             )
             return redirect(
                 "evaluacion:captura-calificaciones",

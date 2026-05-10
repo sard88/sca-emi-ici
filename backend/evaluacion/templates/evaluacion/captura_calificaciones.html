@@ -48,6 +48,12 @@
         <h2>
           Capturar {% if corte_actual == "FINAL" %}Evaluación final{% else %}corte {{ corte_actual }}{% endif %}
         </h2>
+        {% if corte_actual == "FINAL" %}
+          <p class="muted">
+            Si el discente cumple exención, el componente marcado como examen final puede quedar vacío:
+            el cálculo preliminar lo sustituye por el promedio de parciales.
+          </p>
+        {% endif %}
         {{ form.non_field_errors }}
         <table>
           <thead>
@@ -94,6 +100,9 @@
             <th>
               Resultado {% if corte_actual == "FINAL" %}Evaluación final{% else %}corte {{ corte_actual }}{% endif %}
             </th>
+            {% if corte_actual == "FINAL" %}
+              <th>Exención</th>
+            {% endif %}
             <th>Estado</th>
           </tr>
         </thead>
@@ -103,11 +112,24 @@
               <td>{{ resultado.inscripcion.discente.usuario.grado_empleo.abreviatura|default:"-" }}</td>
               <td>{{ resultado.inscripcion.discente.usuario.nombre_visible }}</td>
               <td>{{ resultado.corte.resultado_visual|default_if_none:"Pendiente" }}</td>
+              {% if corte_actual == "FINAL" %}
+                <td>
+                  {% if resultado.exencion_aplica %}
+                    Sí. Examen final sustituido por promedio de parciales.
+                  {% else %}
+                    No
+                  {% endif %}
+                </td>
+              {% endif %}
               <td>{% if resultado.corte.completo %}Completo{% else %}Incompleto{% endif %}</td>
             </tr>
           {% empty %}
             <tr>
-              <td colspan="4">No hay resultados para mostrar.</td>
+              {% if corte_actual == "FINAL" %}
+                <td colspan="5">No hay resultados para mostrar.</td>
+              {% else %}
+                <td colspan="4">No hay resultados para mostrar.</td>
+              {% endif %}
             </tr>
           {% endfor %}
         </tbody>

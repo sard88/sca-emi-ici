@@ -49,7 +49,7 @@ class EsquemaEvaluacion(models.Model):
     umbral_exencion = models.DecimalField(
         max_digits=5,
         decimal_places=2,
-        default=Decimal("8.00"),
+        default=Decimal("9.00"),
         verbose_name="Umbral de exención",
         help_text="Calificación mínima para exentar en escala de 0 a 10.",
     )

@@ -153,7 +153,7 @@ class EsquemaEvaluacionTestCase(TestCase):
         )
         self.assertEqual(esquema_default.peso_parciales, 45)
         self.assertEqual(esquema_default.peso_final, 55)
-        self.assertEqual(esquema_default.umbral_exencion, 8)
+        self.assertEqual(esquema_default.umbral_exencion, 9)
 
         esquema_custom = EsquemaEvaluacion(
             programa_asignatura=self.programa_asignatura,
@@ -836,6 +836,17 @@ class CapturaCalificacionPreliminarTests(CapturaCalificacionPreliminarBaseTests)
         self.assertEqual(resultado["resultado_final"], Decimal("9.0"))
         self.assertEqual(resultado["calificacion_final_preliminar"], Decimal("9.0"))
 
+    def test_exencion_respeta_umbral_configurado_en_esquema(self):
+        self.esquema.umbral_exencion = Decimal("9.10")
+        self.esquema.save()
+        self.capturar_parciales("9.0", "9.0", "9.0")
+        self.capturar(self.componente_final, "6.0")
+
+        resultado = ServicioCalculoAcademico(self.inscripcion).calcular()
+
+        self.assertFalse(resultado["exencion_aplica"])
+        self.assertEqual(resultado["resultado_final"], Decimal("6.0"))
+
     def test_respeta_pesos_configurados(self):
         self.esquema.permite_exencion = False
         self.esquema.peso_parciales = Decimal("50.00")
@@ -862,6 +873,24 @@ class CapturaCalificacionPreliminarTests(CapturaCalificacionPreliminarBaseTests)
 
         self.assertEqual(response.status_code, 403)
         self.assertFalse(CapturaCalificacionPreliminar.objects.exists())
+
+    def test_dejar_campo_vacio_elimina_captura_previa(self):
+        captura = self.capturar(self.componente_p1_tareas, "9.0")
+        self.client.force_login(self.usuario_docente)
+        field_name = f"cal_{self.inscripcion.pk}_{self.componente_p1_tareas.pk}"
+
+        response = self.client.post(
+            reverse(
+                "evaluacion:captura-calificaciones",
+                args=[self.asignacion.pk, ComponenteEvaluacion.CORTE_P1],
+            ),
+            data={field_name: ""},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(
+            CapturaCalificacionPreliminar.objects.filter(pk=captura.pk).exists()
+        )
 
     def test_docente_asignado_puede_ver_pantalla_de_captura(self):
         self.client.force_login(self.usuario_docente)
@@ -912,6 +941,20 @@ class CapturaCalificacionPreliminarTests(CapturaCalificacionPreliminarBaseTests)
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Evaluación final")
+
+    def test_captura_final_muestra_exencion_del_examen_final(self):
+        self.capturar_parciales("9.0", "9.0", "9.0")
+        self.client.force_login(self.usuario_docente)
+
+        response = self.client.get(
+            reverse(
+                "evaluacion:captura-calificaciones",
+                args=[self.asignacion.pk, ComponenteEvaluacion.CORTE_FINAL],
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Examen final sustituido")
 
     def test_no_actualiza_campos_oficiales_de_inscripcion_materia(self):
         self.capturar_parciales("9.0", "9.0", "9.0")
