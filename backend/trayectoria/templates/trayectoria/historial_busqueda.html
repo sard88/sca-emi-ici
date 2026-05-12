@@ -1,0 +1,57 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Historial académico{% endblock %}
+{% block heading %}Historial académico{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h2>Consulta de trayectoria</h2>
+    <p class="muted">
+      Consulta resultados oficiales generados desde actas FINAL formalizadas y eventos de trayectoria.
+    </p>
+    <form method="get">
+      <label for="id_q">Buscar discente</label>
+      <input id="id_q" type="search" name="q" value="{{ q }}" placeholder="Nombre o matrícula">
+      <div class="actions" style="margin-top: 12px;">
+        <button type="submit">Buscar</button>
+        <a class="button secondary" href="{% url 'trayectoria:historial-busqueda' %}">Limpiar</a>
+        {% if puede_operar_trayectoria %}
+          <a class="button secondary" href="{% url 'trayectoria:extraordinario-registrar' %}">Registrar extraordinario</a>
+          <a class="button secondary" href="{% url 'trayectoria:situacion-registrar' %}">Registrar situación académica</a>
+        {% endif %}
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>Discentes</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Discente</th>
+          <th>Plan de estudio</th>
+          <th>Antigüedad</th>
+          <th>Situación actual</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for discente in discentes %}
+          <tr>
+            <td>{{ discente.usuario.nombre_visible }}</td>
+            <td>{{ discente.plan_estudios }}</td>
+            <td>{{ discente.antiguedad }}</td>
+            <td>{{ discente.get_situacion_actual_display }}</td>
+            <td>
+              <a href="{% url 'trayectoria:historial-detalle' discente.pk %}">Ver historial</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="5">No hay discentes para mostrar.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

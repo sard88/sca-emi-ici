@@ -1,0 +1,22 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Registrar extraordinario{% endblock %}
+{% block heading %}Registrar extraordinario{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h2>Resultado extraordinario</h2>
+    <p class="muted">
+      Solo se muestran inscripciones con acta FINAL formalizada, resultado ordinario menor a 6.0
+      y sin extraordinario registrado.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="actions">
+        <button type="submit">Registrar extraordinario</button>
+        <a class="button secondary" href="{% url 'trayectoria:historial-busqueda' %}">Cancelar</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

@@ -44,6 +44,13 @@ EVALUACION_MODELOS = (
     "esquemaevaluacion",
 )
 
+TRAYECTORIA_MODELOS = (
+    "catalogosituacionacademica",
+    "catalogoresultadoacademico",
+    "eventosituacionacademica",
+    "extraordinario",
+)
+
 
 def permisos_modelos(app_label, modelos, acciones):
     return [
@@ -56,6 +63,7 @@ def permisos_modelos(app_label, modelos, acciones):
 PERMISOS_JEFATURA_CARRERA = (
     permisos_modelos("catalogos", CATALOGOS_MODELOS, ("view",))
     + permisos_modelos("evaluacion", EVALUACION_MODELOS, ("view",))
+    + permisos_modelos("trayectoria", TRAYECTORIA_MODELOS, ("view",))
     + permisos_modelos(
         "relaciones",
         ("adscripciongrupo", "discente", "inscripcionmateria", "movimientoacademico"),
@@ -67,11 +75,13 @@ PERMISOS_JEFATURA_CARRERA = (
 PERMISOS_JEFATURA_ACADEMICA = (
     permisos_modelos("catalogos", CATALOGOS_MODELOS, ("view",))
     + permisos_modelos("evaluacion", EVALUACION_MODELOS, ("view",))
+    + permisos_modelos("trayectoria", TRAYECTORIA_MODELOS, ("view",))
     + permisos_modelos("relaciones", RELACIONES_MODELOS, ("view",))
 )
 
 PERMISOS_ESTADISTICA = (
     permisos_modelos("catalogos", CATALOGOS_MODELOS, ("view",))
+    + permisos_modelos("trayectoria", TRAYECTORIA_MODELOS, ("add", "change", "view"))
     + permisos_modelos(
         "relaciones",
         ("adscripciongrupo", "asignaciondocente", "discente", "inscripcionmateria"),

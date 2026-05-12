@@ -1,0 +1,100 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Historial académico{% endblock %}
+{% block heading %}Historial académico{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h2>{{ historial.discente.usuario.nombre_visible }}</h2>
+    <p>Plan de estudio: {{ historial.discente.plan_estudios }}</p>
+    <p>Antigüedad: {{ historial.discente.antiguedad }}</p>
+    <p>Situación actual: {{ historial.discente.get_situacion_actual_display }}</p>
+    <div class="actions">
+      {% if not vista_propia %}
+        <a class="button secondary" href="{% url 'trayectoria:historial-busqueda' %}">Volver a consulta</a>
+      {% endif %}
+      {% if puede_operar_trayectoria %}
+        <a class="button secondary" href="{% url 'trayectoria:extraordinario-registrar' %}">Registrar extraordinario</a>
+        <a class="button secondary" href="{% url 'trayectoria:situacion-registrar' %}">Registrar situación académica</a>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Resultados oficiales</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Periodo académico</th>
+          <th>Programa de asignatura</th>
+          <th>Grupo</th>
+          <th>Tipo</th>
+          <th>Calificación</th>
+          <th>Resultado</th>
+          <th>Marca</th>
+          <th>Evidencia ordinaria</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for resultado in historial.resultados %}
+          <tr>
+            <td>{{ resultado.inscripcion.asignacion_docente.periodo }}</td>
+            <td>{{ resultado.inscripcion.asignacion_docente.programa_asignatura }}</td>
+            <td>{{ resultado.inscripcion.asignacion_docente.grupo_academico.clave_grupo }}</td>
+            <td>
+              {% if resultado.tipo_resultado == "EXTRAORDINARIO" %}
+                Resultado extraordinario
+              {% else %}
+                Resultado ordinario
+              {% endif %}
+            </td>
+            <td>{{ resultado.calificacion|default:"Pendiente" }}</td>
+            <td>{{ resultado.codigo_resultado }}</td>
+            <td>{{ resultado.codigo_marca }}</td>
+            <td>
+              {% if resultado.extraordinario %}
+                Ordinario: {{ resultado.calificacion_ordinaria }} {{ resultado.codigo_resultado_ordinario }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="8">No hay resultados oficiales formalizados para mostrar.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Eventos de trayectoria</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Situación</th>
+          <th>Inicio</th>
+          <th>Fin</th>
+          <th>Periodo</th>
+          <th>Motivo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for evento in historial.eventos %}
+          <tr>
+            <td>{{ evento.situacion }}</td>
+            <td>{{ evento.fecha_inicio }}</td>
+            <td>{{ evento.fecha_fin|default:"" }}</td>
+            <td>{{ evento.periodo|default:"" }}</td>
+            <td>{{ evento.motivo|default:"" }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="5">No hay eventos de trayectoria registrados.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

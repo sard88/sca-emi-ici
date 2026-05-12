@@ -29,6 +29,7 @@ from relaciones.permisos import (
     usuario_es_jefatura_planeacion,
 )
 from relaciones.services import sincronizar_carga_academica
+from trayectoria.permisos import puede_consultar_historiales, puede_operar_trayectoria
 
 from .forms import LoginFormulario
 from .models import AsignacionCargo
@@ -80,6 +81,7 @@ def accesos_permitidos(user):
 
     if usuario_es_discente(user) or usuario_es_admin_soporte(user):
         accesos.append(("Mis actas publicadas", "evaluacion:discente-actas"))
+        accesos.append(("Mi historial académico", "trayectoria:mi-historial"))
         accesos.append(("Mi carga académica", "usuarios:discente-carga"))
     if usuario_es_docente(user) or usuario_es_admin_soporte(user):
         accesos.append(("Mis asignaciones", "usuarios:docente-asignaciones"))
@@ -98,6 +100,11 @@ def accesos_permitidos(user):
         accesos.append(("Actas por formalizar", "evaluacion:jefatura-academica-actas"))
     if usuario_es_estadistica(user) or usuario_es_admin_soporte(user):
         accesos.append(("Consulta de actas de calificaciones", "evaluacion:estadistica-actas"))
+    if puede_consultar_historiales(user):
+        accesos.append(("Historial académico", "trayectoria:historial-busqueda"))
+    if puede_operar_trayectoria(user):
+        accesos.append(("Registrar extraordinario", "trayectoria:extraordinario-registrar"))
+        accesos.append(("Registrar situación académica", "trayectoria:situacion-registrar"))
     if puede_consultar_relaciones(user):
         accesos.append(("Carga académica y movimientos", "usuarios:estadistica-carga"))
     if usuario_es_admin_soporte(user):

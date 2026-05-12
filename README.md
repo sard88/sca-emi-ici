@@ -753,3 +753,38 @@ docker compose exec -T backend python manage.py check
 docker compose exec -T backend python manage.py test evaluacion
 docker compose exec -T backend python manage.py test
 ```
+
+## Bloque 7 - Historial académico y trayectoria
+
+Se implementa el módulo inicial de historial académico y trayectoria del discente usando como base resultados oficiales ya consolidados. La fuente oficial del historial son las inscripciones con acta `FINAL` formalizada; las capturas preliminares y actas en borrador no se consideran historial oficial.
+
+### Modelos agregados
+
+- `CatalogoSituacionAcademica`
+- `CatalogoResultadoAcademico`
+- `EventoSituacionAcademica`
+- `Extraordinario`
+
+### Rutas principales
+
+- `GET /trayectoria/mi-historial/`
+- `GET /trayectoria/historial/`
+- `GET /trayectoria/historial/<id>/`
+- `GET/POST /trayectoria/extraordinarios/registrar/`
+- `GET/POST /trayectoria/situaciones/registrar/`
+
+### Reglas principales
+
+- El discente consulta solo su propio historial.
+- Estadística/Admin puede consultar historiales y registrar extraordinarios o eventos de situación académica.
+- Jefaturas consultan historiales según su ámbito.
+- El extraordinario requiere resultado ordinario reprobatorio menor a 6.0 y acta `FINAL` formalizada.
+- No se permite más de un extraordinario por inscripción.
+- Si el extraordinario es aprobado se marca `APROBADO_EXTRAORDINARIO` y `EE`.
+- Si el extraordinario es reprobado se registra baja temporal.
+- El reingreso cierra la baja temporal abierta.
+- La evidencia ordinaria se conserva aunque exista extraordinario.
+
+### Fuera de este bloque
+
+No se implementan todavía kárdex oficial, reportes formales, exportaciones PDF/Excel, rectificación de actas, reapertura de actas ni actas extraordinarias formales complejas.

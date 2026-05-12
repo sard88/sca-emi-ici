@@ -1,0 +1,22 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Registrar situación académica{% endblock %}
+{% block heading %}Registrar situación académica{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h2>Evento de trayectoria</h2>
+    <p class="muted">
+      El registro conserva la secuencia histórica. Una baja temporal activa actualiza la situación
+      del discente; un reingreso cierra la baja temporal abierta.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="actions">
+        <button type="submit">Registrar situación académica</button>
+        <a class="button secondary" href="{% url 'trayectoria:historial-busqueda' %}">Cancelar</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}
