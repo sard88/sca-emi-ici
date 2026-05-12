@@ -317,14 +317,16 @@ class AsignacionCargo(models.Model):
     tipo_designacion = models.CharField(
         max_length=20,
         choices=TIPO_DESIGNACION_CHOICES,
+        verbose_name="Tipo de designación",
     )
     vigente_desde = models.DateField(
         null=True,
         blank=True,
         default=timezone.localdate,
+        verbose_name="Vigente desde",
     )
-    vigente_hasta = models.DateField(null=True, blank=True)
-    activo = models.BooleanField(default=True)
+    vigente_hasta = models.DateField(null=True, blank=True, verbose_name="Vigente hasta")
+    activo = models.BooleanField(default=True, verbose_name="Activo")
 
     def _ensure_vigencia_defaults(self):
         if not self.vigente_desde:
@@ -332,6 +334,8 @@ class AsignacionCargo(models.Model):
 
     class Meta:
         ordering = ["-activo", "-vigente_desde", "cargo_codigo"]
+        verbose_name = "Asignación de cargo"
+        verbose_name_plural = "Asignaciones de cargo"
 
     def requiere_carrera(self):
         return self.cargo_codigo in self.CARGOS_POR_CARRERA

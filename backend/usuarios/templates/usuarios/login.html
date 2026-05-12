@@ -60,10 +60,10 @@
         {{ form.non_field_errors }}
         <label for="{{ form.username.id_for_label }}">Usuario</label>
         {{ form.username }}
-        <label for="{{ form.password.id_for_label }}">Contrasena</label>
+        <label for="{{ form.password.id_for_label }}">Contraseña</label>
         {{ form.password }}
         {% if form.errors %}
-          <div class="errors">Credenciales invalidas. Intenta nuevamente.</div>
+          <div class="errors">Credenciales inválidas. Intenta nuevamente.</div>
         {% endif %}
         <button type="submit">Entrar</button>
       </form>
