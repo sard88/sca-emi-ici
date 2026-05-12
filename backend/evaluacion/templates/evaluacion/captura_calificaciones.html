@@ -54,6 +54,13 @@
             el cálculo preliminar lo sustituye por el promedio de parciales.
           </p>
         {% endif %}
+        {% if captura_bloqueada %}
+          <p class="muted">
+            La captura preliminar ya no puede modificarse porque existe un acta publicada,
+            remitida, validada, formalizada o archivada para este corte. Los campos se
+            muestran solo para consulta.
+          </p>
+        {% endif %}
         {{ form.non_field_errors }}
         <table>
           <thead>
@@ -84,9 +91,11 @@
             {% endfor %}
           </tbody>
         </table>
-        <div class="actions" style="margin-top: 14px;">
-          <button type="submit">Guardar captura preliminar</button>
-        </div>
+        {% if not captura_bloqueada %}
+          <div class="actions" style="margin-top: 14px;">
+            <button type="submit">Guardar captura preliminar</button>
+          </div>
+        {% endif %}
       </section>
     </form>
 

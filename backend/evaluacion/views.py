@@ -234,6 +234,12 @@ class CapturaCalificacionesCorteView(AsignacionEvaluacionMixin, View):
     def get_corte_codigo(self):
         return self.kwargs["corte_codigo"].upper()
 
+    def get_acta_bloqueante_captura(self):
+        return obtener_acta_bloqueante_captura(
+            self.asignacion,
+            self.get_corte_codigo(),
+        )
+
     def get_form(self, data=None):
         esquema = self.get_esquema()
         corte_codigo = self.get_corte_codigo()
@@ -250,6 +256,11 @@ class CapturaCalificacionesCorteView(AsignacionEvaluacionMixin, View):
     def get_context_data(self, form):
         resultados, errores = self.calcular_resultados()
         corte_codigo = self.get_corte_codigo()
+        acta_bloqueante = self.get_acta_bloqueante_captura()
+        captura_bloqueada = bool(acta_bloqueante)
+        if captura_bloqueada:
+            for field in form.fields.values():
+                field.disabled = True
         captura_filas = []
         for inscripcion in form.inscripciones:
             captura_filas.append(
@@ -275,6 +286,8 @@ class CapturaCalificacionesCorteView(AsignacionEvaluacionMixin, View):
             "inscripciones": form.inscripciones,
             "componentes": form.componentes,
             "captura_filas": captura_filas,
+            "captura_bloqueada": captura_bloqueada,
+            "acta_bloqueante_captura": acta_bloqueante,
             "resultados": resultados,
             "resultados_corte": [
                 {
@@ -302,10 +315,7 @@ class CapturaCalificacionesCorteView(AsignacionEvaluacionMixin, View):
         return render(request, self.template_name, self.get_context_data(form))
 
     def post(self, request, *args, **kwargs):
-        acta_bloqueante = obtener_acta_bloqueante_captura(
-            self.asignacion,
-            self.get_corte_codigo(),
-        )
+        acta_bloqueante = self.get_acta_bloqueante_captura()
         if acta_bloqueante:
             messages.error(
                 request,

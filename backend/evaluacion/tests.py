@@ -1386,6 +1386,20 @@ class ActaFormalBloque6Tests(CapturaCalificacionPreliminarBaseTests):
         self.client.force_login(self.usuario_docente)
         field_name = f"cal_{self.inscripcion.pk}_{self.componente_p1_tareas.pk}"
 
+        response_get = self.client.get(
+            reverse(
+                "evaluacion:captura-calificaciones",
+                args=[self.asignacion.pk, ComponenteEvaluacion.CORTE_P1],
+            )
+        )
+
+        self.assertContains(
+            response_get,
+            "La captura preliminar ya no puede modificarse",
+        )
+        self.assertContains(response_get, "disabled")
+        self.assertNotContains(response_get, "Guardar captura preliminar")
+
         response = self.client.post(
             reverse(
                 "evaluacion:captura-calificaciones",
