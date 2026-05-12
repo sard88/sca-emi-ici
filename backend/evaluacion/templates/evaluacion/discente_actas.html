@@ -1,0 +1,34 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Mis actas publicadas{% endblock %}
+{% block heading %}Mis actas publicadas{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <p class="muted">Consulta informativa de actas publicadas. La conformidad no bloquea el flujo oficial.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Asignatura</th>
+          <th>Corte</th>
+          <th>Estado</th>
+          <th>Resultado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for detalle in detalles %}
+          <tr>
+            <td>{{ detalle.acta.asignacion_docente.programa_asignatura.materia.nombre }}</td>
+            <td>{{ detalle.acta.get_corte_codigo_display }}</td>
+            <td>{{ detalle.acta.get_estado_acta_display }}</td>
+            <td>{{ detalle.resultado_corte_visible|default_if_none:"Pendiente" }}</td>
+            <td><a href="{% url 'evaluacion:discente-acta-detalle' detalle.pk %}">Ver detalle</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">No hay actas publicadas para consulta.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

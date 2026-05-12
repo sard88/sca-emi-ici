@@ -1,0 +1,156 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Acta{% endblock %}
+{% block heading %}Acta formal{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h2>{{ acta.asignacion_docente.programa_asignatura }} - {{ acta.asignacion_docente.programa_asignatura.materia.nombre }}</h2>
+    <p>Grupo: {{ acta.asignacion_docente.grupo_academico.clave_grupo }}</p>
+    <p>Corte: {{ acta.get_corte_codigo_display }}</p>
+    <p>Estado: <strong>{{ acta.get_estado_acta_display }}</strong></p>
+    <p>
+      Esquema usado: {{ acta.esquema_version_snapshot }}.
+      Pesos {{ acta.peso_parciales_snapshot }} / {{ acta.peso_final_snapshot }}.
+      Umbral de exención {{ acta.umbral_exencion_snapshot }}.
+    </p>
+    <div class="actions">
+      {% if enlace_regreso_acta %}
+        <a class="button secondary" href="{{ enlace_regreso_acta.url }}">{{ enlace_regreso_acta.texto }}</a>
+      {% endif %}
+      {% if puede_regenerar %}
+        <form class="inline" method="post" action="{% url 'evaluacion:acta-regenerar' acta.pk %}">
+          {% csrf_token %}
+          <button type="submit">Regenerar desde captura preliminar</button>
+        </form>
+      {% endif %}
+      {% if puede_publicar %}
+        <form class="inline" method="post" action="{% url 'evaluacion:acta-publicar' acta.pk %}">
+          {% csrf_token %}
+          <button type="submit">Publicar a discentes</button>
+        </form>
+      {% endif %}
+      {% if puede_remitir %}
+        <form class="inline" method="post" action="{% url 'evaluacion:acta-remitir' acta.pk %}">
+          {% csrf_token %}
+          <button type="submit">Remitir a jefatura de carrera</button>
+        </form>
+      {% endif %}
+      {% if puede_validar_carrera %}
+        <form class="inline" method="post" action="{% url 'evaluacion:acta-validar-carrera' acta.pk %}">
+          {% csrf_token %}
+          <button type="submit">Validar como jefatura de carrera</button>
+        </form>
+      {% endif %}
+      {% if puede_formalizar %}
+        <form class="inline" method="post" action="{% url 'evaluacion:acta-formalizar' acta.pk %}">
+          {% csrf_token %}
+          <button type="submit">Formalizar como jefatura académica</button>
+        </form>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Acta de calificaciones por corte</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>No.</th>
+          <th>Grado y empleo</th>
+          <th>Nombre</th>
+          {% for componente in componentes_acta %}
+            <th>
+              {{ componente.componente_nombre_snapshot }}
+              {{ componente.componente_porcentaje_snapshot }}%
+              {% if componente.componente_es_examen_snapshot %}(examen){% endif %}
+            </th>
+          {% endfor %}
+          <th>Calificación {{ acta.get_corte_codigo_display }}</th>
+          <th>Conformidad</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fila in filas_acta %}
+          <tr>
+            <td>{{ fila.numero }}</td>
+            <td>{{ fila.detalle.inscripcion_materia.discente.usuario.grado_empleo.abreviatura|default:"-" }}</td>
+            <td>{{ fila.detalle.inscripcion_materia.discente.usuario.nombre_visible }}</td>
+            {% for calificacion in fila.calificaciones %}
+              <td>
+                {% if calificacion %}
+                  {{ calificacion.valor_capturado|default_if_none:"Pendiente" }}
+                  {% if calificacion.sustituido_por_exencion %}<br><span class="muted">Exención</span>{% endif %}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+            {% endfor %}
+            <td>{{ fila.detalle.resultado_corte_visible|default_if_none:"Pendiente" }}</td>
+            <td>
+              {% if fila.conformidad %}
+                {{ fila.conformidad.get_estado_conformidad_display }}
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">No hay detalles generados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Observaciones de conformidad</h2>
+    {% if comentarios_conformidad %}
+      <table>
+        <thead>
+          <tr>
+            <th>No.</th>
+            <th>Discente</th>
+            <th>Conformidad</th>
+            <th>Comentario</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fila in comentarios_conformidad %}
+            <tr>
+              <td>{{ fila.numero }}</td>
+              <td>{{ fila.detalle.inscripcion_materia.discente.usuario.nombre_visible }}</td>
+              <td>{{ fila.conformidad.get_estado_conformidad_display }}</td>
+              <td>{{ fila.conformidad.comentario }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="muted">Sin observaciones registradas.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Bitácora de validación</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Etapa</th>
+          <th>Acción</th>
+          <th>Usuario</th>
+          <th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for validacion in acta.validaciones.all %}
+          <tr>
+            <td>{{ validacion.get_etapa_validacion_display }}</td>
+            <td>{{ validacion.get_accion_display }}</td>
+            <td>{{ validacion.usuario }}</td>
+            <td>{{ validacion.fecha_hora }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4">Sin eventos registrados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

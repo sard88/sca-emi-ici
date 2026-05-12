@@ -7,7 +7,7 @@ from django.contrib.auth.signals import user_logged_in
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.forms import modelform_factory
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -334,6 +334,25 @@ class VigenciaAsignacionCargoTests(TestCase):
             asignacion_admin.media._js,
         )
 
+    def test_admin_asignacion_cargo_oculta_cargos_legacy_duplicados(self):
+        asignacion_admin = admin.site._registry[AsignacionCargo]
+        request = RequestFactory().get("/")
+        request.user = self.usuario
+        form_class = asignacion_admin.get_form(request)
+        choices = list(form_class.base_fields["cargo_codigo"].choices)
+        valores = [value for value, _ in choices]
+        etiquetas_plan_eval = [
+            label
+            for value, label in choices
+            if label == "Jefe de subsección de Planeación y Evaluación"
+        ]
+
+        self.assertNotIn(AsignacionCargo.CARGO_JEFE_CARRERA, valores)
+        self.assertNotIn(AsignacionCargo.CARGO_JEFE_SUBSECCION_PEDAGOGICA, valores)
+        self.assertIn(AsignacionCargo.CARGO_JEFE_SUB_EJEC_CTR, valores)
+        self.assertIn(AsignacionCargo.CARGO_JEFE_SUB_PLAN_EVAL, valores)
+        self.assertEqual(len(etiquetas_plan_eval), 1)
+
     def test_admin_unidad_organizacional_muestra_jerarquia_en_dropdown(self):
         asignacion_admin = admin.site._registry[AsignacionCargo]
         db_field = AsignacionCargo._meta.get_field("unidad_organizacional")
@@ -542,6 +561,62 @@ class VigenciaAsignacionCargoTests(TestCase):
 
         asignacion.full_clean()
 
+    def test_jefe_subseccion_pedagogica_acepta_rol_plan_eval_en_designacion_accidental(self):
+        usuario_jefe_plan_eval = Usuario.objects.create_user(
+            username="jefe_sub_plan_eval_acc",
+            password="segura123",
+        )
+        usuario_jefe_plan_eval.groups.add(self.grupo_jefe_sub_plan_eval)
+        subseccion_pedagogica_ices = UnidadOrganizacional.objects.create(
+            clave="SUB_PED_ICES",
+            nombre="Subsección de Planeación y Evaluación ICE",
+            tipo_unidad=UnidadOrganizacional.TIPO_SUBSECCION,
+            padre=self.seccion_pedagogica,
+            carrera=self.carrera_ices,
+        )
+        asignacion = AsignacionCargo(
+            usuario=usuario_jefe_plan_eval,
+            carrera=self.carrera_ices,
+            unidad_organizacional=subseccion_pedagogica_ices,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_SUBSECCION_PEDAGOGICA,
+            tipo_designacion=AsignacionCargo.DESIGNACION_ACCIDENTAL,
+            vigente_hasta=timezone.localdate() + timedelta(days=30),
+        )
+
+        asignacion.full_clean()
+
+    def test_designacion_accidental_plan_eval_acepta_cargo_vigente_compatible(self):
+        usuario_jefe_plan_eval = Usuario.objects.create_user(
+            username="jefe_sub_plan_eval_vigente",
+            password="segura123",
+        )
+        usuario_jefe_plan_eval.groups.add(self.grupo_jefe_sub_plan_eval)
+        AsignacionCargo.objects.create(
+            usuario=usuario_jefe_plan_eval,
+            carrera=self.carrera_icis,
+            unidad_organizacional=self.subseccion_pedagogica_icis,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_SUB_PLAN_EVAL,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+        usuario_jefe_plan_eval.groups.clear()
+        subseccion_pedagogica_ices = UnidadOrganizacional.objects.create(
+            clave="SUB_PED_ICES_ACC",
+            nombre="Subsección de Planeación y Evaluación ICE accidental",
+            tipo_unidad=UnidadOrganizacional.TIPO_SUBSECCION,
+            padre=self.seccion_pedagogica,
+            carrera=self.carrera_ices,
+        )
+        asignacion_accidental = AsignacionCargo(
+            usuario=usuario_jefe_plan_eval,
+            carrera=self.carrera_ices,
+            unidad_organizacional=subseccion_pedagogica_ices,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_SUB_PLAN_EVAL,
+            tipo_designacion=AsignacionCargo.DESIGNACION_ACCIDENTAL,
+            vigente_hasta=timezone.localdate() + timedelta(days=30),
+        )
+
+        asignacion_accidental.full_clean()
+
     def test_jefe_carrera_acepta_alias_jefatura_carrera(self):
         usuario_jefatura = Usuario.objects.create_user(username="jefatura_carrera", password="segura123")
         usuario_jefatura.groups.add(self.grupo_jefatura_carrera)
@@ -554,6 +629,38 @@ class VigenciaAsignacionCargoTests(TestCase):
         )
 
         asignacion.full_clean()
+
+    def test_designacion_accidental_ejecucion_control_acepta_cargo_vigente_compatible(self):
+        usuario_jefe_ejec = Usuario.objects.create_user(
+            username="jefe_sub_ejec_vigente",
+            password="segura123",
+        )
+        usuario_jefe_ejec.groups.add(self.grupo_jefe_sub_ejec_ctr)
+        AsignacionCargo.objects.create(
+            usuario=usuario_jefe_ejec,
+            carrera=self.carrera_icis,
+            unidad_organizacional=self.subseccion_academica_icis,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_SUB_EJEC_CTR,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+        usuario_jefe_ejec.groups.clear()
+        subseccion_academica_ices = UnidadOrganizacional.objects.create(
+            clave="SUB_ACAD_ICES_ACC",
+            nombre="Subsección de Ejecución y Control ICE accidental",
+            tipo_unidad=UnidadOrganizacional.TIPO_SUBSECCION,
+            padre=self.seccion_academica,
+            carrera=self.carrera_ices,
+        )
+        asignacion_accidental = AsignacionCargo(
+            usuario=usuario_jefe_ejec,
+            carrera=self.carrera_ices,
+            unidad_organizacional=subseccion_academica_ices,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_SUB_EJEC_CTR,
+            tipo_designacion=AsignacionCargo.DESIGNACION_ACCIDENTAL,
+            vigente_hasta=timezone.localdate() + timedelta(days=30),
+        )
+
+        asignacion_accidental.full_clean()
 
     def test_nuevos_cargos_de_subseccion_requieren_rol_especifico(self):
         usuario_jefe_carrera = Usuario.objects.create_user(
@@ -915,6 +1022,9 @@ class FrontTemporalValidacionRolTests(TestCase):
         self.rol_discente, _ = Group.objects.get_or_create(name="DISCENTE")
         self.rol_docente, _ = Group.objects.get_or_create(name="DOCENTE")
         self.rol_jefatura, _ = Group.objects.get_or_create(name="JEFE_CARRERA")
+        self.rol_jefatura_planeacion, _ = Group.objects.get_or_create(
+            name="JEFE_SUB_PLAN_EVAL"
+        )
         self.rol_estadistica, _ = Group.objects.get_or_create(name="ENCARGADO_ESTADISTICA")
 
         self.carrera = Carrera.objects.create(clave="FRONT_ICI", nombre="ICI")
@@ -969,6 +1079,10 @@ class FrontTemporalValidacionRolTests(TestCase):
         self.usuario_docente = self.crear_usuario("docente_front", self.rol_docente)
         self.usuario_otro_docente = self.crear_usuario("docente_otro", self.rol_docente)
         self.usuario_jefatura = self.crear_usuario("jefatura_front", self.rol_jefatura)
+        self.usuario_jefatura_planeacion = self.crear_usuario(
+            "jefatura_planeacion_front",
+            self.rol_jefatura_planeacion,
+        )
         self.usuario_estadistica = self.crear_usuario("estadistica_front", self.rol_estadistica)
 
         self.discente = Discente.objects.create(
@@ -1020,6 +1134,21 @@ class FrontTemporalValidacionRolTests(TestCase):
         self.assertContains(response, "Materia front 1")
         self.assertNotContains(response, "Materia front 2")
 
+    def test_vistas_docente_muestran_textos_de_actas_sin_caracteres_corruptos(self):
+        self.client.force_login(self.usuario_docente)
+
+        listado = self.client.get("/validacion/docente/asignaciones/")
+        detalle = self.client.get(f"/validacion/docente/asignaciones/{self.asignacion.pk}/")
+
+        self.assertEqual(listado.status_code, 200)
+        self.assertEqual(detalle.status_code, 200)
+        self.assertContains(listado, "Resumen")
+        self.assertContains(listado, "Actas")
+        self.assertNotContains(listado, "Â")
+        self.assertContains(detalle, "Crear acta Evaluación final")
+        self.assertNotContains(detalle, "Crear acta Evaluacion final")
+        self.assertNotContains(detalle, "Â")
+
     def test_jefe_carrera_puede_operar_asignaciones_docentes(self):
         self.client.force_login(self.usuario_jefatura)
 
@@ -1058,6 +1187,44 @@ class FrontTemporalValidacionRolTests(TestCase):
         self.assertEqual(consulta.status_code, 200)
         self.assertContains(consulta, "Carga académica y movimientos")
         self.assertEqual(crear.status_code, 403)
+
+    def test_dashboard_estadistica_muestra_consulta_general_y_no_actas_por_validar(self):
+        self.client.force_login(self.usuario_estadistica)
+
+        response = self.client.get("/dashboard/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Consulta de actas de calificaciones")
+        self.assertNotContains(response, "Actas por validar")
+        self.assertNotContains(response, "Consulta de actas de mi ámbito")
+
+    def test_dashboard_jefatura_muestra_actas_por_validar_y_no_consulta_general(self):
+        self.client.force_login(self.usuario_jefatura)
+
+        response = self.client.get("/dashboard/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Actas por validar")
+        self.assertContains(response, "Consulta de actas de mi ámbito")
+        self.assertNotContains(response, "Consulta de actas de calificaciones")
+
+    def test_jefatura_planeacion_tiene_consulta_sin_operacion_de_carrera(self):
+        self.client.force_login(self.usuario_jefatura_planeacion)
+
+        dashboard = self.client.get("/dashboard/")
+        asignaciones = self.client.get("/validacion/jefatura/asignaciones-docentes/")
+        crear_asignacion = self.client.get("/relaciones/asignaciones-docentes/crear/")
+        carga_movimientos = self.client.get("/validacion/estadistica/carga/")
+
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertContains(dashboard, "Asignaciones docentes")
+        self.assertContains(dashboard, "Consulta de actas de Planeación y Evaluación")
+        self.assertNotContains(dashboard, "Actas por validar")
+        self.assertNotContains(dashboard, "Consulta de actas de mi ámbito")
+        self.assertEqual(asignaciones.status_code, 200)
+        self.assertNotContains(asignaciones, "Nueva asignación docente")
+        self.assertEqual(crear_asignacion.status_code, 403)
+        self.assertEqual(carga_movimientos.status_code, 403)
 
     def test_usuario_sin_permisos_recibe_403(self):
         usuario = Usuario.objects.create_user(username="sin_permiso", password="segura123")

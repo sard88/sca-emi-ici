@@ -221,6 +221,14 @@ class AsignacionCargo(models.Model):
         (CARGO_JEFE_SUB_EJEC_CTR, "Jefe de subsección de Ejecución y Control"),
         (CARGO_DOCENTE, "Docente"),
     ]
+    CARGOS_LEGACY_OCULTOS_ADMIN = {CARGO_JEFE_CARRERA, CARGO_JEFE_SUBSECCION_PEDAGOGICA}
+    CARGO_CHOICES_ADMIN = [
+        (CARGO_JEFE_ACADEMICO, "Jefe académico"),
+        (CARGO_JEFE_PEDAGOGICA, "Jefe de Pedagógica"),
+        (CARGO_JEFE_SUB_PLAN_EVAL, "Jefe de subsección de Planeación y Evaluación"),
+        (CARGO_JEFE_SUB_EJEC_CTR, "Jefe de subsección de Ejecución y Control"),
+        (CARGO_DOCENTE, "Docente"),
+    ]
 
     CARGOS_POR_CARRERA = {
         CARGO_JEFE_CARRERA,
@@ -251,9 +259,21 @@ class AsignacionCargo(models.Model):
         CARGO_JEFE_PEDAGOGICA: {ROL_JEFE_PEDAGOGICA},
         CARGO_JEFE_ACADEMICO: {ROL_JEFE_ACADEMICO, ROL_JEFATURA_ACADEMICA},
         CARGO_JEFE_CARRERA: {ROL_JEFE_CARRERA, ROL_JEFATURA_CARRERA},
-        CARGO_JEFE_SUBSECCION_PEDAGOGICA: {ROL_JEFE_PEDAGOGICA},
+        CARGO_JEFE_SUBSECCION_PEDAGOGICA: {ROL_JEFE_PEDAGOGICA, ROL_JEFE_SUB_PLAN_EVAL},
         CARGO_JEFE_SUB_PLAN_EVAL: {ROL_JEFE_SUB_PLAN_EVAL},
         CARGO_JEFE_SUB_EJEC_CTR: {ROL_JEFE_SUB_EJEC_CTR},
+    }
+    CARGOS_VIGENTES_COMPATIBLES_POR_CARGO = {
+        CARGO_JEFE_SUBSECCION_PEDAGOGICA: {
+            CARGO_JEFE_SUBSECCION_PEDAGOGICA,
+            CARGO_JEFE_SUB_PLAN_EVAL,
+        },
+        CARGO_JEFE_SUB_PLAN_EVAL: {
+            CARGO_JEFE_SUBSECCION_PEDAGOGICA,
+            CARGO_JEFE_SUB_PLAN_EVAL,
+        },
+        CARGO_JEFE_CARRERA: {CARGO_JEFE_CARRERA, CARGO_JEFE_SUB_EJEC_CTR},
+        CARGO_JEFE_SUB_EJEC_CTR: {CARGO_JEFE_CARRERA, CARGO_JEFE_SUB_EJEC_CTR},
     }
 
     DESIGNACION_TITULAR = "titular"
@@ -438,13 +458,40 @@ class AsignacionCargo(models.Model):
             return
 
         grupos_requeridos = self.GRUPOS_COMPATIBLES_POR_CARGO.get(self.cargo_codigo, set())
-        if grupos_requeridos and grupos_usuario.isdisjoint(grupos_requeridos):
+        if (
+            grupos_requeridos
+            and grupos_usuario.isdisjoint(grupos_requeridos)
+            and not self._usuario_tiene_cargo_vigente_compatible()
+        ):
             grupos = ", ".join(sorted(grupos_requeridos))
             self._add_error(
                 errors,
                 "usuario",
                 f"El usuario debe pertenecer a un grupo compatible con este cargo: {grupos}.",
             )
+
+    def _usuario_tiene_cargo_vigente_compatible(self):
+        if self.tipo_designacion != self.DESIGNACION_ACCIDENTAL:
+            return False
+
+        cargos_compatibles = self.CARGOS_VIGENTES_COMPATIBLES_POR_CARGO.get(
+            self.cargo_codigo,
+            set(),
+        )
+        if not cargos_compatibles:
+            return False
+
+        hoy = timezone.localdate()
+        asignaciones = AsignacionCargo.objects.filter(
+            models.Q(vigente_desde__isnull=True) | models.Q(vigente_desde__lte=hoy),
+            models.Q(vigente_hasta__isnull=True) | models.Q(vigente_hasta__gte=hoy),
+            usuario=self.usuario,
+            activo=True,
+            cargo_codigo__in=cargos_compatibles,
+        )
+        if self.pk:
+            asignaciones = asignaciones.exclude(pk=self.pk)
+        return asignaciones.exists()
 
     def clean(self):
         self._ensure_vigencia_defaults()

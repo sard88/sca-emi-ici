@@ -39,6 +39,10 @@
               <a href="{% url 'evaluacion:resumen-calculo' asignacion.pk %}">
                 Resumen
               </a>
+              ·
+              <a href="{% url 'usuarios:docente-asignacion-detalle' asignacion.pk %}">
+                Actas
+              </a>
             </td>
           </tr>
         {% empty %}

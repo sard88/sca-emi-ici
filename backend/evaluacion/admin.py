@@ -6,7 +6,16 @@ from django.core.exceptions import ValidationError
 from django.forms.models import BaseInlineFormSet
 
 from .forms import EsquemaEvaluacionAdminForm
-from .models import CapturaCalificacionPreliminar, ComponenteEvaluacion, EsquemaEvaluacion
+from .models import (
+    Acta,
+    CalificacionComponente,
+    CapturaCalificacionPreliminar,
+    ConformidadDiscente,
+    DetalleActa,
+    ComponenteEvaluacion,
+    EsquemaEvaluacion,
+    ValidacionActa,
+)
 
 
 class ComponenteEvaluacionInlineFormSet(BaseInlineFormSet):
@@ -181,3 +190,125 @@ class CapturaCalificacionPreliminarAdmin(admin.ModelAdmin):
         if not obj.capturado_por_id:
             obj.capturado_por = request.user
         super().save_model(request, obj, form, change)
+
+
+class CalificacionComponenteInline(admin.TabularInline):
+    model = CalificacionComponente
+    extra = 0
+    can_delete = False
+    readonly_fields = (
+        "componente",
+        "componente_nombre_snapshot",
+        "componente_porcentaje_snapshot",
+        "componente_es_examen_snapshot",
+        "valor_capturado",
+        "valor_calculado",
+        "sustituido_por_exencion",
+    )
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(DetalleActa)
+class DetalleActaAdmin(admin.ModelAdmin):
+    inlines = [CalificacionComponenteInline]
+    readonly_fields = (
+        "acta",
+        "inscripcion_materia",
+        "resultado_corte",
+        "resultado_corte_visible",
+        "promedio_parciales",
+        "promedio_parciales_visible",
+        "resultado_final_preliminar",
+        "resultado_final_preliminar_visible",
+        "resultado_preliminar",
+        "exencion_aplica",
+        "completo",
+        "creado_en",
+        "actualizado_en",
+    )
+    list_display = (
+        "acta",
+        "inscripcion_materia",
+        "resultado_corte_visible",
+        "resultado_final_preliminar_visible",
+        "resultado_preliminar",
+        "completo",
+    )
+    list_filter = ("acta__estado_acta", "acta__corte_codigo", "resultado_preliminar", "completo")
+    search_fields = (
+        "inscripcion_materia__discente__matricula",
+        "inscripcion_materia__discente__usuario__username",
+        "inscripcion_materia__discente__usuario__nombre_completo",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(Acta)
+class ActaAdmin(admin.ModelAdmin):
+    readonly_fields = (
+        "esquema_version_snapshot",
+        "peso_parciales_snapshot",
+        "peso_final_snapshot",
+        "umbral_exencion_snapshot",
+        "publicada_en",
+        "remitida_en",
+        "formalizada_en",
+        "archivada_en",
+        "creado_por",
+        "creado_en",
+        "actualizado_en",
+    )
+    list_display = (
+        "asignacion_docente",
+        "corte_codigo",
+        "estado_acta",
+        "esquema_version_snapshot",
+        "creado_en",
+    )
+    list_filter = ("estado_acta", "corte_codigo", "asignacion_docente__grupo_academico__periodo")
+    search_fields = (
+        "asignacion_docente__grupo_academico__clave_grupo",
+        "asignacion_docente__programa_asignatura__materia__clave",
+        "asignacion_docente__programa_asignatura__materia__nombre",
+        "asignacion_docente__usuario_docente__username",
+    )
+
+    def save_model(self, request, obj, form, change):
+        if not obj.creado_por_id:
+            obj.creado_por = request.user
+        if obj.esquema_id:
+            obj.esquema_version_snapshot = obj.esquema.version
+            obj.peso_parciales_snapshot = obj.esquema.peso_parciales
+            obj.peso_final_snapshot = obj.esquema.peso_final
+            obj.umbral_exencion_snapshot = obj.esquema.umbral_exencion
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(ConformidadDiscente)
+class ConformidadDiscenteAdmin(admin.ModelAdmin):
+    readonly_fields = ("registrado_en", "invalidado_en")
+    list_display = (
+        "detalle",
+        "discente",
+        "estado_conformidad",
+        "vigente",
+        "registrado_en",
+    )
+    list_filter = ("estado_conformidad", "vigente", "detalle__acta__estado_acta")
+    search_fields = (
+        "discente__matricula",
+        "discente__usuario__username",
+        "discente__usuario__nombre_completo",
+    )
+
+
+@admin.register(ValidacionActa)
+class ValidacionActaAdmin(admin.ModelAdmin):
+    readonly_fields = ("fecha_hora",)
+    list_display = ("acta", "etapa_validacion", "accion", "usuario", "fecha_hora")
+    list_filter = ("etapa_validacion", "accion", "acta__estado_acta")
+    search_fields = ("usuario__username", "acta__asignacion_docente__grupo_academico__clave_grupo")

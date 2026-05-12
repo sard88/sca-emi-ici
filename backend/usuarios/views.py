@@ -26,6 +26,7 @@ from relaciones.permisos import (
     usuario_es_docente,
     usuario_es_estadistica,
     usuario_es_jefatura_carrera,
+    usuario_es_jefatura_planeacion,
 )
 from relaciones.services import sincronizar_carga_academica
 
@@ -78,11 +79,25 @@ def accesos_permitidos(user):
     accesos = []
 
     if usuario_es_discente(user) or usuario_es_admin_soporte(user):
+        accesos.append(("Mis actas publicadas", "evaluacion:discente-actas"))
         accesos.append(("Mi carga académica", "usuarios:discente-carga"))
     if usuario_es_docente(user) or usuario_es_admin_soporte(user):
         accesos.append(("Mis asignaciones", "usuarios:docente-asignaciones"))
+        accesos.append(("Actas docentes", "evaluacion:docente-actas"))
     if puede_consultar_asignacion_docente(user):
         accesos.append(("Asignaciones docentes", "usuarios:jefatura-asignaciones"))
+    if usuario_es_jefatura_carrera(user) or usuario_es_admin_soporte(user):
+        accesos.append(("Actas por validar", "evaluacion:jefatura-carrera-actas"))
+        accesos.append(("Consulta de actas de mi ámbito", "evaluacion:jefatura-carrera-consulta-actas"))
+    if usuario_es_jefatura_planeacion(user) or usuario_es_admin_soporte(user):
+        accesos.append((
+            "Consulta de actas de Planeación y Evaluación",
+            "evaluacion:jefatura-planeacion-consulta-actas",
+        ))
+    if user.groups.filter(name__in=("JEFE_ACADEMICO", "JEFATURA_ACADEMICA")).exists() or usuario_es_admin_soporte(user):
+        accesos.append(("Actas por formalizar", "evaluacion:jefatura-academica-actas"))
+    if usuario_es_estadistica(user) or usuario_es_admin_soporte(user):
+        accesos.append(("Consulta de actas de calificaciones", "evaluacion:estadistica-actas"))
     if puede_consultar_relaciones(user):
         accesos.append(("Carga académica y movimientos", "usuarios:estadistica-carga"))
     if usuario_es_admin_soporte(user):

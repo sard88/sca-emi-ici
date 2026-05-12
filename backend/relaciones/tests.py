@@ -16,6 +16,7 @@ from catalogos.models import (
     ProgramaAsignatura,
     ProgramaAsignaturaUbicacion,
 )
+from evaluacion.models import Acta, DetalleActa, EsquemaEvaluacion
 from usuarios.models import AsignacionCargo, UnidadOrganizacional, Usuario
 
 from .forms import InscripcionMateriaForm
@@ -381,12 +382,49 @@ class RelacionesModeloTests(RelacionesBaseTestCase):
         self.assertNotIn("codigo_marca", form.fields)
         self.assertNotIn("cerrado_en", form.fields)
 
+    def test_inscripcion_form_no_falla_si_admin_excluye_discente(self):
+        class FormSinDiscente(InscripcionMateriaForm):
+            class Meta(InscripcionMateriaForm.Meta):
+                fields = ["asignacion_docente", "estado_inscripcion", "intento_numero"]
+
+        form = FormSinDiscente()
+
+        self.assertNotIn("discente", form.fields)
+        self.assertIn("asignacion_docente", form.fields)
+
     def test_movimiento_cambio_grupo_exige_grupo_destino(self):
         movimiento = MovimientoAcademico(
             discente=self.discente,
             periodo=self.periodo,
             tipo_movimiento=MovimientoAcademico.CAMBIO_GRUPO,
             grupo_origen=self.grupo,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            movimiento.full_clean()
+
+        self.assertIn("grupo_destino", exc.exception.message_dict)
+
+    def test_movimiento_cambio_grupo_exige_grupo_origen(self):
+        movimiento = MovimientoAcademico(
+            discente=self.discente,
+            periodo=self.periodo,
+            tipo_movimiento=MovimientoAcademico.CAMBIO_GRUPO,
+            grupo_destino=self.grupo_destino,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            movimiento.full_clean()
+
+        self.assertIn("grupo_origen", exc.exception.message_dict)
+
+    def test_movimiento_cambio_grupo_rechaza_mismo_origen_y_destino(self):
+        movimiento = MovimientoAcademico(
+            discente=self.discente,
+            periodo=self.periodo,
+            tipo_movimiento=MovimientoAcademico.CAMBIO_GRUPO,
+            grupo_origen=self.grupo,
+            grupo_destino=self.grupo,
         )
 
         with self.assertRaises(ValidationError) as exc:
@@ -408,17 +446,155 @@ class RelacionesModeloTests(RelacionesBaseTestCase):
         self.assertIn("observaciones", exc.exception.message_dict)
 
     def test_movimiento_valido_conserva_grupos_y_observaciones(self):
+        fecha_movimiento = self.adscripcion.vigente_desde
         movimiento = MovimientoAcademico.objects.create(
             discente=self.discente,
             periodo=self.periodo,
             tipo_movimiento=MovimientoAcademico.CAMBIO_GRUPO,
             grupo_origen=self.grupo,
             grupo_destino=self.grupo_destino,
+            fecha_movimiento=fecha_movimiento,
             observaciones="Cambio solicitado por ajuste operativo.",
         )
 
         self.assertEqual(movimiento.grupo_origen, self.grupo)
         self.assertEqual(movimiento.grupo_destino, self.grupo_destino)
+
+    def test_movimiento_cambio_grupo_actualiza_adscripcion_activa(self):
+        fecha_movimiento = self.adscripcion.vigente_desde
+        MovimientoAcademico.objects.create(
+            discente=self.discente,
+            periodo=self.periodo,
+            tipo_movimiento=MovimientoAcademico.CAMBIO_GRUPO,
+            grupo_origen=self.grupo,
+            grupo_destino=self.grupo_destino,
+            fecha_movimiento=fecha_movimiento,
+            observaciones="Cambio solicitado por ajuste operativo.",
+        )
+
+        self.adscripcion.refresh_from_db()
+        self.assertFalse(self.adscripcion.activo)
+        self.assertEqual(self.adscripcion.vigente_hasta, fecha_movimiento)
+
+        adscripcion_destino = AdscripcionGrupo.objects.get(
+            discente=self.discente,
+            grupo_academico=self.grupo_destino,
+            activo=True,
+        )
+        self.assertEqual(adscripcion_destino.vigente_desde, fecha_movimiento)
+
+        activas_periodo = AdscripcionGrupo.objects.filter(
+            discente=self.discente,
+            grupo_academico__periodo=self.periodo,
+            activo=True,
+        )
+        self.assertEqual(activas_periodo.count(), 1)
+        self.assertEqual(activas_periodo.get().grupo_academico, self.grupo_destino)
+
+    def test_movimiento_cambio_grupo_da_baja_inscripciones_origen_y_crea_destino(self):
+        asignacion_destino = AsignacionDocente.objects.create(
+            usuario_docente=self.crear_usuario_docente("docente_destino"),
+            grupo_academico=self.grupo_destino,
+            programa_asignatura=self.programa,
+        )
+        inscripcion_origen = InscripcionMateria.objects.get(
+            discente=self.discente,
+            asignacion_docente=self.asignacion,
+        )
+
+        MovimientoAcademico.objects.create(
+            discente=self.discente,
+            periodo=self.periodo,
+            tipo_movimiento=MovimientoAcademico.CAMBIO_GRUPO,
+            grupo_origen=self.grupo,
+            grupo_destino=self.grupo_destino,
+            fecha_movimiento=self.adscripcion.vigente_desde,
+            observaciones="Cambio solicitado por ajuste operativo.",
+        )
+
+        inscripcion_origen.refresh_from_db()
+        self.assertEqual(inscripcion_origen.estado_inscripcion, InscripcionMateria.ESTADO_BAJA)
+        self.assertTrue(
+            InscripcionMateria.objects.filter(
+                discente=self.discente,
+                asignacion_docente=asignacion_destino,
+                estado_inscripcion=InscripcionMateria.ESTADO_INSCRITA,
+            ).exists()
+        )
+
+    def test_movimiento_cambio_grupo_bloquea_inscripciones_con_actas_vivas(self):
+        esquema = EsquemaEvaluacion.objects.create(
+            programa_asignatura=self.programa,
+            version="v-acta-movimiento",
+        )
+        acta = Acta.objects.create(
+            asignacion_docente=self.asignacion,
+            corte_codigo="P1",
+            estado_acta=Acta.ESTADO_BORRADOR_DOCENTE,
+            esquema=esquema,
+            esquema_version_snapshot=esquema.version,
+            peso_parciales_snapshot=esquema.peso_parciales,
+            peso_final_snapshot=esquema.peso_final,
+            umbral_exencion_snapshot=esquema.umbral_exencion,
+            creado_por=self.usuario_docente,
+        )
+        DetalleActa.objects.create(
+            acta=acta,
+            inscripcion_materia=InscripcionMateria.objects.get(
+                discente=self.discente,
+                asignacion_docente=self.asignacion,
+            ),
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            MovimientoAcademico.objects.create(
+                discente=self.discente,
+                periodo=self.periodo,
+                tipo_movimiento=MovimientoAcademico.CAMBIO_GRUPO,
+                grupo_origen=self.grupo,
+                grupo_destino=self.grupo_destino,
+                fecha_movimiento=self.adscripcion.vigente_desde,
+                observaciones="Cambio solicitado por ajuste operativo.",
+            )
+
+        self.assertIn("discente", exc.exception.message_dict)
+        self.adscripcion.refresh_from_db()
+        self.assertTrue(self.adscripcion.activo)
+        self.assertFalse(
+            MovimientoAcademico.objects.filter(
+                discente=self.discente,
+                grupo_origen=self.grupo,
+                grupo_destino=self.grupo_destino,
+            ).exists()
+        )
+
+    def test_movimiento_cambio_grupo_rechaza_origen_no_activo_y_no_guarda_movimiento(self):
+        grupo_alterno = GrupoAcademico.objects.create(
+            clave_grupo="REL_G6",
+            antiguedad=self.antiguedad,
+            periodo=self.periodo,
+            semestre_numero=1,
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            MovimientoAcademico.objects.create(
+                discente=self.discente,
+                periodo=self.periodo,
+                tipo_movimiento=MovimientoAcademico.CAMBIO_GRUPO,
+                grupo_origen=self.grupo_destino,
+                grupo_destino=grupo_alterno,
+                fecha_movimiento=date(2025, 9, 1),
+                observaciones="Cambio solicitado por ajuste operativo.",
+            )
+
+        self.assertIn("grupo_origen", exc.exception.message_dict)
+        self.assertFalse(
+            MovimientoAcademico.objects.filter(
+                discente=self.discente,
+                grupo_origen=self.grupo_destino,
+                grupo_destino=grupo_alterno,
+            ).exists()
+        )
 
 
 class RelacionesPermisosViewTests(RelacionesBaseTestCase):

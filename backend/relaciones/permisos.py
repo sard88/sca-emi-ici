@@ -5,13 +5,15 @@ from usuarios.models import AsignacionCargo
 
 
 ROLES_ADMIN = ("ADMIN_SISTEMA", "ADMIN")
-ROLES_JEFATURA_CARRERA = ("JEFE_CARRERA", "JEFATURA_CARRERA")
+ROLES_JEFATURA_CARRERA = ("JEFE_CARRERA", "JEFATURA_CARRERA", "JEFE_SUB_EJEC_CTR")
+ROLES_JEFATURA_PLANEACION = ("JEFE_SUB_PLAN_EVAL",)
 ROLES_ESTADISTICA = ("ENCARGADO_ESTADISTICA", "ESTADISTICA")
 ROLES_DISCENTE = ("DISCENTE",)
 ROLES_DOCENTE = ("DOCENTE",)
 
 CARGOS_ADMIN = ("ADMIN", "ADMIN_SISTEMA")
-CARGOS_JEFATURA_CARRERA = ("JEFE_CARRERA", "JEFATURA_CARRERA")
+CARGOS_JEFATURA_CARRERA = ("JEFE_CARRERA", "JEFATURA_CARRERA", "JEFE_SUB_EJEC_CTR")
+CARGOS_JEFATURA_PLANEACION = ("JEFE_SUB_PLAN_EVAL", "JEFE_SUBSECCION_PEDAGOGICA")
 CARGOS_ESTADISTICA = ("ENCARGADO_ESTADISTICA", "ESTADISTICA")
 
 
@@ -53,6 +55,15 @@ def usuario_es_jefatura_carrera(user):
     )
 
 
+def usuario_es_jefatura_planeacion(user):
+    if not user.is_authenticated:
+        return False
+    return usuario_tiene_rol(user, ROLES_JEFATURA_PLANEACION) or usuario_tiene_cargo_activo(
+        user,
+        CARGOS_JEFATURA_PLANEACION,
+    )
+
+
 def usuario_es_estadistica(user):
     if not user.is_authenticated:
         return False
@@ -87,4 +98,8 @@ def puede_operar_asignacion_docente(user):
 
 
 def puede_consultar_asignacion_docente(user):
-    return puede_operar_asignacion_docente(user) or usuario_es_estadistica(user)
+    return (
+        puede_operar_asignacion_docente(user)
+        or usuario_es_estadistica(user)
+        or usuario_es_jefatura_planeacion(user)
+    )

@@ -18,6 +18,22 @@
       <a class="button secondary" href="{% url 'evaluacion:resumen-calculo' asignacion.pk %}">
         Resumen de cálculo
       </a>
+      <form class="inline" method="post" action="{% url 'evaluacion:acta-crear-borrador' asignacion.pk 'P1' %}">
+        {% csrf_token %}
+        <button type="submit">Crear acta P1</button>
+      </form>
+      <form class="inline" method="post" action="{% url 'evaluacion:acta-crear-borrador' asignacion.pk 'P2' %}">
+        {% csrf_token %}
+        <button type="submit">Crear acta P2</button>
+      </form>
+      <form class="inline" method="post" action="{% url 'evaluacion:acta-crear-borrador' asignacion.pk 'P3' %}">
+        {% csrf_token %}
+        <button type="submit">Crear acta P3</button>
+      </form>
+      <form class="inline" method="post" action="{% url 'evaluacion:acta-crear-borrador' asignacion.pk 'FINAL' %}">
+        {% csrf_token %}
+        <button type="submit">Crear acta Evaluación final</button>
+      </form>
     </div>
   </section>
 

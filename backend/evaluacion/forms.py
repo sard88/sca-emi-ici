@@ -2,7 +2,7 @@ from django import forms
 
 from catalogos.models import ESTADO_ACTIVO, ProgramaAsignatura
 
-from .models import CapturaCalificacionPreliminar, EsquemaEvaluacion
+from .models import CapturaCalificacionPreliminar, ConformidadDiscente, EsquemaEvaluacion
 
 
 class EsquemaEvaluacionAdminForm(forms.ModelForm):
@@ -114,3 +114,29 @@ class CapturaCalificacionesCorteForm(forms.Form):
                 )
             capturas.append(captura)
         return capturas
+
+
+class ConformidadDiscenteForm(forms.Form):
+    estado_conformidad = forms.ChoiceField(
+        choices=ConformidadDiscente.ESTADO_CONFORMIDAD_CHOICES,
+        label="Conformidad informativa",
+    )
+    comentario = forms.CharField(
+        label="Comentario",
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        estado = cleaned_data.get("estado_conformidad")
+        comentario = (cleaned_data.get("comentario") or "").strip()
+        cleaned_data["comentario"] = comentario
+
+        if estado == ConformidadDiscente.ESTADO_INCONFORME and not comentario:
+            self.add_error(
+                "comentario",
+                "El comentario es obligatorio cuando se registra inconformidad.",
+            )
+
+        return cleaned_data

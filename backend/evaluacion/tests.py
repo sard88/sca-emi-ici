@@ -27,13 +27,27 @@ from evaluacion.admin import (
 )
 from evaluacion.forms import EsquemaEvaluacionAdminForm
 from evaluacion.models import (
+    Acta,
+    CalificacionComponente,
     CapturaCalificacionPreliminar,
+    ConformidadDiscente,
+    DetalleActa,
     ComponenteEvaluacion,
     EsquemaEvaluacion,
+    ValidacionActa,
 )
-from evaluacion.services import ServicioCalculoAcademico, redondear_visualizacion_un_decimal
+from evaluacion.services import (
+    ServicioCalculoAcademico,
+    crear_o_regenerar_borrador_acta,
+    formalizar_acta_jefatura_academica,
+    publicar_acta,
+    registrar_conformidad_discente,
+    remitir_acta,
+    validar_acta_jefatura_carrera,
+    redondear_visualizacion_un_decimal,
+)
 from relaciones.models import AdscripcionGrupo, AsignacionDocente, Discente, InscripcionMateria
-from usuarios.models import GradoEmpleo
+from usuarios.models import AsignacionCargo, GradoEmpleo, UnidadOrganizacional
 
 
 class EsquemaEvaluacionTestCase(TestCase):
@@ -965,3 +979,675 @@ class CapturaCalificacionPreliminarTests(CapturaCalificacionPreliminarBaseTests)
         self.assertIsNone(self.inscripcion.codigo_resultado_oficial)
         self.assertIsNone(self.inscripcion.codigo_marca)
         self.assertIsNone(self.inscripcion.cerrado_en)
+
+
+class ActaFormalBloque6Tests(CapturaCalificacionPreliminarBaseTests):
+    def setUp(self):
+        super().setUp()
+        self.grupo_jefe_carrera, _ = Group.objects.get_or_create(name="JEFE_SUB_EJEC_CTR")
+        self.grupo_jefe_planeacion, _ = Group.objects.get_or_create(name="JEFE_SUB_PLAN_EVAL")
+        self.grupo_jefe_academico, _ = Group.objects.get_or_create(name="JEFE_ACADEMICO")
+        self.grupo_estadistica, _ = Group.objects.get_or_create(name="ENCARGADO_ESTADISTICA")
+        usuario_model = get_user_model()
+        self.usuario_jefe_carrera = usuario_model.objects.create_user(
+            username="jefe_carrera_acta",
+            password="segura123",
+        )
+        self.usuario_jefe_carrera.groups.add(self.grupo_jefe_carrera)
+        self.usuario_jefe_planeacion = usuario_model.objects.create_user(
+            username="jefe_planeacion_acta",
+            password="segura123",
+        )
+        self.usuario_jefe_planeacion.groups.add(self.grupo_jefe_planeacion)
+        self.usuario_jefe_academico = usuario_model.objects.create_user(
+            username="jefe_academico_acta",
+            password="segura123",
+        )
+        self.usuario_jefe_academico.groups.add(self.grupo_jefe_academico)
+        self.usuario_estadistica = usuario_model.objects.create_user(
+            username="estadistica_acta",
+            password="segura123",
+        )
+        self.usuario_estadistica.groups.add(self.grupo_estadistica)
+        self.seccion_academica = UnidadOrganizacional.objects.create(
+            clave=UnidadOrganizacional.CLAVE_SECCION_ACADEMICA,
+            nombre="Seccion Academica",
+            tipo_unidad=UnidadOrganizacional.TIPO_SECCION,
+        )
+        self.seccion_pedagogica = UnidadOrganizacional.objects.create(
+            clave=UnidadOrganizacional.CLAVE_SECCION_PEDAGOGICA,
+            nombre="Seccion Pedagogica",
+            tipo_unidad=UnidadOrganizacional.TIPO_SECCION,
+        )
+        self.subseccion_ejecucion = UnidadOrganizacional.objects.create(
+            clave="ACTA_SUB_EC",
+            nombre="Subseccion de Ejecucion y Control",
+            tipo_unidad=UnidadOrganizacional.TIPO_SUBSECCION,
+            padre=self.seccion_academica,
+            carrera=self.carrera,
+        )
+        self.subseccion_planeacion = UnidadOrganizacional.objects.create(
+            clave="ACTA_SUB_PE",
+            nombre="Subseccion de Planeacion y Evaluacion",
+            tipo_unidad=UnidadOrganizacional.TIPO_SUBSECCION,
+            padre=self.seccion_pedagogica,
+            carrera=self.carrera,
+        )
+        self.cargo_jefe_carrera = AsignacionCargo.objects.create(
+            usuario=self.usuario_jefe_carrera,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_SUB_EJEC_CTR,
+            carrera=self.carrera,
+            unidad_organizacional=self.subseccion_ejecucion,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+        self.cargo_jefe_planeacion = AsignacionCargo.objects.create(
+            usuario=self.usuario_jefe_planeacion,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_SUB_PLAN_EVAL,
+            carrera=self.carrera,
+            unidad_organizacional=self.subseccion_planeacion,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+        self.cargo_jefe_academico = AsignacionCargo.objects.create(
+            usuario=self.usuario_jefe_academico,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_ACADEMICO,
+            unidad_organizacional=self.seccion_academica,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+
+    def capturar_p1_completo(self):
+        self.capturar(self.componente_p1_tareas, "8.0")
+        self.capturar(self.componente_p1_examen, "10.0")
+
+    def capturar_final_completo_sin_exencion(self):
+        self.esquema.permite_exencion = False
+        self.esquema.save()
+        self.capturar_parciales("8.0", "8.0", "8.0")
+        self.capturar(self.componente_final, "9.0")
+
+    def publicar_acta_p1(self):
+        self.capturar_p1_completo()
+        acta = crear_o_regenerar_borrador_acta(
+            self.asignacion,
+            ComponenteEvaluacion.CORTE_P1,
+            self.usuario_docente,
+        )
+        publicar_acta(acta, self.usuario_docente)
+        return acta
+
+    def remitir_acta_p1(self):
+        acta = self.publicar_acta_p1()
+        remitir_acta(acta, self.usuario_docente)
+        return acta
+
+    def crear_acta_directa(
+        self,
+        asignacion=None,
+        esquema=None,
+        corte_codigo=ComponenteEvaluacion.CORTE_P1,
+        estado_acta=Acta.ESTADO_BORRADOR_DOCENTE,
+    ):
+        asignacion = asignacion or self.asignacion
+        esquema = esquema or self.esquema
+        return Acta.objects.create(
+            asignacion_docente=asignacion,
+            corte_codigo=corte_codigo,
+            estado_acta=estado_acta,
+            esquema=esquema,
+            esquema_version_snapshot=esquema.version,
+            peso_parciales_snapshot=esquema.peso_parciales,
+            peso_final_snapshot=esquema.peso_final,
+            umbral_exencion_snapshot=esquema.umbral_exencion,
+            creado_por=self.usuario_docente,
+        )
+
+    def crear_acta_otra_carrera(self, estado_acta=Acta.ESTADO_REMITIDO_JEFATURA_CARRERA):
+        suffix = Acta.objects.count() + 1
+        carrera = Carrera.objects.create(
+            clave=f"AJENA{suffix}",
+            nombre=f"Carrera ajena {suffix}",
+        )
+        plan = PlanEstudios.objects.create(
+            carrera=carrera,
+            clave=f"PLAN-AJENO-{suffix}",
+            nombre=f"Plan ajeno {suffix}",
+        )
+        antiguedad = Antiguedad.objects.create(
+            plan_estudios=plan,
+            clave=f"ANT-AJENA-{suffix}",
+            nombre=f"Antiguedad ajena {suffix}",
+            anio_inicio=2025,
+            anio_fin=2029,
+        )
+        grupo = GrupoAcademico.objects.create(
+            clave_grupo=f"AJENO-{suffix}",
+            antiguedad=antiguedad,
+            periodo=self.periodo,
+            semestre_numero=1,
+        )
+        materia = Materia.objects.create(
+            clave=f"MAT-AJENA-{suffix}",
+            nombre=f"Materia ajena {suffix}",
+            horas_totales=64,
+        )
+        programa = ProgramaAsignatura.objects.create(
+            plan_estudios=plan,
+            materia=materia,
+            semestre_numero=1,
+        )
+        asignacion = AsignacionDocente.objects.create(
+            usuario_docente=self.usuario_docente,
+            grupo_academico=grupo,
+            programa_asignatura=programa,
+        )
+        esquema = EsquemaEvaluacion.objects.create(
+            programa_asignatura=programa,
+            version=f"v-ajena-{suffix}",
+            num_parciales=2,
+        )
+        return self.crear_acta_directa(
+            asignacion=asignacion,
+            esquema=esquema,
+            estado_acta=estado_acta,
+        )
+
+    def test_impide_duplicidad_de_acta_activa_por_asignacion_y_corte(self):
+        acta = crear_o_regenerar_borrador_acta(
+            self.asignacion,
+            ComponenteEvaluacion.CORTE_P1,
+            self.usuario_docente,
+        )
+
+        with self.assertRaises(ValidationError):
+            Acta.objects.create(
+                asignacion_docente=self.asignacion,
+                corte_codigo=ComponenteEvaluacion.CORTE_P1,
+                esquema=self.esquema,
+                esquema_version_snapshot=self.esquema.version,
+                peso_parciales_snapshot=self.esquema.peso_parciales,
+                peso_final_snapshot=self.esquema.peso_final,
+                umbral_exencion_snapshot=self.esquema.umbral_exencion,
+                creado_por=self.usuario_docente,
+            )
+
+        self.assertEqual(
+            Acta.objects.filter(
+                asignacion_docente=self.asignacion,
+                corte_codigo=ComponenteEvaluacion.CORTE_P1,
+            ).count(),
+            1,
+        )
+        self.assertEqual(acta.estado_acta, Acta.ESTADO_BORRADOR_DOCENTE)
+
+    def test_crea_borrador_con_roster_componentes_y_snapshots(self):
+        self.capturar_p1_completo()
+
+        acta = crear_o_regenerar_borrador_acta(
+            self.asignacion,
+            ComponenteEvaluacion.CORTE_P1,
+            self.usuario_docente,
+        )
+
+        self.assertEqual(acta.detalles.count(), 1)
+        detalle = acta.detalles.get()
+        self.assertEqual(detalle.inscripcion_materia, self.inscripcion)
+        self.assertEqual(detalle.resultado_corte_visible, Decimal("9.2"))
+        self.assertEqual(detalle.calificaciones_componentes.count(), 2)
+        self.assertTrue(
+            CalificacionComponente.objects.filter(
+                detalle=detalle,
+                componente_nombre_snapshot="Tareas",
+                componente_porcentaje_snapshot=Decimal("40.00"),
+                valor_capturado=Decimal("8.0"),
+            ).exists()
+        )
+
+    def test_vista_acta_muestra_tabla_por_corte_con_componentes_snapshot(self):
+        grado = GradoEmpleo.objects.create(
+            clave="TTE_PAS_ICI",
+            abreviatura="Tte. Pas. I.C.I.",
+            nombre="Teniente pasante ICI",
+            tipo=GradoEmpleo.TIPO_MILITAR_ACTIVO,
+        )
+        self.usuario_discente.grado_empleo = grado
+        self.usuario_discente.nombre_completo = "Discente Acta"
+        self.usuario_discente.save()
+        self.capturar_p1_completo()
+        acta = crear_o_regenerar_borrador_acta(
+            self.asignacion,
+            ComponenteEvaluacion.CORTE_P1,
+            self.usuario_docente,
+        )
+        self.client.force_login(self.usuario_docente)
+
+        response = self.client.get(reverse("evaluacion:acta-detalle", args=[acta.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Acta de calificaciones por corte")
+        self.assertContains(response, "No.")
+        self.assertContains(response, "Grado y empleo")
+        self.assertContains(response, "Nombre")
+        self.assertContains(response, "Tareas")
+        self.assertContains(response, "40.00%")
+        self.assertContains(response, "Examen")
+        self.assertContains(response, "60.00%")
+        self.assertContains(response, "8.0")
+        self.assertContains(response, "10.0")
+        self.assertNotContains(response, "3.200000")
+        self.assertNotContains(response, "6.000000")
+        self.assertContains(response, "Calificación Parcial 1")
+        self.assertContains(response, "9.2")
+        self.assertContains(response, "Conformidad")
+        self.assertNotContains(response, "Firma de conformidad")
+        self.assertContains(response, "Tte. Pas. I.C.I.")
+        self.assertContains(response, "Discente Acta")
+        self.assertNotContains(response, "CAP0001")
+
+    def test_impide_publicar_si_faltan_capturas_requeridas(self):
+        self.capturar(self.componente_p1_tareas, "8.0")
+        acta = crear_o_regenerar_borrador_acta(
+            self.asignacion,
+            ComponenteEvaluacion.CORTE_P1,
+            self.usuario_docente,
+        )
+
+        with self.assertRaises(ValidationError):
+            publicar_acta(acta, self.usuario_docente)
+
+        acta.refresh_from_db()
+        self.assertEqual(acta.estado_acta, Acta.ESTADO_BORRADOR_DOCENTE)
+
+    def test_permite_publicar_final_si_exencion_del_examen_es_valida(self):
+        self.capturar_parciales("9.0", "9.0", "9.0")
+        acta = crear_o_regenerar_borrador_acta(
+            self.asignacion,
+            ComponenteEvaluacion.CORTE_FINAL,
+            self.usuario_docente,
+        )
+
+        publicar_acta(acta, self.usuario_docente)
+        detalle = acta.detalles.get()
+
+        self.assertEqual(acta.estado_acta, Acta.ESTADO_PUBLICADO_DISCENTE)
+        self.assertTrue(detalle.exencion_aplica)
+        calificacion_examen = detalle.calificaciones_componentes.get(
+            componente=self.componente_final
+        )
+        self.assertTrue(calificacion_examen.sustituido_por_exencion)
+        self.assertIsNone(calificacion_examen.valor_capturado)
+        self.assertEqual(calificacion_examen.valor_calculado, Decimal("9.000000"))
+
+    def test_conformidad_discente_no_bloquea_remision(self):
+        acta = self.publicar_acta_p1()
+        detalle = acta.detalles.get()
+
+        conformidad = registrar_conformidad_discente(
+            detalle,
+            self.usuario_discente,
+            ConformidadDiscente.ESTADO_CONFORME,
+            "Enterado",
+        )
+        remitir_acta(acta, self.usuario_docente)
+
+        acta.refresh_from_db()
+        self.assertTrue(conformidad.vigente)
+        self.assertEqual(acta.estado_acta, Acta.ESTADO_REMITIDO_JEFATURA_CARRERA)
+
+    def test_conformidad_inconforme_exige_comentario(self):
+        acta = self.publicar_acta_p1()
+        detalle = acta.detalles.get()
+
+        with self.assertRaises(ValidationError) as exc:
+            registrar_conformidad_discente(
+                detalle,
+                self.usuario_discente,
+                ConformidadDiscente.ESTADO_INCONFORME,
+                "",
+            )
+
+        self.assertIn("comentario es obligatorio", str(exc.exception))
+        self.assertFalse(detalle.conformidades.exists())
+
+    def test_discente_detalle_muestra_error_si_inconformidad_no_tiene_comentario(self):
+        acta = self.publicar_acta_p1()
+        detalle = acta.detalles.get()
+        self.client.force_login(self.usuario_discente)
+
+        response = self.client.post(
+            reverse("evaluacion:discente-acta-detalle", args=[detalle.pk]),
+            data={
+                "estado_conformidad": ConformidadDiscente.ESTADO_INCONFORME,
+                "comentario": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            "El comentario es obligatorio cuando se registra inconformidad.",
+        )
+        self.assertFalse(detalle.conformidades.exists())
+
+    def test_acta_detalle_muestra_comentarios_en_seccion_secundaria(self):
+        acta = self.publicar_acta_p1()
+        detalle = acta.detalles.get()
+        registrar_conformidad_discente(
+            detalle,
+            self.usuario_discente,
+            ConformidadDiscente.ESTADO_INCONFORME,
+            "Solicito revisión del componente de examen.",
+        )
+        self.client.force_login(self.usuario_docente)
+
+        response = self.client.get(reverse("evaluacion:acta-detalle", args=[acta.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Conformidad")
+        self.assertContains(response, "Inconforme")
+        self.assertContains(response, "Observaciones de conformidad")
+        self.assertContains(response, "Solicito revisión del componente de examen.")
+
+    def test_conformidad_queda_solo_lectura_despues_de_remitir(self):
+        acta = self.publicar_acta_p1()
+        detalle = acta.detalles.get()
+        remitir_acta(acta, self.usuario_docente)
+
+        with self.assertRaises(ValidationError) as error:
+            registrar_conformidad_discente(
+                detalle,
+                self.usuario_discente,
+                ConformidadDiscente.ESTADO_CONFORME,
+                "Enterado después de remisión.",
+            )
+
+        self.assertIn("solo lectura", str(error.exception))
+        self.assertFalse(detalle.conformidades.exists())
+
+    def test_discente_detalle_oculta_formulario_de_conformidad_despues_de_remitir(self):
+        acta = self.publicar_acta_p1()
+        detalle = acta.detalles.get()
+        remitir_acta(acta, self.usuario_docente)
+        self.client.force_login(self.usuario_discente)
+
+        response = self.client.get(reverse("evaluacion:discente-acta-detalle", args=[detalle.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Registrar conformidad")
+        self.assertContains(response, "La conformidad quedó en solo lectura")
+
+    def test_bloquea_captura_preliminar_si_acta_ya_fue_publicada(self):
+        captura = self.capturar(self.componente_p1_tareas, "8.0")
+        self.capturar(self.componente_p1_examen, "10.0")
+        acta = crear_o_regenerar_borrador_acta(
+            self.asignacion,
+            ComponenteEvaluacion.CORTE_P1,
+            self.usuario_docente,
+        )
+        publicar_acta(acta, self.usuario_docente)
+        self.client.force_login(self.usuario_docente)
+        field_name = f"cal_{self.inscripcion.pk}_{self.componente_p1_tareas.pk}"
+
+        response = self.client.post(
+            reverse(
+                "evaluacion:captura-calificaciones",
+                args=[self.asignacion.pk, ComponenteEvaluacion.CORTE_P1],
+            ),
+            data={field_name: "9.0"},
+            follow=True,
+        )
+
+        captura.refresh_from_db()
+        self.assertEqual(captura.valor, Decimal("8.0"))
+        self.assertContains(response, "La captura preliminar quedó bloqueada")
+
+    def test_regenerar_solo_aparece_en_borrador_y_backend_bloquea_publicada(self):
+        self.capturar_p1_completo()
+        acta = crear_o_regenerar_borrador_acta(
+            self.asignacion,
+            ComponenteEvaluacion.CORTE_P1,
+            self.usuario_docente,
+        )
+        self.client.force_login(self.usuario_docente)
+
+        response_borrador = self.client.get(reverse("evaluacion:acta-detalle", args=[acta.pk]))
+        self.assertContains(response_borrador, "Regenerar desde captura preliminar")
+
+        publicar_acta(acta, self.usuario_docente)
+        response_publicada = self.client.get(reverse("evaluacion:acta-detalle", args=[acta.pk]))
+        self.assertNotContains(response_publicada, "Regenerar desde captura preliminar")
+
+        response_post = self.client.post(
+            reverse("evaluacion:acta-regenerar", args=[acta.pk]),
+            follow=True,
+        )
+        acta.refresh_from_db()
+        self.assertEqual(acta.estado_acta, Acta.ESTADO_PUBLICADO_DISCENTE)
+        self.assertContains(response_post, "Solo se puede regenerar un acta en estado borrador docente.")
+
+    def test_impide_remision_si_usuario_no_es_docente_responsable(self):
+        acta = self.publicar_acta_p1()
+        self.client.force_login(self.otro_docente)
+
+        response = self.client.post(reverse("evaluacion:acta-remitir", args=[acta.pk]))
+
+        self.assertEqual(response.status_code, 403)
+        acta.refresh_from_db()
+        self.assertEqual(acta.estado_acta, Acta.ESTADO_PUBLICADO_DISCENTE)
+
+    def test_estadistica_accede_consulta_general_de_actas(self):
+        acta = self.crear_acta_directa()
+        self.client.force_login(self.usuario_estadistica)
+
+        response = self.client.get(reverse("evaluacion:estadistica-actas"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Consulta de actas de calificaciones")
+        self.assertContains(response, acta.asignacion_docente.programa_asignatura.materia.nombre)
+
+    def test_estadistica_ve_detalle_en_solo_lectura(self):
+        acta = self.crear_acta_directa()
+        self.client.force_login(self.usuario_estadistica)
+
+        response = self.client.get(reverse("evaluacion:acta-detalle", args=[acta.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Consulta de actas de calificaciones")
+        self.assertNotContains(response, "Actas docentes")
+        self.assertNotContains(response, "Regenerar desde captura preliminar")
+        self.assertNotContains(response, "Publicar a discentes")
+        self.assertNotContains(response, "Remitir a jefatura de carrera")
+        self.assertNotContains(response, "Validar como jefatura de carrera")
+        self.assertNotContains(response, "Formalizar como jefatura académica")
+
+    def test_detalle_acta_muestra_enlace_regreso_segun_perfil_no_docente(self):
+        acta = self.crear_acta_directa()
+        perfiles = (
+            (self.usuario_estadistica, "Consulta de actas de calificaciones"),
+            (self.usuario_jefe_carrera, "Actas por validar"),
+            (self.usuario_jefe_planeacion, "Consulta de actas de Planeación y Evaluación"),
+            (self.usuario_jefe_academico, "Actas por formalizar"),
+        )
+
+        for usuario, texto_esperado in perfiles:
+            with self.subTest(usuario=usuario.username):
+                self.client.force_login(usuario)
+                response = self.client.get(reverse("evaluacion:acta-detalle", args=[acta.pk]))
+
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, texto_esperado)
+                self.assertNotContains(response, "Actas docentes")
+
+    def test_estadistica_no_puede_operar_flujo_de_actas_por_url_directa(self):
+        acta = self.crear_acta_directa()
+        self.client.force_login(self.usuario_estadistica)
+
+        rutas = [
+            "evaluacion:acta-publicar",
+            "evaluacion:acta-remitir",
+            "evaluacion:acta-validar-carrera",
+            "evaluacion:acta-formalizar",
+        ]
+
+        for ruta in rutas:
+            with self.subTest(ruta=ruta):
+                response = self.client.post(reverse(ruta, args=[acta.pk]))
+                self.assertEqual(response.status_code, 403)
+
+        acta.refresh_from_db()
+        self.assertEqual(acta.estado_acta, Acta.ESTADO_BORRADOR_DOCENTE)
+
+    def test_jefatura_carrera_no_accede_a_consulta_general_de_estadistica(self):
+        self.client.force_login(self.usuario_jefe_carrera)
+
+        response = self.client.get(reverse("evaluacion:estadistica-actas"))
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_jefatura_carrera_consulta_solo_actas_de_su_ambito(self):
+        acta_propia = self.crear_acta_directa()
+        acta_ajena = self.crear_acta_otra_carrera()
+        self.client.force_login(self.usuario_jefe_carrera)
+
+        response = self.client.get(reverse("evaluacion:jefatura-carrera-consulta-actas"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, acta_propia.asignacion_docente.programa_asignatura.materia.nombre)
+        self.assertNotContains(response, acta_ajena.asignacion_docente.programa_asignatura.materia.nombre)
+
+    def test_jefatura_planeacion_consulta_actas_solo_lectura_de_su_ambito(self):
+        acta_propia = self.crear_acta_directa()
+        acta_ajena = self.crear_acta_otra_carrera()
+        self.client.force_login(self.usuario_jefe_planeacion)
+
+        consulta = self.client.get(reverse("evaluacion:jefatura-planeacion-consulta-actas"))
+        detalle = self.client.get(reverse("evaluacion:acta-detalle", args=[acta_propia.pk]))
+        validar = self.client.post(reverse("evaluacion:acta-validar-carrera", args=[acta_propia.pk]))
+        bandeja_validacion = self.client.get(reverse("evaluacion:jefatura-carrera-actas"))
+
+        self.assertEqual(consulta.status_code, 200)
+        self.assertContains(consulta, acta_propia.asignacion_docente.programa_asignatura.materia.nombre)
+        self.assertNotContains(consulta, acta_ajena.asignacion_docente.programa_asignatura.materia.nombre)
+        self.assertEqual(detalle.status_code, 200)
+        self.assertContains(detalle, "Consulta de actas de Planeación y Evaluación")
+        self.assertNotContains(detalle, "Validar como jefatura de carrera")
+        self.assertEqual(validar.status_code, 403)
+        self.assertEqual(bandeja_validacion.status_code, 403)
+
+    def test_jefatura_planeacion_no_consulta_detalle_de_acta_ajena(self):
+        acta_ajena = self.crear_acta_otra_carrera()
+        self.client.force_login(self.usuario_jefe_planeacion)
+
+        response = self.client.get(reverse("evaluacion:acta-detalle", args=[acta_ajena.pk]))
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_jefatura_carrera_no_consulta_detalle_de_acta_ajena(self):
+        acta_ajena = self.crear_acta_otra_carrera()
+        self.client.force_login(self.usuario_jefe_carrera)
+
+        response = self.client.get(reverse("evaluacion:acta-detalle", args=[acta_ajena.pk]))
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_jefatura_carrera_no_valida_acta_ajena(self):
+        acta_ajena = self.crear_acta_otra_carrera()
+        self.client.force_login(self.usuario_jefe_carrera)
+
+        response = self.client.post(reverse("evaluacion:acta-validar-carrera", args=[acta_ajena.pk]))
+
+        self.assertEqual(response.status_code, 403)
+        acta_ajena.refresh_from_db()
+        self.assertEqual(acta_ajena.estado_acta, Acta.ESTADO_REMITIDO_JEFATURA_CARRERA)
+
+    def test_impide_regenerar_despues_de_remitir(self):
+        acta = self.remitir_acta_p1()
+
+        with self.assertRaises(ValidationError):
+            crear_o_regenerar_borrador_acta(
+                self.asignacion,
+                ComponenteEvaluacion.CORTE_P1,
+                self.usuario_docente,
+            )
+
+        acta.refresh_from_db()
+        self.assertTrue(acta.solo_lectura)
+
+    def test_permite_validacion_por_jefatura_de_carrera_vigente(self):
+        acta = self.remitir_acta_p1()
+
+        validar_acta_jefatura_carrera(acta, self.usuario_jefe_carrera)
+
+        acta.refresh_from_db()
+        self.assertEqual(acta.estado_acta, Acta.ESTADO_VALIDADO_JEFATURA_CARRERA)
+        self.assertTrue(
+            ValidacionActa.objects.filter(
+                acta=acta,
+                etapa_validacion=ValidacionActa.ETAPA_JEFATURA_CARRERA,
+                accion=ValidacionActa.ACCION_VALIDA,
+                asignacion_cargo=self.cargo_jefe_carrera,
+            ).exists()
+        )
+
+    def test_impide_formalizacion_sin_validacion_previa(self):
+        acta = self.remitir_acta_p1()
+        acta.estado_acta = Acta.ESTADO_VALIDADO_JEFATURA_CARRERA
+        acta.save(update_fields=["estado_acta"])
+
+        with self.assertRaises(ValidationError):
+            formalizar_acta_jefatura_academica(acta, self.usuario_jefe_academico)
+
+    def test_permite_formalizacion_por_jefatura_academica_vigente(self):
+        acta = self.remitir_acta_p1()
+        validar_acta_jefatura_carrera(acta, self.usuario_jefe_carrera)
+
+        formalizar_acta_jefatura_academica(acta, self.usuario_jefe_academico)
+
+        acta.refresh_from_db()
+        self.inscripcion.refresh_from_db()
+        self.assertEqual(acta.estado_acta, Acta.ESTADO_FORMALIZADO_JEFATURA_ACADEMICA)
+        self.assertTrue(acta.solo_lectura)
+        self.assertIsNone(self.inscripcion.calificacion_final)
+
+    def test_jefatura_academica_consulta_actas_formalizadas_sin_reformalizar(self):
+        acta = self.remitir_acta_p1()
+        validar_acta_jefatura_carrera(acta, self.usuario_jefe_carrera)
+        formalizar_acta_jefatura_academica(acta, self.usuario_jefe_academico)
+        self.client.force_login(self.usuario_jefe_academico)
+
+        response = self.client.get(reverse("evaluacion:jefatura-academica-actas"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Actas formalizadas")
+        self.assertContains(response, "Consultar")
+        self.assertContains(response, acta.asignacion_docente.programa_asignatura.materia.nombre)
+        self.assertNotContains(response, "Formalizar como jefatura académica")
+
+    def test_vistas_de_actas_redirigen_a_login_si_no_hay_sesion(self):
+        acta = self.publicar_acta_p1()
+        self.client.logout()
+
+        detalle_response = self.client.get(reverse("evaluacion:acta-detalle", args=[acta.pk]))
+        jefatura_response = self.client.get(reverse("evaluacion:jefatura-academica-actas"))
+
+        self.assertEqual(detalle_response.status_code, 302)
+        self.assertEqual(jefatura_response.status_code, 302)
+        self.assertIn(reverse("usuarios:login"), detalle_response["Location"])
+        self.assertIn(reverse("usuarios:login"), jefatura_response["Location"])
+
+    def test_actualiza_campos_oficiales_solo_al_formalizar_acta_final(self):
+        self.capturar_final_completo_sin_exencion()
+        acta = crear_o_regenerar_borrador_acta(
+            self.asignacion,
+            ComponenteEvaluacion.CORTE_FINAL,
+            self.usuario_docente,
+        )
+        publicar_acta(acta, self.usuario_docente)
+        remitir_acta(acta, self.usuario_docente)
+        validar_acta_jefatura_carrera(acta, self.usuario_jefe_carrera)
+
+        formalizar_acta_jefatura_academica(acta, self.usuario_jefe_academico)
+
+        self.inscripcion.refresh_from_db()
+        self.assertEqual(self.inscripcion.calificacion_final, Decimal("8.6"))
+        self.assertEqual(self.inscripcion.codigo_resultado_oficial, "APROBADO")
+        self.assertEqual(self.inscripcion.codigo_marca, "")
+        self.assertIsNotNone(self.inscripcion.cerrado_en)

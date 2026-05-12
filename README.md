@@ -601,17 +601,17 @@ Se agrego un front temporal con Django templates para validar permisos, datos y 
 
 Este frente es temporal y no reemplaza el frontend final del sistema.
 
-## Bloque 5 - Captura basica y calculo academico preliminar
+## Bloque 5 - Captura básica y cálculo académico preliminar
 
-Se implementa la captura preliminar de calificaciones para validar el calculo academico antes de construir el flujo formal de actas.
+Se implementa la captura preliminar de calificaciones para validar el cálculo académico antes de construir el flujo formal de actas.
 
-### Que se implemento
+### Qué se implementó
 
-- Modelo `CapturaCalificacionPreliminar` para registrar valores por `InscripcionMateria`, `ComponenteEvaluacion`, corte academico, usuario capturador y fecha de actualizacion.
-- Servicio `ServicioCalculoAcademico` para calcular resultado por corte, promedio de parciales, exencion preliminar, evaluacion final, resultado final preliminar y estado preliminar.
-- Sustitucion del componente de evaluacion final por promedio de parciales cuando la exencion preliminar aplica.
-- Vistas simples con Django templates para captura por corte y resumen de calculo por asignacion docente.
-- Registro tecnico de capturas preliminares en Django Admin.
+- Modelo `CapturaCalificacionPreliminar` para registrar valores por `InscripcionMateria`, `ComponenteEvaluacion`, corte académico, usuario capturador y fecha de actualización.
+- Servicio `ServicioCalculoAcademico` para calcular resultado por corte, promedio de parciales, exención preliminar, evaluación final, resultado final preliminar y estado preliminar.
+- Sustitución del componente de evaluación final por promedio de parciales cuando la exención preliminar aplica.
+- Vistas simples con Django templates para captura por corte y resumen de cálculo por asignación docente.
+- Registro técnico de capturas preliminares en Django Admin.
 
 ### Rutas nuevas
 
@@ -622,34 +622,134 @@ Desde `/validacion/docente/asignaciones/` se enlazan las acciones de captura y r
 
 ### Reglas principales
 
-- La escala valida de captura es 0.0 a 10.0.
+- La escala válida de captura es 0.0 a 10.0.
 - Las materias pueden tener 1, 2 o 3 parciales.
 - Materias con 1 parcial no exentan examen final.
-- La exencion preliminar solo aplica si la materia la permite, tiene 2 o 3 parciales, el promedio de parciales es al menos 9.0 y existe componente de examen en el corte FINAL, mostrado al usuario como evaluacion final.
-- La formula preliminar usa los pesos configurados en `EsquemaEvaluacion`; por omision se conserva 45/55.
+- La exención preliminar solo aplica si la materia la permite, tiene 2 o 3 parciales, el promedio de parciales es al menos 9.0 y existe componente de examen en el corte FINAL, mostrado al usuario como evaluación final.
+- La fórmula preliminar usa los pesos configurados en `EsquemaEvaluacion`; por omisión se conserva 45/55.
 - El resultado final preliminar se muestra redondeado a un decimal.
 
 ### Fuera de este bloque
 
-No se crean ni actualizan todavia `Acta`, `DetalleActa`, calificaciones oficiales de acta, conformidad de discente, validacion de acta, extraordinarios, historial academico, kardex, reportes formales ni exportaciones PDF/Excel.
+No se crean ni actualizan todavía `Acta`, `DetalleActa`, calificaciones oficiales de acta, conformidad de discente, validación de acta, extraordinarios, historial académico, kárdex, reportes formales ni exportaciones PDF/Excel.
 
-Tampoco se actualizan automaticamente los campos oficiales de `InscripcionMateria`:
+Tampoco se actualizan automáticamente los campos oficiales de `InscripcionMateria`:
 
 - `calificacion_final`
 - `codigo_resultado_oficial`
 - `codigo_marca`
 - `cerrado_en`
 
-### Como probar
+### Cómo probar
 
 1. Entrar como docente asignado.
 2. Abrir `Mis asignaciones`.
 3. Usar `Capturar` para registrar valores por corte.
-4. Usar `Resumen` para revisar promedio de parciales, exencion, evaluacion final, resultado final preliminar y estado preliminar.
+4. Usar `Resumen` para revisar promedio de parciales, exención, evaluación final, resultado final preliminar y estado preliminar.
 
 Validaciones recomendadas:
 
 ```bash
 docker compose exec -T backend python manage.py check
 docker compose exec -T backend python manage.py test evaluacion
+```
+
+## Bloque 6 - Gestión formal de actas
+
+Se implementa la gestión formal de actas tomando como base la captura preliminar y el servicio de cálculo académico del Bloque 5.
+
+El Bloque 6 no convierte `CapturaCalificacionPreliminar` en acta oficial. La captura preliminar sigue siendo insumo de trabajo del docente, mientras que el acta conserva sus propios registros, estado y snapshots mínimos.
+
+### Modelos creados
+
+- `Acta`: entidad principal del flujo formal por asignación docente y corte académico.
+- `DetalleActa`: fila del acta por cada inscripción a asignatura.
+- `CalificacionComponente`: snapshot de los componentes usados en cada detalle.
+- `ConformidadDiscente`: acuse o conformidad informativa del discente.
+- `ValidacionActa`: bitácora de publicación, remisión, validación y formalización.
+
+### Estados del acta
+
+- `BORRADOR_DOCENTE`
+- `PUBLICADO_DISCENTE`
+- `REMITIDO_JEFATURA_CARRERA`
+- `VALIDADO_JEFATURA_CARRERA`
+- `FORMALIZADO_JEFATURA_ACADEMICA`
+- `ARCHIVADO`
+
+En `BORRADOR_DOCENTE` el docente puede regenerar el acta desde capturas preliminares. Después de publicar, remitir, validar, formalizar o archivar, el backend impide regenerar el acta desde la captura preliminar.
+
+### Snapshot mínimo
+
+El acta guarda evidencia para no depender ciegamente de cambios futuros del esquema vivo:
+
+- versión del esquema;
+- peso de parciales;
+- peso final;
+- umbral de exención;
+- nombre del componente;
+- porcentaje del componente;
+- si el componente era examen;
+- valor capturado;
+- valor calculado;
+- marca de sustitución por exención.
+
+### Rutas principales
+
+- `GET /evaluacion/actas/docente/`
+- `POST /evaluacion/docente/asignaciones/<id>/actas/<corte>/crear-borrador/`
+- `GET /evaluacion/actas/<id>/`
+- `POST /evaluacion/actas/<id>/regenerar/`
+- `POST /evaluacion/actas/<id>/publicar/`
+- `POST /evaluacion/actas/<id>/remitir/`
+- `GET /evaluacion/actas/discente/`
+- `GET/POST /evaluacion/actas/discente/detalle/<id>/`
+- `GET /evaluacion/actas/jefatura-carrera/pendientes/`
+- `POST /evaluacion/actas/<id>/validar-carrera/`
+- `GET /evaluacion/actas/jefatura-academica/pendientes/`
+- `POST /evaluacion/actas/<id>/formalizar/`
+- `GET /evaluacion/actas/estadistica/`
+
+### Reglas principales
+
+- No se permite duplicar actas activas para la misma asignación docente y corte.
+- El docente crea, publica y remite sus propias actas.
+- El discente solo consulta su detalle publicado y registra conformidad informativa.
+- La conformidad del discente no bloquea el flujo.
+- Jefatura de carrera valida actas remitidas de su carrera/unidad.
+- Jefatura académica formaliza actas previamente validadas y consulta actas ya formalizadas en modo de solo lectura.
+- Estadística consulta estados, pero no firma por jefaturas.
+- Superusuario conserva soporte técnico.
+- Solo al formalizar el acta `FINAL` se actualizan campos oficiales de `InscripcionMateria`.
+- Las actas parciales no actualizan `calificacion_final` definitiva.
+
+### Fuera de este bloque
+
+No se implementan todavía:
+
+- historial académico completo;
+- kárdex;
+- extraordinarios;
+- reportes formales;
+- exportación PDF/Excel;
+- rectificación posterior al cierre;
+- MFA/OTP.
+
+### Cómo probar el flujo mínimo
+
+1. Capturar calificaciones preliminares como docente.
+2. Crear borrador de acta desde la asignación docente y corte.
+3. Publicar el acta para discentes.
+4. Registrar conformidad informativa como discente.
+5. Remitir el acta a jefatura de carrera.
+6. Validar como jefe de subsección de Ejecución y Control/Jefe de carrera.
+7. Formalizar como jefatura académica.
+8. Consultar el acta en la sección de actas formalizadas de jefatura académica.
+
+Validaciones recomendadas:
+
+```bash
+docker compose exec -T backend python manage.py check
+docker compose exec -T backend python manage.py test evaluacion
+docker compose exec -T backend python manage.py test
 ```

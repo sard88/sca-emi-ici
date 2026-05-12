@@ -117,33 +117,35 @@ class InscripcionMateriaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["discente"].queryset = Discente.objects.filter(
-            activo=True,
-            usuario__is_active=True,
-            usuario__estado_cuenta=Usuario.ESTADO_ACTIVO,
-            usuario__groups__name=ROL_DISCENTE,
-        ).select_related("usuario", "plan_estudios", "antiguedad").distinct()
-        self.fields["asignacion_docente"].queryset = (
-            AsignacionDocente.objects.filter(
+        if "discente" in self.fields:
+            self.fields["discente"].queryset = Discente.objects.filter(
                 activo=True,
-                usuario_docente__is_active=True,
-                usuario_docente__estado_cuenta=Usuario.ESTADO_ACTIVO,
-                usuario_docente__groups__name=ROL_DOCENTE,
-                grupo_academico__estado=ESTADO_ACTIVO,
-                grupo_academico__periodo__estado=ESTADO_ACTIVO,
-                programa_asignatura__plan_estudios__estado=ESTADO_ACTIVO,
-                programa_asignatura__materia__estado=ESTADO_ACTIVO,
+                usuario__is_active=True,
+                usuario__estado_cuenta=Usuario.ESTADO_ACTIVO,
+                usuario__groups__name=ROL_DISCENTE,
+            ).select_related("usuario", "plan_estudios", "antiguedad").distinct()
+        if "asignacion_docente" in self.fields:
+            self.fields["asignacion_docente"].queryset = (
+                AsignacionDocente.objects.filter(
+                    activo=True,
+                    usuario_docente__is_active=True,
+                    usuario_docente__estado_cuenta=Usuario.ESTADO_ACTIVO,
+                    usuario_docente__groups__name=ROL_DOCENTE,
+                    grupo_academico__estado=ESTADO_ACTIVO,
+                    grupo_academico__periodo__estado=ESTADO_ACTIVO,
+                    programa_asignatura__plan_estudios__estado=ESTADO_ACTIVO,
+                    programa_asignatura__materia__estado=ESTADO_ACTIVO,
+                )
+                .select_related(
+                    "usuario_docente",
+                    "grupo_academico",
+                    "grupo_academico__periodo",
+                    "programa_asignatura",
+                    "programa_asignatura__materia",
+                )
+                .distinct()
+                .order_by("grupo_academico__clave_grupo", "programa_asignatura__materia__clave")
             )
-            .select_related(
-                "usuario_docente",
-                "grupo_academico",
-                "grupo_academico__periodo",
-                "programa_asignatura",
-                "programa_asignatura__materia",
-            )
-            .distinct()
-            .order_by("grupo_academico__clave_grupo", "programa_asignatura__materia__clave")
-        )
 
 
 class MovimientoAcademicoForm(forms.ModelForm):

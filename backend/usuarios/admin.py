@@ -219,6 +219,17 @@ class AsignacionCargoAdmin(admin.ModelAdmin):
         "unidad_organizacional__nombre",
     )
 
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        cargo_field = form.base_fields.get("cargo_codigo")
+        if cargo_field:
+            choices = list(AsignacionCargo.CARGO_CHOICES_ADMIN)
+            valores_visibles = {value for value, _ in choices}
+            if obj and obj.cargo_codigo not in valores_visibles:
+                choices.append((obj.cargo_codigo, f"{obj.get_cargo_codigo_display()} (registro existente)"))
+            cargo_field.choices = choices
+        return form
+
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         formfield = super().formfield_for_foreignkey(db_field, request, **kwargs)
         if db_field.name == "unidad_organizacional":

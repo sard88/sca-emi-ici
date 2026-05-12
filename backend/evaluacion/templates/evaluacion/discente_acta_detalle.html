@@ -1,0 +1,60 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Detalle de acta{% endblock %}
+{% block heading %}Detalle de acta{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h2>{{ detalle.acta.asignacion_docente.programa_asignatura.materia.nombre }}</h2>
+    <p>Corte: {{ detalle.acta.get_corte_codigo_display }}</p>
+    <p>Estado del acta: {{ detalle.acta.get_estado_acta_display }}</p>
+    <p>Resultado del corte: {{ detalle.resultado_corte_visible|default_if_none:"Pendiente" }}</p>
+    <p>Resultado final preliminar: {{ detalle.resultado_final_preliminar_visible|default_if_none:"Pendiente" }}</p>
+    <p>Estado preliminar: {{ detalle.resultado_preliminar }}</p>
+  </section>
+
+  <section class="panel">
+    <h2>Componentes</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Componente</th>
+          <th>Porcentaje</th>
+          <th>Valor</th>
+          <th>Observación</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for calificacion in detalle.calificaciones_componentes.all %}
+          <tr>
+            <td>{{ calificacion.componente_nombre_snapshot }}</td>
+            <td>{{ calificacion.componente_porcentaje_snapshot }}</td>
+            <td>{{ calificacion.valor_capturado|default_if_none:"Pendiente" }}</td>
+            <td>{% if calificacion.sustituido_por_exencion %}Sustituido por exención{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Conformidad informativa</h2>
+    {% if conformidad_vigente %}
+      <p>Registro vigente: {{ conformidad_vigente.get_estado_conformidad_display }}.</p>
+      {% if conformidad_vigente.comentario %}
+        <p><strong>Comentario:</strong> {{ conformidad_vigente.comentario }}</p>
+      {% else %}
+        <p class="muted">Sin observaciones registradas.</p>
+      {% endif %}
+    {% endif %}
+    {% if puede_registrar_conformidad %}
+      <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Registrar conformidad</button>
+      </form>
+    {% else %}
+      <p class="muted">La conformidad quedó en solo lectura después de remitir el acta.</p>
+    {% endif %}
+  </section>
+{% endblock %}

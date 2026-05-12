@@ -1,0 +1,33 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Actas por validar{% endblock %}
+{% block heading %}Actas por validar - Jefatura de carrera{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <table>
+      <thead>
+        <tr>
+          <th>Grupo</th>
+          <th>Programa</th>
+          <th>Corte</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for acta in actas %}
+          <tr>
+            <td>{{ acta.asignacion_docente.grupo_academico.clave_grupo }}</td>
+            <td>{{ acta.asignacion_docente.programa_asignatura.materia.nombre }}</td>
+            <td>{{ acta.get_corte_codigo_display }}</td>
+            <td>{{ acta.get_estado_acta_display }}</td>
+            <td><a href="{% url 'evaluacion:acta-detalle' acta.pk %}">Revisar</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">No hay actas pendientes de validación.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

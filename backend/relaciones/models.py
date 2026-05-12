@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 from catalogos.models import (
@@ -547,8 +547,25 @@ class MovimientoAcademico(models.Model):
             elif grupo and self.periodo_id and grupo.periodo_id != self.periodo_id:
                 errors[field_name] = "El grupo debe pertenecer al periodo seleccionado."
 
-        if self.tipo_movimiento == self.CAMBIO_GRUPO and not self.grupo_destino_id:
-            errors["grupo_destino"] = "El grupo destino es obligatorio para cambios de grupo."
+        if self.tipo_movimiento == self.CAMBIO_GRUPO:
+            if not self.grupo_origen_id:
+                errors["grupo_origen"] = "El grupo origen es obligatorio para cambios de grupo."
+            if not self.grupo_destino_id:
+                errors["grupo_destino"] = "El grupo destino es obligatorio para cambios de grupo."
+            if (
+                self.grupo_origen_id
+                and self.grupo_destino_id
+                and self.grupo_origen_id == self.grupo_destino_id
+            ):
+                errors["grupo_destino"] = "El grupo destino debe ser distinto al grupo origen."
+
+        if self.discente_id:
+            for field_name in ("grupo_origen", "grupo_destino"):
+                grupo = getattr(self, field_name)
+                if grupo and grupo.antiguedad_id != self.discente.antiguedad_id:
+                    errors[field_name] = (
+                        "El grupo debe corresponder a la antigüedad del discente."
+                    )
 
         if self.tipo_movimiento in (self.ALTA_EXTEMPORANEA, self.BAJA_EXTEMPORANEA):
             if len((self.observaciones or "").strip()) < OBSERVACIONES_EXTEMPORANEAS_MIN_LENGTH:
@@ -559,9 +576,127 @@ class MovimientoAcademico(models.Model):
         if errors:
             raise ValidationError(errors)
 
+    def aplicar_cambio_grupo(self):
+        if self.tipo_movimiento != self.CAMBIO_GRUPO:
+            return None
+
+        with transaction.atomic():
+            adscripciones_mismo_periodo = AdscripcionGrupo.objects.select_for_update().filter(
+                discente=self.discente,
+                grupo_academico__periodo=self.periodo,
+                activo=True,
+            )
+            adscripcion_origen = adscripciones_mismo_periodo.filter(
+                grupo_academico=self.grupo_origen
+            ).first()
+            adscripcion_destino = adscripciones_mismo_periodo.filter(
+                grupo_academico=self.grupo_destino
+            ).first()
+
+            if not adscripcion_origen:
+                if not adscripcion_destino:
+                    raise ValidationError(
+                        {
+                            "grupo_origen": (
+                                "El grupo origen debe coincidir con la adscripción activa "
+                                "del discente en el periodo seleccionado."
+                            )
+                        }
+                    )
+            else:
+                otra_adscripcion_activa = (
+                    adscripciones_mismo_periodo.exclude(pk=adscripcion_origen.pk)
+                    .exclude(grupo_academico=self.grupo_destino)
+                    .first()
+                )
+                if otra_adscripcion_activa:
+                    raise ValidationError(
+                        {
+                            "discente": (
+                                "El discente tiene otra adscripción activa en el periodo; "
+                                "corrige esa inconsistencia antes de aplicar el movimiento."
+                            )
+                        }
+                    )
+
+                adscripcion_origen.activo = False
+                adscripcion_origen.vigente_hasta = self.fecha_movimiento
+                adscripcion_origen.save(update_fields=["activo", "vigente_hasta"])
+
+            if adscripcion_destino:
+                destino = adscripcion_destino
+            else:
+                destino = AdscripcionGrupo.objects.create(
+                    discente=self.discente,
+                    grupo_academico=self.grupo_destino,
+                    vigente_desde=self.fecha_movimiento,
+                    activo=True,
+                )
+
+            self._validar_inscripciones_origen_sin_actas_vivas()
+            self._dar_baja_inscripciones_origen()
+            self._crear_inscripciones_destino()
+            return destino
+
+    def _inscripciones_origen_activas(self):
+        return InscripcionMateria.objects.select_for_update().filter(
+            discente=self.discente,
+            asignacion_docente__grupo_academico=self.grupo_origen,
+            asignacion_docente__grupo_academico__periodo=self.periodo,
+            estado_inscripcion=InscripcionMateria.ESTADO_INSCRITA,
+        )
+
+    def _validar_inscripciones_origen_sin_actas_vivas(self):
+        from evaluacion.models import Acta, DetalleActa
+
+        inscripciones_origen = self._inscripciones_origen_activas()
+        tiene_acta_viva = DetalleActa.objects.filter(
+            inscripcion_materia__in=inscripciones_origen,
+        ).exclude(acta__estado_acta=Acta.ESTADO_ARCHIVADO).exists()
+        if tiene_acta_viva:
+            raise ValidationError(
+                {
+                    "discente": (
+                        "No se puede aplicar el cambio de grupo porque existen actas "
+                        "no archivadas para inscripciones del grupo origen."
+                    )
+                }
+            )
+
+    def _dar_baja_inscripciones_origen(self):
+        self._inscripciones_origen_activas().update(
+            estado_inscripcion=InscripcionMateria.ESTADO_BAJA
+        )
+
+    def _crear_inscripciones_destino(self):
+        asignaciones_destino = AsignacionDocente.objects.filter(
+            activo=True,
+            grupo_academico=self.grupo_destino,
+        )
+        for asignacion in asignaciones_destino:
+            existe_activa = InscripcionMateria.objects.filter(
+                discente=self.discente,
+                asignacion_docente=asignacion,
+                estado_inscripcion=InscripcionMateria.ESTADO_INSCRITA,
+            ).exists()
+            if existe_activa:
+                continue
+
+            InscripcionMateria.objects.create(
+                discente=self.discente,
+                asignacion_docente=asignacion,
+                estado_inscripcion=InscripcionMateria.ESTADO_INSCRITA,
+                intento_numero=1,
+            )
+
     def save(self, *args, **kwargs):
-        self.full_clean()
-        return super().save(*args, **kwargs)
+        creando = self._state.adding
+        with transaction.atomic():
+            self.full_clean()
+            resultado = super().save(*args, **kwargs)
+            if creando:
+                self.aplicar_cambio_grupo()
+            return resultado
 
     def __str__(self):
         return f"{self.discente} - {self.get_tipo_movimiento_display()}"
