@@ -1,0 +1,142 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Kárdex oficial{% endblock %}
+{% block heading %}Kárdex oficial{% endblock %}
+
+{% block content %}
+  {% include "trayectoria/_documento_academico_styles.html" %}
+
+  <article class="academic-document">
+    <header class="document-header">
+      <p class="document-kicker">Sistema de Control Académico</p>
+      <h2>Kárdex académico oficial</h2>
+      <p class="document-subtitle">
+        Vista derivada de actas finales formalizadas, resultados oficiales y trayectoria académica.
+      </p>
+      <p class="document-subtitle print-only">Fecha de impresión: {% now "d/m/Y H:i" %}</p>
+    </header>
+
+    <div class="document-body">
+      <div class="document-actions no-print">
+        <div class="actions">
+          {% if not vista_propia %}
+            <a class="button secondary" href="{% url 'trayectoria:kardex-busqueda' %}">Volver a consulta</a>
+          {% endif %}
+        </div>
+      </div>
+
+      <section class="document-section">
+        <h3 class="document-section-title">Datos generales del discente</h3>
+        <div class="document-meta">
+          <div class="data-item">
+            <span class="data-label">Nombre</span>
+            <span class="data-value">{{ kardex.discente.usuario.nombre_visible }}</span>
+          </div>
+          <div class="data-item">
+            <span class="data-label">Grado y empleo</span>
+            <span class="data-value">
+              {% if kardex.discente.usuario.grado_empleo %}
+                {{ kardex.discente.usuario.grado_empleo.abreviatura }}
+              {% else %}
+                -
+              {% endif %}
+            </span>
+          </div>
+          <div class="data-item">
+            <span class="data-label">Carrera</span>
+            <span class="data-value">{{ kardex.carrera }}</span>
+          </div>
+          <div class="data-item">
+            <span class="data-label">Plan de estudios</span>
+            <span class="data-value">{{ kardex.plan_estudios }}</span>
+          </div>
+          <div class="data-item">
+            <span class="data-label">Antigüedad</span>
+            <span class="data-value">{{ kardex.antiguedad }}</span>
+          </div>
+          <div class="data-item">
+            <span class="data-label">Situación académica actual</span>
+            <span class="data-value">{{ kardex.situacion_actual }}</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="document-section">
+        <h3 class="document-section-title">Resultados por año de formación</h3>
+        {% for anio in kardex.anios %}
+          <section class="document-section">
+            <h4>Año de formación {{ anio.anio_formacion }}</h4>
+            <div class="document-table-wrapper">
+              <table class="document-table">
+                <thead>
+                  <tr>
+                    <th>Periodo académico</th>
+                    <th>Semestre</th>
+                    <th>Clave</th>
+                    <th>Programa de asignatura</th>
+                    <th>Grupo</th>
+                    <th class="numeric">Calificación</th>
+                    <th>Calificación con letra</th>
+                    <th>Resultado</th>
+                    <th>Marca</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for asignatura in anio.asignaturas %}
+                    <tr>
+                      <td class="nowrap">{{ asignatura.inscripcion.asignacion_docente.periodo }}</td>
+                      <td class="numeric">{{ asignatura.semestre_numero }}</td>
+                      <td class="nowrap">{{ asignatura.clave_materia }}</td>
+                      <td>{{ asignatura.nombre_materia }}</td>
+                      <td class="nowrap">{{ asignatura.inscripcion.asignacion_docente.grupo_academico.clave_grupo }}</td>
+                      <td class="numeric">
+                        {% if asignatura.es_numerica %}
+                          {{ asignatura.calificacion_visible }}
+                        {% else %}
+                          -
+                        {% endif %}
+                      </td>
+                      <td>{{ asignatura.calificacion_letra|default:"-" }}</td>
+                      <td>
+                        {% if asignatura.resultado_no_numerico %}
+                          {{ asignatura.resultado_no_numerico }}
+                        {% else %}
+                          {{ asignatura.codigo_resultado|default:"-" }}
+                        {% endif %}
+                      </td>
+                      <td>{% if asignatura.marca_ee %}EE{% else %}{{ asignatura.codigo_marca|default:"-" }}{% endif %}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th colspan="5">Promedio anual</th>
+                    <td class="numeric" colspan="4">{{ anio.promedio_anual|default:"No aplica" }}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </section>
+        {% empty %}
+          <p class="muted">No hay resultados oficiales formalizados para construir el kárdex.</p>
+        {% endfor %}
+      </section>
+
+      <section class="document-section">
+        <h3 class="document-section-title">Leyendas</h3>
+        <p>
+          Escala numérica: 0.0 a 10.0. El promedio anual considera únicamente asignaturas numéricas
+          con resultado oficial.
+        </p>
+        <p>
+          EE: materia aprobada mediante extraordinario. Las asignaturas no numéricas no se incluyen
+          en el promedio anual.
+        </p>
+      </section>
+
+      <footer class="institution-note">
+        Vista de consulta web. La emisión documental formal se definirá en una fase posterior.
+      </footer>
+    </div>
+  </article>
+{% endblock %}

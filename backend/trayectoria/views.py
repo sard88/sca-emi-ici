@@ -11,11 +11,14 @@ from relaciones.models import Discente
 from .forms import EventoSituacionAcademicaForm, ExtraordinarioForm
 from .permisos import (
     filtrar_discentes_por_ambito,
+    puede_consultar_kardex,
+    puede_consultar_kardex_discente,
     puede_consultar_historial_discente,
     puede_consultar_historiales,
     puede_operar_trayectoria,
 )
 from .services import construir_historial_discente
+from .services import construir_kardex_discente
 
 
 def mensajes_validation_error(error):
@@ -83,6 +86,42 @@ class HistorialBusquedaView(LoginRequiredMixin, TemplateView):
         return context
 
 
+class KardexBusquedaView(LoginRequiredMixin, TemplateView):
+    template_name = "trayectoria/kardex_busqueda.html"
+    login_url = reverse_lazy("usuarios:login")
+
+    def dispatch(self, request, *args, **kwargs):
+        if not puede_consultar_kardex(request.user):
+            raise PermissionDenied("No tienes permiso para consultar kÃ¡rdex oficiales.")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        queryset = Discente.objects.select_related(
+            "usuario",
+            "usuario__grado_empleo",
+            "plan_estudios",
+            "plan_estudios__carrera",
+            "antiguedad",
+        ).order_by("matricula")
+        queryset = filtrar_discentes_por_ambito(self.request.user, queryset)
+        query = (self.request.GET.get("q") or "").strip()
+        if query:
+            queryset = queryset.filter(
+                usuario__nombre_completo__icontains=query
+            ) | queryset.filter(matricula__icontains=query)
+        return queryset.distinct()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "discentes": self.get_queryset(),
+                "q": self.request.GET.get("q", ""),
+            }
+        )
+        return context
+
+
 class HistorialDetalleView(LoginRequiredMixin, DetailView):
     template_name = "trayectoria/historial_detalle.html"
     model = Discente
@@ -107,6 +146,33 @@ class HistorialDetalleView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context["historial"] = construir_historial_discente(self.object)
         context["puede_operar_trayectoria"] = puede_operar_trayectoria(self.request.user)
+        return context
+
+
+class KardexDetalleView(LoginRequiredMixin, DetailView):
+    template_name = "trayectoria/kardex_detalle.html"
+    model = Discente
+    context_object_name = "discente"
+    login_url = reverse_lazy("usuarios:login")
+
+    def get_queryset(self):
+        return Discente.objects.select_related(
+            "usuario",
+            "usuario__grado_empleo",
+            "plan_estudios",
+            "plan_estudios__carrera",
+            "antiguedad",
+        )
+
+    def dispatch(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if not puede_consultar_kardex_discente(request.user, self.object):
+            raise PermissionDenied("No tienes permiso para consultar este kÃ¡rdex oficial.")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["kardex"] = construir_kardex_discente(self.object)
         return context
 
 

@@ -115,3 +115,22 @@ def puede_consultar_historial_discente(user, discente):
         user,
         discente.__class__.objects.filter(pk=discente.pk),
     ).exists()
+
+
+def puede_consultar_kardex(user):
+    if not user.is_authenticated:
+        return False
+    return puede_consultar_historiales(user)
+
+
+def puede_consultar_kardex_discente(user, discente):
+    if not user.is_authenticated:
+        return False
+
+    if not puede_consultar_kardex(user):
+        return False
+
+    return filtrar_discentes_por_ambito(
+        user,
+        discente.__class__.objects.filter(pk=discente.pk),
+    ).exists()

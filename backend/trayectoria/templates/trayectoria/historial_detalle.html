@@ -4,97 +4,156 @@
 {% block heading %}Historial académico{% endblock %}
 
 {% block content %}
-  <section class="panel">
-    <h2>{{ historial.discente.usuario.nombre_visible }}</h2>
-    <p>Plan de estudio: {{ historial.discente.plan_estudios }}</p>
-    <p>Antigüedad: {{ historial.discente.antiguedad }}</p>
-    <p>Situación actual: {{ historial.discente.get_situacion_actual_display }}</p>
-    <div class="actions">
-      {% if not vista_propia %}
-        <a class="button secondary" href="{% url 'trayectoria:historial-busqueda' %}">Volver a consulta</a>
-      {% endif %}
-      {% if puede_operar_trayectoria %}
-        <a class="button secondary" href="{% url 'trayectoria:extraordinario-registrar' %}">Registrar extraordinario</a>
-        <a class="button secondary" href="{% url 'trayectoria:situacion-registrar' %}">Registrar situación académica</a>
-      {% endif %}
-    </div>
-  </section>
+  {% include "trayectoria/_documento_academico_styles.html" %}
 
-  <section class="panel">
-    <h2>Resultados oficiales</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Periodo académico</th>
-          <th>Programa de asignatura</th>
-          <th>Grupo</th>
-          <th>Tipo</th>
-          <th>Calificación</th>
-          <th>Resultado</th>
-          <th>Marca</th>
-          <th>Evidencia ordinaria</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for resultado in historial.resultados %}
-          <tr>
-            <td>{{ resultado.inscripcion.asignacion_docente.periodo }}</td>
-            <td>{{ resultado.inscripcion.asignacion_docente.programa_asignatura }}</td>
-            <td>{{ resultado.inscripcion.asignacion_docente.grupo_academico.clave_grupo }}</td>
-            <td>
-              {% if resultado.tipo_resultado == "EXTRAORDINARIO" %}
-                Resultado extraordinario
-              {% else %}
-                Resultado ordinario
-              {% endif %}
-            </td>
-            <td>{{ resultado.calificacion|default:"Pendiente" }}</td>
-            <td>{{ resultado.codigo_resultado }}</td>
-            <td>{{ resultado.codigo_marca }}</td>
-            <td>
-              {% if resultado.extraordinario %}
-                Ordinario: {{ resultado.calificacion_ordinaria }} {{ resultado.codigo_resultado_ordinario }}
+  <article class="academic-document">
+    <header class="document-header">
+      <p class="document-kicker">Sistema de Control Académico</p>
+      <h2>Historial académico</h2>
+      <p class="document-subtitle">
+        Consulta institucional de resultados oficiales y eventos de trayectoria del discente.
+      </p>
+      <p class="document-subtitle print-only">Fecha de impresión: {% now "d/m/Y H:i" %}</p>
+    </header>
+
+    <div class="document-body">
+      <div class="document-actions no-print">
+        <div class="actions">
+          {% if not vista_propia %}
+            <a class="button secondary" href="{% url 'trayectoria:historial-busqueda' %}">Volver a consulta</a>
+          {% endif %}
+          {% if puede_operar_trayectoria %}
+            <a class="button secondary" href="{% url 'trayectoria:extraordinario-registrar' %}">Registrar extraordinario</a>
+            <a class="button secondary" href="{% url 'trayectoria:situacion-registrar' %}">Registrar situación académica</a>
+          {% endif %}
+        </div>
+      </div>
+
+      <section class="document-section">
+        <h3 class="document-section-title">Datos generales del discente</h3>
+        <div class="document-meta">
+          <div class="data-item">
+            <span class="data-label">Nombre</span>
+            <span class="data-value">{{ historial.discente.usuario.nombre_visible }}</span>
+          </div>
+          <div class="data-item">
+            <span class="data-label">Grado y empleo</span>
+            <span class="data-value">
+              {% if historial.discente.usuario.grado_empleo %}
+                {{ historial.discente.usuario.grado_empleo.abreviatura }}
               {% else %}
                 -
               {% endif %}
-            </td>
-          </tr>
-        {% empty %}
-          <tr>
-            <td colspan="8">No hay resultados oficiales formalizados para mostrar.</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </section>
+            </span>
+          </div>
+          <div class="data-item">
+            <span class="data-label">Carrera</span>
+            <span class="data-value">{{ historial.discente.plan_estudios.carrera }}</span>
+          </div>
+          <div class="data-item">
+            <span class="data-label">Plan de estudios</span>
+            <span class="data-value">{{ historial.discente.plan_estudios }}</span>
+          </div>
+          <div class="data-item">
+            <span class="data-label">Antigüedad</span>
+            <span class="data-value">{{ historial.discente.antiguedad }}</span>
+          </div>
+          <div class="data-item">
+            <span class="data-label">Situación actual</span>
+            <span class="data-value">{{ historial.discente.get_situacion_actual_display }}</span>
+          </div>
+        </div>
+      </section>
 
-  <section class="panel">
-    <h2>Eventos de trayectoria</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Situación</th>
-          <th>Inicio</th>
-          <th>Fin</th>
-          <th>Periodo</th>
-          <th>Motivo</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for evento in historial.eventos %}
-          <tr>
-            <td>{{ evento.situacion }}</td>
-            <td>{{ evento.fecha_inicio }}</td>
-            <td>{{ evento.fecha_fin|default:"" }}</td>
-            <td>{{ evento.periodo|default:"" }}</td>
-            <td>{{ evento.motivo|default:"" }}</td>
-          </tr>
-        {% empty %}
-          <tr>
-            <td colspan="5">No hay eventos de trayectoria registrados.</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </section>
+      <section class="document-section">
+        <h3 class="document-section-title">Resultados oficiales</h3>
+        <div class="document-table-wrapper">
+          <table class="document-table">
+            <thead>
+              <tr>
+                <th>Periodo académico</th>
+                <th>Año de formación</th>
+                <th>Semestre</th>
+                <th>Programa de asignatura</th>
+                <th>Grupo</th>
+                <th>Tipo</th>
+                <th class="numeric">Calificación</th>
+                <th>Resultado</th>
+                <th>Marca</th>
+                <th>Evidencia ordinaria</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for resultado in historial.resultados %}
+                <tr>
+                  <td class="nowrap">{{ resultado.inscripcion.asignacion_docente.periodo }}</td>
+                  <td class="numeric">{{ resultado.inscripcion.asignacion_docente.programa_asignatura.anio_formacion }}</td>
+                  <td class="numeric">{{ resultado.inscripcion.asignacion_docente.grupo_academico.semestre_numero }}</td>
+                  <td>{{ resultado.inscripcion.asignacion_docente.programa_asignatura }}</td>
+                  <td class="nowrap">{{ resultado.inscripcion.asignacion_docente.grupo_academico.clave_grupo }}</td>
+                  <td>
+                    {% if resultado.tipo_resultado == "EXTRAORDINARIO" %}
+                      Resultado extraordinario
+                    {% else %}
+                      Resultado ordinario
+                    {% endif %}
+                  </td>
+                  <td class="numeric">{{ resultado.calificacion|default:"Pendiente" }}</td>
+                  <td>{{ resultado.codigo_resultado|default:"-" }}</td>
+                  <td>{{ resultado.codigo_marca|default:"-" }}</td>
+                  <td>
+                    {% if resultado.extraordinario %}
+                      Ordinario: {{ resultado.calificacion_ordinaria }} {{ resultado.codigo_resultado_ordinario }}
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="10">No hay resultados oficiales formalizados para mostrar.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="document-section">
+        <h3 class="document-section-title">Eventos de trayectoria</h3>
+        <div class="document-table-wrapper">
+          <table class="document-table">
+            <thead>
+              <tr>
+                <th>Situación</th>
+                <th>Inicio</th>
+                <th>Fin</th>
+                <th>Periodo académico</th>
+                <th>Motivo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for evento in historial.eventos %}
+                <tr>
+                  <td>{{ evento.situacion }}</td>
+                  <td class="nowrap">{{ evento.fecha_inicio }}</td>
+                  <td class="nowrap">{{ evento.fecha_fin|default:"" }}</td>
+                  <td>{{ evento.periodo|default:"" }}</td>
+                  <td>{{ evento.motivo|default:"" }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="5">No hay eventos de trayectoria registrados.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer class="institution-note">
+        Vista de consulta web. La emisión documental formal se definirá en una fase posterior.
+      </footer>
+    </div>
+  </article>
 {% endblock %}

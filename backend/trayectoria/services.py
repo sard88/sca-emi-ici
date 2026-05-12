@@ -1,11 +1,12 @@
-from dataclasses import dataclass
-from decimal import Decimal
+from dataclasses import dataclass, field
+from decimal import Decimal, ROUND_HALF_UP
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
 from evaluacion.models import Acta, ComponenteEvaluacion, DetalleActa
+from catalogos.models import ProgramaAsignatura
 from relaciones.models import Discente, InscripcionMateria
 
 from .models import (
@@ -46,6 +47,40 @@ class ResultadoHistorial:
     calificacion_ordinaria: Decimal | None = None
     codigo_resultado_ordinario: str = ""
     extraordinario: Extraordinario | None = None
+
+
+@dataclass
+class KardexAsignatura:
+    inscripcion: InscripcionMateria
+    anio_formacion: int
+    semestre_numero: int
+    clave_materia: str
+    nombre_materia: str
+    calificacion: Decimal | None
+    calificacion_visible: Decimal | None
+    calificacion_letra: str
+    codigo_resultado: str
+    resultado_no_numerico: str
+    codigo_marca: str
+    marca_ee: bool
+    es_numerica: bool
+
+
+@dataclass
+class KardexAnio:
+    anio_formacion: int
+    asignaturas: list[KardexAsignatura] = field(default_factory=list)
+    promedio_anual: Decimal | None = None
+
+
+@dataclass
+class KardexOficial:
+    discente: Discente
+    carrera: object
+    plan_estudios: object
+    antiguedad: object
+    situacion_actual: str
+    anios: list[KardexAnio]
 
 
 def asegurar_catalogos_base():
@@ -288,3 +323,130 @@ def construir_historial_discente(discente):
         "resultados": resultados,
         "eventos": eventos,
     }
+
+
+def redondear_visual_un_decimal(valor):
+    if valor is None:
+        return None
+    return Decimal(valor).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+
+
+def calificacion_a_letra(calificacion):
+    if calificacion is None:
+        return ""
+
+    valor = redondear_visual_un_decimal(calificacion)
+    entero = int(valor)
+    decimal = int((valor - Decimal(entero)) * Decimal("10"))
+    numeros = {
+        0: "CERO",
+        1: "UNO",
+        2: "DOS",
+        3: "TRES",
+        4: "CUATRO",
+        5: "CINCO",
+        6: "SEIS",
+        7: "SIETE",
+        8: "OCHO",
+        9: "NUEVE",
+        10: "DIEZ",
+    }
+
+    if decimal == 0:
+        return numeros.get(entero, str(entero))
+    return f"{numeros.get(entero, str(entero))} PUNTO {numeros.get(decimal, str(decimal))}"
+
+
+def _resultado_no_numerico(codigo_resultado, calificacion):
+    if calificacion is not None:
+        return ""
+
+    resultados_no_numericos = {
+        CatalogoResultadoAcademico.CLAVE_ACREDITADA,
+        CatalogoResultadoAcademico.CLAVE_APROBADO,
+        CatalogoResultadoAcademico.CLAVE_APROBADO_NO_NUMERICO,
+        CatalogoResultadoAcademico.CLAVE_EXCEPTUADO,
+    }
+    return codigo_resultado if codigo_resultado in resultados_no_numericos else ""
+
+
+def _asignatura_kardex_desde_resultado(resultado):
+    inscripcion = resultado.inscripcion
+    asignacion = inscripcion.asignacion_docente
+    programa = asignacion.programa_asignatura
+    materia = programa.materia
+    semestre_numero = asignacion.grupo_academico.semestre_numero or programa.semestre_numero
+    anio_formacion = ProgramaAsignatura.calculate_anio_formacion(semestre_numero)
+    calificacion = resultado.calificacion
+    codigo_resultado = resultado.codigo_resultado or ""
+    codigo_marca = resultado.codigo_marca or ""
+    resultado_no_numerico = _resultado_no_numerico(codigo_resultado, calificacion)
+    calificacion_visible = redondear_visual_un_decimal(calificacion)
+
+    return KardexAsignatura(
+        inscripcion=inscripcion,
+        anio_formacion=anio_formacion,
+        semestre_numero=semestre_numero,
+        clave_materia=materia.clave,
+        nombre_materia=materia.nombre,
+        calificacion=calificacion,
+        calificacion_visible=calificacion_visible,
+        calificacion_letra=calificacion_a_letra(calificacion),
+        codigo_resultado=codigo_resultado,
+        resultado_no_numerico=resultado_no_numerico,
+        codigo_marca=codigo_marca,
+        marca_ee=codigo_marca == CatalogoResultadoAcademico.CLAVE_EE,
+        es_numerica=calificacion is not None,
+    )
+
+
+def _calcular_promedio_anual(asignaturas):
+    numericas = [asignatura.calificacion for asignatura in asignaturas if asignatura.es_numerica]
+    if not numericas:
+        return None
+    promedio = sum(numericas, Decimal("0.0")) / Decimal(len(numericas))
+    return redondear_visual_un_decimal(promedio)
+
+
+def construir_kardex_discente(discente):
+    historial = construir_historial_discente(discente)
+    asignaturas = [
+        _asignatura_kardex_desde_resultado(resultado)
+        for resultado in historial["resultados"]
+    ]
+    asignaturas.sort(
+        key=lambda item: (
+            item.anio_formacion,
+            item.semestre_numero,
+            item.clave_materia,
+            item.nombre_materia,
+        )
+    )
+
+    anios_por_numero = {}
+    for asignatura in asignaturas:
+        anio = anios_por_numero.setdefault(
+            asignatura.anio_formacion,
+            KardexAnio(anio_formacion=asignatura.anio_formacion),
+        )
+        anio.asignaturas.append(asignatura)
+
+    anios = []
+    for anio in sorted(anios_por_numero.values(), key=lambda item: item.anio_formacion):
+        anio.promedio_anual = _calcular_promedio_anual(anio.asignaturas)
+        anios.append(anio)
+
+    return KardexOficial(
+        discente=discente,
+        carrera=discente.plan_estudios.carrera,
+        plan_estudios=discente.plan_estudios,
+        antiguedad=discente.antiguedad,
+        situacion_actual=discente.get_situacion_actual_display(),
+        anios=anios,
+    )
+
+
+class ServicioKardex:
+    @staticmethod
+    def construir_por_discente(discente):
+        return construir_kardex_discente(discente)

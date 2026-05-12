@@ -1198,6 +1198,17 @@ class FrontTemporalValidacionRolTests(TestCase):
         self.assertNotContains(response, "Actas por validar")
         self.assertNotContains(response, "Consulta de actas de mi ámbito")
 
+    def test_dashboard_discente_no_muestra_accesos_de_kardex(self):
+        self.client.force_login(self.usuario_discente)
+
+        response = self.client.get("/dashboard/")
+        rutas = {ruta for _, ruta in response.context["accesos"]}
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("trayectoria:mi-historial", rutas)
+        self.assertNotIn("trayectoria:mi-kardex", rutas)
+        self.assertNotIn("trayectoria:kardex-busqueda", rutas)
+
     def test_dashboard_jefatura_muestra_actas_por_validar_y_no_consulta_general(self):
         self.client.force_login(self.usuario_jefatura)
 

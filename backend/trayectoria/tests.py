@@ -1,6 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
+from django.apps import apps
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.test import TestCase
@@ -24,7 +25,7 @@ from evaluacion.models import (
     EsquemaEvaluacion,
 )
 from relaciones.models import AdscripcionGrupo, AsignacionDocente, Discente, InscripcionMateria
-from usuarios.models import Usuario
+from usuarios.models import AsignacionCargo, UnidadOrganizacional, Usuario
 
 from .models import (
     CALIFICACION_APROBATORIA,
@@ -35,6 +36,7 @@ from .models import (
 )
 from .services import (
     construir_historial_discente,
+    construir_kardex_discente,
     registrar_baja_temporal,
     registrar_evento_situacion,
     registrar_extraordinario,
@@ -158,17 +160,18 @@ class TrayectoriaBloque7Tests(TestCase):
         usuario.groups.add(grupo)
         return usuario
 
-    def formalizar_final(self, inscripcion=None, calificacion=Decimal("5.0")):
+    def formalizar_final(self, inscripcion=None, calificacion=Decimal("5.0"), esquema=None):
         inscripcion = inscripcion or self.inscripcion
+        esquema = esquema or self.esquema
         acta = Acta.objects.create(
             asignacion_docente=inscripcion.asignacion_docente,
             corte_codigo=ComponenteEvaluacion.CORTE_FINAL,
             estado_acta=Acta.ESTADO_FORMALIZADO_JEFATURA_ACADEMICA,
-            esquema=self.esquema,
-            esquema_version_snapshot=self.esquema.version,
-            peso_parciales_snapshot=self.esquema.peso_parciales,
-            peso_final_snapshot=self.esquema.peso_final,
-            umbral_exencion_snapshot=self.esquema.umbral_exencion,
+            esquema=esquema,
+            esquema_version_snapshot=esquema.version,
+            peso_parciales_snapshot=esquema.peso_parciales,
+            peso_final_snapshot=esquema.peso_final,
+            umbral_exencion_snapshot=esquema.umbral_exencion,
             creado_por=self.usuario_docente,
             formalizada_en=timezone.now(),
         )
@@ -201,6 +204,70 @@ class TrayectoriaBloque7Tests(TestCase):
             ]
         )
         return acta
+
+    def crear_inscripcion_para_materia(self, clave, nombre):
+        materia = Materia.objects.create(
+            clave=clave,
+            nombre=nombre,
+            horas_totales=80,
+            estado="activo",
+        )
+        programa = ProgramaAsignatura.objects.create(
+            plan_estudios=self.plan,
+            materia=materia,
+            semestre_numero=1,
+            obligatoria=True,
+        )
+        esquema = EsquemaEvaluacion.objects.create(
+            programa_asignatura=programa,
+            version="v1",
+            num_parciales=2,
+            permite_exencion=True,
+            peso_parciales=Decimal("45.00"),
+            peso_final=Decimal("55.00"),
+            umbral_exencion=Decimal("9.00"),
+            activo=True,
+        )
+        asignacion = AsignacionDocente.objects.create(
+            usuario_docente=self.usuario_docente,
+            grupo_academico=self.grupo,
+            programa_asignatura=programa,
+            activo=True,
+        )
+        inscripcion = InscripcionMateria.objects.get(
+            discente=self.discente,
+            asignacion_docente=asignacion,
+        )
+        return inscripcion, esquema
+
+    def asignar_jefatura_ambito(self):
+        seccion, _ = UnidadOrganizacional.objects.get_or_create(
+            clave=UnidadOrganizacional.CLAVE_SECCION_ACADEMICA,
+            defaults={
+                "nombre": "Sección Académica",
+                "tipo_unidad": UnidadOrganizacional.TIPO_SECCION,
+                "activo": True,
+            },
+        )
+        subseccion, _ = UnidadOrganizacional.objects.get_or_create(
+            clave="SUB_EJEC_TEST",
+            defaults={
+                "nombre": "Subsección de Ejecución y Control Test",
+                "tipo_unidad": UnidadOrganizacional.TIPO_SUBSECCION,
+                "padre": seccion,
+                "carrera": self.carrera,
+                "activo": True,
+            },
+        )
+        AsignacionCargo.objects.create(
+            usuario=self.usuario_jefatura,
+            carrera=self.carrera,
+            unidad_organizacional=subseccion,
+            cargo_codigo=AsignacionCargo.CARGO_JEFE_SUB_EJEC_CTR,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+            vigente_desde=timezone.localdate(),
+            activo=True,
+        )
 
     def test_construye_historial_con_acta_final_formalizada(self):
         self.formalizar_final(calificacion=Decimal("8.0"))
@@ -410,3 +477,153 @@ class TrayectoriaBloque7Tests(TestCase):
         self.assertEqual(resultado.tipo_resultado, "EXTRAORDINARIO")
         self.assertEqual(resultado.calificacion_ordinaria, Decimal("5.0"))
         self.assertEqual(resultado.codigo_resultado_ordinario, "REPROBADO")
+
+    def test_kardex_construye_resultados_desde_acta_final_formalizada(self):
+        self.formalizar_final(calificacion=Decimal("8.0"))
+
+        kardex = construir_kardex_discente(self.discente)
+
+        self.assertEqual(kardex.discente, self.discente)
+        self.assertEqual(len(kardex.anios), 1)
+        self.assertEqual(kardex.anios[0].anio_formacion, 1)
+        self.assertEqual(kardex.anios[0].asignaturas[0].clave_materia, "MAT-HIST")
+        self.assertEqual(kardex.anios[0].asignaturas[0].calificacion_visible, Decimal("8.0"))
+        self.assertEqual(kardex.anios[0].asignaturas[0].calificacion_letra, "OCHO")
+
+    def test_kardex_excluye_capturas_preliminares_y_actas_no_formalizadas(self):
+        CapturaCalificacionPreliminar.objects.create(
+            inscripcion_materia=self.inscripcion,
+            componente=self.componente_p1,
+            valor=Decimal("10.0"),
+            capturado_por=self.usuario_docente,
+        )
+        Acta.objects.create(
+            asignacion_docente=self.asignacion,
+            corte_codigo=ComponenteEvaluacion.CORTE_FINAL,
+            estado_acta=Acta.ESTADO_BORRADOR_DOCENTE,
+            esquema=self.esquema,
+            esquema_version_snapshot=self.esquema.version,
+            peso_parciales_snapshot=self.esquema.peso_parciales,
+            peso_final_snapshot=self.esquema.peso_final,
+            umbral_exencion_snapshot=self.esquema.umbral_exencion,
+            creado_por=self.usuario_docente,
+        )
+
+        kardex = construir_kardex_discente(self.discente)
+
+        self.assertEqual(kardex.anios, [])
+
+    def test_kardex_muestra_ee_cuando_existe_extraordinario_aprobado(self):
+        self.formalizar_final(calificacion=Decimal("5.0"))
+        registrar_extraordinario(
+            self.inscripcion,
+            Decimal("8.0"),
+            timezone.localdate(),
+            self.usuario_estadistica,
+        )
+
+        kardex = construir_kardex_discente(self.discente)
+        asignatura = kardex.anios[0].asignaturas[0]
+
+        self.assertTrue(asignatura.marca_ee)
+        self.assertEqual(asignatura.codigo_marca, "EE")
+        self.assertEqual(asignatura.calificacion_visible, Decimal("8.0"))
+
+    def test_kardex_conserva_evidencia_ordinaria_en_historial_y_muestra_ee(self):
+        self.formalizar_final(calificacion=Decimal("5.0"))
+        registrar_extraordinario(
+            self.inscripcion,
+            Decimal("8.0"),
+            timezone.localdate(),
+            self.usuario_estadistica,
+        )
+
+        historial = construir_historial_discente(self.discente)
+        kardex = construir_kardex_discente(self.discente)
+
+        self.assertEqual(historial["resultados"][0].calificacion_ordinaria, Decimal("5.0"))
+        self.assertTrue(kardex.anios[0].asignaturas[0].marca_ee)
+        self.assertEqual(kardex.anios[0].asignaturas[0].calificacion, Decimal("8.0"))
+
+    def test_kardex_excluye_resultados_no_numericos_del_promedio_anual(self):
+        self.formalizar_final(calificacion=Decimal("7.0"))
+        self.inscripcion.calificacion_final = None
+        self.inscripcion.codigo_resultado_oficial = CatalogoResultadoAcademico.CLAVE_ACREDITADA
+        self.inscripcion.save(update_fields=["calificacion_final", "codigo_resultado_oficial"])
+
+        kardex = construir_kardex_discente(self.discente)
+        asignatura = kardex.anios[0].asignaturas[0]
+
+        self.assertFalse(asignatura.es_numerica)
+        self.assertEqual(asignatura.resultado_no_numerico, CatalogoResultadoAcademico.CLAVE_ACREDITADA)
+        self.assertIsNone(kardex.anios[0].promedio_anual)
+
+    def test_kardex_calcula_promedio_anual_con_materias_numericas(self):
+        self.formalizar_final(calificacion=Decimal("8.0"))
+        segunda_inscripcion, segundo_esquema = self.crear_inscripcion_para_materia(
+            "MAT-HIST-2",
+            "Materia promedio",
+        )
+        self.formalizar_final(
+            inscripcion=segunda_inscripcion,
+            calificacion=Decimal("9.0"),
+            esquema=segundo_esquema,
+        )
+
+        kardex = construir_kardex_discente(self.discente)
+
+        self.assertEqual(kardex.anios[0].promedio_anual, Decimal("8.5"))
+
+    def test_discente_no_consulta_kardex_propio_ni_ajeno(self):
+        self.formalizar_final(calificacion=Decimal("8.0"))
+        self.client.force_login(self.usuario_discente)
+
+        response_propio = self.client.get(
+            reverse("trayectoria:kardex-detalle", args=[self.discente.pk])
+        )
+        response_ruta_propia = self.client.get("/trayectoria/mi-kardex/")
+
+        self.client.force_login(self.usuario_otro_discente)
+        response_ajeno = self.client.get(
+            reverse("trayectoria:kardex-detalle", args=[self.discente.pk])
+        )
+
+        self.assertEqual(response_propio.status_code, 403)
+        self.assertEqual(response_ruta_propia.status_code, 404)
+        self.assertEqual(response_ajeno.status_code, 403)
+
+    def test_estadistica_consulta_kardex(self):
+        self.formalizar_final(calificacion=Decimal("8.0"))
+        self.client.force_login(self.usuario_estadistica)
+
+        response = self.client.get(reverse("trayectoria:kardex-detalle", args=[self.discente.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Kárdex oficial")
+        self.assertContains(response, "MAT-HIST")
+
+    def test_jefatura_autorizada_consulta_kardex_de_su_ambito(self):
+        self.asignar_jefatura_ambito()
+        self.formalizar_final(calificacion=Decimal("8.0"))
+        self.client.force_login(self.usuario_jefatura)
+
+        response = self.client.get(reverse("trayectoria:kardex-detalle", args=[self.discente.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "MAT-HIST")
+
+    def test_no_existe_tabla_transaccional_kardex_oficial(self):
+        nombres_modelos = {model.__name__ for model in apps.get_models()}
+
+        self.assertNotIn("KardexOficial", nombres_modelos)
+
+    def test_kardex_no_ofrece_exportaciones_pdf_excel(self):
+        self.formalizar_final(calificacion=Decimal("8.0"))
+        self.client.force_login(self.usuario_estadistica)
+
+        response = self.client.get(reverse("trayectoria:kardex-detalle", args=[self.discente.pk]))
+        contenido = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("PDF", contenido)
+        self.assertNotIn("Excel", contenido)

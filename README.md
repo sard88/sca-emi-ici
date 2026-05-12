@@ -788,3 +788,43 @@ Se implementa el módulo inicial de historial académico y trayectoria del disce
 ### Fuera de este bloque
 
 No se implementan todavía kárdex oficial, reportes formales, exportaciones PDF/Excel, rectificación de actas, reapertura de actas ni actas extraordinarias formales complejas.
+
+## Bloque 8 - Kárdex oficial
+
+Se implementa el kárdex oficial como vista derivada del historial académico y de resultados oficiales consolidados. El kárdex no es una tabla transaccional principal y no duplica resultados oficiales.
+
+La fuente del kárdex son las inscripciones con acta `FINAL` formalizada y los campos oficiales de `InscripcionMateria`, incluyendo resultados extraordinarios cuando existan.
+
+### Servicio creado
+
+- `ServicioKardex`: construye el kárdex por discente desde resultados oficiales.
+- `construir_kardex_discente`: función de aplicación usada por vistas y pruebas.
+
+### Rutas principales
+
+- `GET /trayectoria/kardex/`
+- `GET /trayectoria/kardex/<id>/`
+
+### Reglas principales
+
+- El kárdex no es visible para discentes; queda como consulta institucional.
+- Estadística/Admin consulta kárdex de discentes.
+- Jefaturas consultan kárdex según su ámbito.
+- Capturas preliminares y actas no formalizadas no aparecen.
+- Las asignaturas se agrupan por año de formación y se ordenan por semestre.
+- El promedio anual usa solo asignaturas numéricas con resultado oficial.
+- Las asignaturas no numéricas, como `ACREDITADA` o `EXCEPTUADO`, no se incluyen en el promedio.
+- Si una materia fue aprobada por extraordinario, se muestra la marca `EE`.
+
+### Fuera de este bloque
+
+No se implementan todavía exportaciones PDF/Excel, reportes estadísticos, cuadros de aprovechamiento, actas extraordinarias formales, rectificación de actas ni reapertura de actas.
+
+Validaciones recomendadas:
+
+```bash
+docker compose exec -T backend python manage.py check
+docker compose exec -T backend python manage.py makemigrations --check
+docker compose exec -T backend python manage.py test trayectoria
+docker compose exec -T backend python manage.py test
+```

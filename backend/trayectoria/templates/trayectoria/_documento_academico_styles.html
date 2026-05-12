@@ -1,0 +1,179 @@
+<style>
+  .academic-document {
+    background: #fff;
+    border: 1px solid #cfd8e3;
+    border-radius: 10px;
+    color: #152238;
+    overflow: hidden;
+  }
+
+  .document-header {
+    border-bottom: 3px solid #294764;
+    padding: 20px 24px;
+  }
+
+  .document-kicker {
+    margin: 0 0 6px;
+    color: #526171;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .document-header h2 {
+    margin: 0;
+    color: #172b46;
+    font-size: 1.65rem;
+  }
+
+  .document-subtitle {
+    margin: 8px 0 0;
+    color: #526171;
+  }
+
+  .document-body {
+    padding: 20px 24px 24px;
+  }
+
+  .document-actions {
+    margin-bottom: 16px;
+  }
+
+  .document-section {
+    margin-top: 22px;
+  }
+
+  .document-section:first-child {
+    margin-top: 0;
+  }
+
+  .document-section-title {
+    margin: 0 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #cfd8e3;
+    color: #172b46;
+    font-size: 1.05rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .document-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+  }
+
+  .data-item {
+    min-height: 58px;
+    padding: 10px 12px;
+    border: 1px solid #d9e1ea;
+    border-radius: 7px;
+    background: #f8fafc;
+  }
+
+  .data-label {
+    display: block;
+    margin-bottom: 4px;
+    color: #596676;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .data-value {
+    font-weight: 600;
+  }
+
+  .document-table-wrapper {
+    overflow-x: auto;
+    border: 1px solid #d9e1ea;
+    border-radius: 8px;
+  }
+
+  .document-table {
+    min-width: 920px;
+    font-size: 0.92rem;
+  }
+
+  .document-table thead th {
+    background: #eef3f7;
+    color: #1d3551;
+    font-size: 0.78rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .document-table tbody tr:nth-child(even) {
+    background: #fbfcfe;
+  }
+
+  .document-table tfoot th,
+  .document-table tfoot td {
+    background: #f2f5f8;
+    font-weight: 700;
+  }
+
+  .numeric {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .nowrap {
+    white-space: nowrap;
+  }
+
+  .institution-note {
+    margin-top: 18px;
+    padding-top: 12px;
+    border-top: 1px solid #d9e1ea;
+    color: #596676;
+    font-size: 0.86rem;
+  }
+
+  .print-only {
+    display: none;
+  }
+
+  @media print {
+    body {
+      background: #fff;
+    }
+
+    .topbar,
+    .no-print,
+    .document-actions {
+      display: none !important;
+    }
+
+    .shell {
+      max-width: none;
+      padding: 0;
+    }
+
+    .academic-document {
+      border: 0;
+      border-radius: 0;
+    }
+
+    .document-header,
+    .document-body {
+      padding-left: 0;
+      padding-right: 0;
+    }
+
+    .document-table-wrapper {
+      overflow: visible;
+      border: 0;
+    }
+
+    .document-table {
+      min-width: 0;
+      font-size: 0.78rem;
+    }
+
+    .print-only {
+      display: block;
+    }
+  }
+</style>

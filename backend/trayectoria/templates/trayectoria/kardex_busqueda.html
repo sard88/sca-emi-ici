@@ -1,0 +1,55 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Kárdex oficial{% endblock %}
+{% block heading %}Kárdex oficial{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h2>Consulta de kárdex</h2>
+    <p class="muted">
+      Consulta el kárdex oficial derivado de actas FINAL formalizadas y resultados oficiales consolidados.
+    </p>
+    <form method="get">
+      <label for="id_q">Buscar discente</label>
+      <input id="id_q" type="search" name="q" value="{{ q }}" placeholder="Nombre">
+      <div class="actions" style="margin-top: 12px;">
+        <button type="submit">Buscar</button>
+        <a class="button secondary" href="{% url 'trayectoria:kardex-busqueda' %}">Limpiar</a>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>Discentes</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Discente</th>
+          <th>Grado y empleo</th>
+          <th>Plan de estudio</th>
+          <th>Antigüedad</th>
+          <th>Situación actual</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for discente in discentes %}
+          <tr>
+            <td>{{ discente.usuario.nombre_visible }}</td>
+            <td>{{ discente.usuario.grado_empleo.abreviatura|default:"-" }}</td>
+            <td>{{ discente.plan_estudios }}</td>
+            <td>{{ discente.antiguedad }}</td>
+            <td>{{ discente.get_situacion_actual_display }}</td>
+            <td>
+              <a href="{% url 'trayectoria:kardex-detalle' discente.pk %}">Ver kárdex</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6">No hay discentes para mostrar.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

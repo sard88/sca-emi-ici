@@ -29,7 +29,11 @@ from relaciones.permisos import (
     usuario_es_jefatura_planeacion,
 )
 from relaciones.services import sincronizar_carga_academica
-from trayectoria.permisos import puede_consultar_historiales, puede_operar_trayectoria
+from trayectoria.permisos import (
+    puede_consultar_historiales,
+    puede_consultar_kardex,
+    puede_operar_trayectoria,
+)
 
 from .forms import LoginFormulario
 from .models import AsignacionCargo
@@ -102,6 +106,8 @@ def accesos_permitidos(user):
         accesos.append(("Consulta de actas de calificaciones", "evaluacion:estadistica-actas"))
     if puede_consultar_historiales(user):
         accesos.append(("Historial académico", "trayectoria:historial-busqueda"))
+    if puede_consultar_kardex(user):
+        accesos.append(("Kárdex oficial", "trayectoria:kardex-busqueda"))
     if puede_operar_trayectoria(user):
         accesos.append(("Registrar extraordinario", "trayectoria:extraordinario-registrar"))
         accesos.append(("Registrar situación académica", "trayectoria:situacion-registrar"))
