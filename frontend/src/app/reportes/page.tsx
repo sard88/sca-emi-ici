@@ -10,7 +10,7 @@ import { LoadingState } from "@/components/states/LoadingState";
 import { ReportCatalogCard } from "@/components/reportes/ReportCatalogCard";
 import { ExportHistoryTable } from "@/components/reportes/ExportHistoryTable";
 import { getExportaciones, getReportesCatalogo } from "@/lib/api";
-import { canAccessAuditoriaExportaciones, canAccessReportes } from "@/lib/dashboard";
+import { canAccessAuditoriaExportaciones, canAccessKardexPdf, canAccessReportes } from "@/lib/dashboard";
 import { useAuth } from "@/lib/auth";
 import type { ExportacionRegistro, ReporteCatalogoItem } from "@/lib/types";
 
@@ -56,11 +56,14 @@ export default function ReportesPage() {
 
           <section className="grid gap-4 md:grid-cols-3">
             <QuickLink title="Actas exportables" description="PDF/XLSX de actas de corte y calificación final." href="/reportes/actas" />
+            {canAccessKardexPdf(user) ? (
+              <QuickLink title="Kárdex oficial" description="PDF institucional desde ServicioKardex, con auditoría documental." href="/reportes/kardex" />
+            ) : null}
             <QuickLink title="Historial de exportaciones" description="Descargas recientes y folios técnicos." href="/reportes/exportaciones" />
             {canAccessAuditoriaExportaciones(user) ? (
               <QuickLink title="Auditoría institucional" description="Consulta ampliada de salidas documentales." href="/reportes/auditoria" />
             ) : (
-              <QuickLink title="Reportes futuros" description="Kárdex PDF y reportes analíticos quedarán para subbloques posteriores." />
+              <QuickLink title="Reportes futuros" description="Reportes analíticos y kárdex Excel quedarán para subbloques posteriores." />
             )}
           </section>
 
@@ -78,7 +81,14 @@ export default function ReportesPage() {
                 </div>
                 {catalogo.length > 0 ? (
                   <div className="grid gap-4 xl:grid-cols-2">
-                    {catalogo.map((item) => <ReportCatalogCard key={item.codigo} item={item} />)}
+                    {catalogo.map((item) => (
+                      <ReportCatalogCard
+                        key={item.codigo}
+                        item={item}
+                        actionHref={item.codigo === "KARDEX_OFICIAL" && canAccessKardexPdf(user) ? "/reportes/kardex" : undefined}
+                        actionLabel="Exportar kárdex PDF"
+                      />
+                    ))}
                   </div>
                 ) : (
                   <EmptyState title="Sin catálogo disponible" description="El backend no devolvió reportes para tu perfil." />

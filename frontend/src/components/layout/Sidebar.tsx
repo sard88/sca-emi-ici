@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import type { AuthenticatedUser } from "@/lib/types";
-import { canAccessReportes, getProfilesForUser } from "@/lib/dashboard";
+import { canAccessKardexPdf, canAccessReportes, getProfilesForUser } from "@/lib/dashboard";
 
 const routeByProfile: Record<string, string> = {
   ADMIN: "/admin-soporte",
@@ -21,6 +21,7 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
   const pathname = usePathname();
   const profiles = getProfilesForUser(user);
   const showReportes = canAccessReportes(user);
+  const showKardex = canAccessKardexPdf(user);
 
   return (
     <aside className="hidden min-h-screen w-[292px] shrink-0 border-r border-[#eadfce] bg-[#fffaf1]/92 p-4 shadow-[18px_0_44px_rgba(87,70,45,0.08)] backdrop-blur-xl lg:sticky lg:top-0 lg:flex lg:flex-col">
@@ -87,19 +88,35 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
               );
             })}
             {showReportes ? (
-              <Link
-                href="/reportes"
-                className={clsx(
-                  "group flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition",
-                  pathname.startsWith("/reportes") ? "bg-[#f6ead7] text-[#7a123d]" : "text-[#1f2f2a] hover:bg-[#f7efe2]",
-                )}
-              >
-                <span className="flex items-center gap-3">
-                  <ModuleIcon name="REPORTES" className="h-5 w-5 text-[#46534e] group-hover:text-[#7a123d]" />
-                  Reportes y exportaciones
-                </span>
-                <span className="text-lg leading-none text-[#7b6b58]">›</span>
-              </Link>
+              <>
+                <Link
+                  href="/reportes"
+                  className={clsx(
+                    "group flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition",
+                    pathname === "/reportes" || pathname === "/reportes/actas" || pathname === "/reportes/exportaciones" || pathname === "/reportes/auditoria"
+                      ? "bg-[#f6ead7] text-[#7a123d]"
+                      : "text-[#1f2f2a] hover:bg-[#f7efe2]",
+                  )}
+                >
+                  <span className="flex items-center gap-3">
+                    <ModuleIcon name="REPORTES" className="h-5 w-5 text-[#46534e] group-hover:text-[#7a123d]" />
+                    Reportes y exportaciones
+                  </span>
+                  <span className="text-lg leading-none text-[#7b6b58]">›</span>
+                </Link>
+                {showKardex ? (
+                  <Link
+                    href="/reportes/kardex"
+                    className={clsx(
+                      "ml-7 flex items-center justify-between rounded-2xl px-3 py-2 text-xs font-black transition",
+                      pathname === "/reportes/kardex" ? "bg-[#eef7f2] text-[#0b4a3d]" : "text-[#46534e] hover:bg-[#f7efe2]",
+                    )}
+                  >
+                    Kárdex oficial
+                    <span className="text-base leading-none text-[#7b6b58]">›</span>
+                  </Link>
+                ) : null}
+              </>
             ) : null}
           </div>
         </div>
@@ -124,6 +141,7 @@ export function MobileModuleNav({ user }: { user: AuthenticatedUser }) {
   const pathname = usePathname();
   const profiles = getProfilesForUser(user);
   const showReportes = canAccessReportes(user);
+  const showKardex = canAccessKardexPdf(user);
 
   return (
     <div className="lg:hidden">
@@ -138,6 +156,7 @@ export function MobileModuleNav({ user }: { user: AuthenticatedUser }) {
           />
         ))}
         {showReportes ? <MobilePill href="/reportes" active={pathname.startsWith("/reportes")} label="Reportes" /> : null}
+        {showKardex ? <MobilePill href="/reportes/kardex" active={pathname === "/reportes/kardex"} label="Kárdex" /> : null}
       </div>
     </div>
   );

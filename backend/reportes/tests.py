@@ -811,6 +811,74 @@ class ReportesBloque9BActasTests(TestCase):
         codigos = {item["codigo"] for item in response_discente.json()["items"]}
         self.assertNotIn(RegistroExportacion.TIPO_KARDEX_OFICIAL, codigos)
 
+    def test_kardex_disponibles_requiere_autenticacion(self):
+        response = self.client.get("/api/exportaciones/kardex-disponibles/")
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_kardex_disponibles_admin_y_estadistica_ven_resultados_sin_matricula(self):
+        for usuario in [self.admin_user, self.estadistica]:
+            self.client.force_login(usuario)
+            response = self.client.get("/api/exportaciones/kardex-disponibles/")
+
+            self.assertEqual(response.status_code, 200)
+            data = response.json()["items"]
+            self.assertGreaterEqual(len(data), len(self.discentes))
+            primer_item = data[0]
+            self.assertIn("url_kardex_pdf", primer_item)
+            self.assertIn("discente_id", primer_item)
+            self.assertNotIn("matricula", primer_item)
+            self.assertNotIn(self.discentes[0].matricula, json.dumps(data))
+
+    def test_kardex_disponibles_jefatura_carrera_solo_ambito(self):
+        otra_carrera = Carrera.objects.create(clave="R9B10C2", nombre="Otra carrera 10C2")
+        otro_plan = PlanEstudios.objects.create(carrera=otra_carrera, clave="R9B10C2P", nombre="Plan externo 10C2")
+        otra_antiguedad = Antiguedad.objects.create(
+            plan_estudios=otro_plan,
+            clave="R9B10C2A",
+            nombre="Antigüedad externa 10C2",
+            anio_inicio=2025,
+            anio_fin=2029,
+        )
+        usuario_discente = self.crear_usuario("discenteexterno10c2", "DISCENTE", nombre="Discente Externo 10C2")
+        discente_externo = Discente.objects.create(
+            usuario=usuario_discente,
+            matricula="R9B10C2EXT",
+            plan_estudios=otro_plan,
+            antiguedad=otra_antiguedad,
+        )
+
+        self.client.force_login(self.jefe_carrera)
+        response = self.client.get("/api/exportaciones/kardex-disponibles/")
+
+        self.assertEqual(response.status_code, 200)
+        ids = {item["discente_id"] for item in response.json()["items"]}
+        self.assertIn(self.discentes[0].id, ids)
+        self.assertNotIn(discente_externo.id, ids)
+
+    def test_kardex_disponibles_discente_y_docente_no_ven_resultados(self):
+        self.client.force_login(self.discentes[0].usuario)
+        response_discente = self.client.get("/api/exportaciones/kardex-disponibles/")
+
+        self.client.force_login(self.docente)
+        response_docente = self.client.get("/api/exportaciones/kardex-disponibles/")
+
+        self.assertEqual(response_discente.status_code, 200)
+        self.assertEqual(response_discente.json()["items"], [])
+        self.assertEqual(response_docente.status_code, 200)
+        self.assertEqual(response_docente.json()["items"], [])
+
+    def test_kardex_disponibles_respeta_filtros(self):
+        self.client.force_login(self.estadistica)
+        response = self.client.get(
+            "/api/exportaciones/kardex-disponibles/",
+            {"q": self.discentes[0].usuario.nombre_visible.split()[0], "carrera": self.carrera.clave, "situacion": Discente.SITUACION_REGULAR},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        ids = {item["discente_id"] for item in response.json()["items"]}
+        self.assertIn(self.discentes[0].id, ids)
+
     def test_kardex_no_crea_modelo_transaccional(self):
         nombres_modelos = {model.__name__ for model in apps.get_models()}
 

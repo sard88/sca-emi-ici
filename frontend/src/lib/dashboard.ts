@@ -29,6 +29,7 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
       { title: "Roles y cargos", description: "Grupos, cargos y unidades organizacionales.", href: "/admin/usuarios/asignacioncargo/", backend: true },
       { title: "Unidades organizacionales", description: "Secciones y subsecciones institucionales.", href: "/admin/usuarios/unidadorganizacional/", backend: true },
       { title: "Reportes y exportaciones", description: "Catálogo, actas exportables e historial documental.", href: "/reportes" },
+      { title: "Kárdex oficial", description: "Exportación PDF institucional de kárdex.", href: "/reportes/kardex" },
       { title: "Auditoría de exportaciones", description: "Trazabilidad institucional de documentos generados.", href: "/reportes/auditoria" },
       { title: "Django Admin", description: "Administración técnica completa.", href: "/admin/", backend: true },
       { title: "Estado técnico", description: "Health check del backend.", href: "/health/", backend: true },
@@ -46,6 +47,7 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
       { title: "Historial", description: "Consulta institucional de trayectoria.", href: "/trayectoria/historial/", backend: true },
       { title: "Kárdex institucional", description: "Vista oficial derivada, no visible para discentes.", href: "/trayectoria/kardex/", backend: true },
       { title: "Reportes y exportaciones", description: "Actas PDF/XLSX, historial y catálogo de reportes.", href: "/reportes" },
+      { title: "Kárdex oficial PDF", description: "Exportación institucional para perfiles autorizados.", href: "/reportes/kardex" },
     ],
   },
   docente: {
@@ -84,6 +86,7 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
       { title: "Pendientes de asignación docente", description: "Diagnóstico previo a cierre de periodo.", href: "/actas/pendientes-asignacion-docente/", backend: true },
       { title: "Consulta de trayectoria", description: "Historiales en ámbito autorizado.", href: "/trayectoria/historial/", backend: true },
       { title: "Actas exportables", description: "Descarga documental de actas del ámbito autorizado.", href: "/reportes/actas" },
+      { title: "Kárdex oficial", description: "Exportación PDF de discentes del ámbito autorizado.", href: "/reportes/kardex" },
     ],
   },
   jefaturaAcademica: {
@@ -97,6 +100,7 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
       { title: "Consulta institucional", description: "Trayectoria e historiales.", href: "/trayectoria/historial/", backend: true },
       { title: "Cierres de periodo", description: "Consulta de cierres cuando aplique.", href: "/actas/periodos/", backend: true },
       { title: "Reportes y exportaciones", description: "Actas, historial de descargas y auditoría documental.", href: "/reportes" },
+      { title: "Kárdex oficial", description: "Consulta documental PDF de kárdex institucional.", href: "/reportes/kardex" },
     ],
   },
   jefaturaPedagogica: {
@@ -109,6 +113,7 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
       { title: "Historial y trayectoria", description: "Consulta de trayectoria académica.", href: "/trayectoria/historial/", backend: true },
       { title: "Indicadores futuros", description: "Pendiente de tableros analíticos.", badge: "Futuro" },
       { title: "Reportes y exportaciones", description: "Catálogo documental y salidas disponibles.", href: "/reportes" },
+      { title: "Kárdex oficial", description: "Exportación PDF autorizada de kárdex.", href: "/reportes/kardex" },
     ],
   },
 };
@@ -138,6 +143,22 @@ export function canAccessReportes(user: AuthenticatedUser) {
     "ENCARGADO_ESTADISTICA",
     "ESTADISTICA",
     "DOCENTE",
+    "JEFE_CARRERA",
+    "JEFATURA_CARRERA",
+    "JEFE_SUB_EJEC_CTR",
+    "JEFE_ACADEMICO",
+    "JEFATURA_ACADEMICA",
+    "JEFE_PEDAGOGICA",
+    "JEFE_SUB_PLAN_EVAL",
+  ].some((role) => values.has(role));
+}
+
+export function canAccessKardexPdf(user: AuthenticatedUser) {
+  if (user.perfil_principal === "ADMIN" || user.roles.includes("ADMIN") || user.roles.includes("ADMIN_SISTEMA")) return true;
+  const values = roleValues(user);
+  return [
+    "ENCARGADO_ESTADISTICA",
+    "ESTADISTICA",
     "JEFE_CARRERA",
     "JEFATURA_CARRERA",
     "JEFE_SUB_EJEC_CTR",

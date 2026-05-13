@@ -1642,3 +1642,89 @@ No se implementa todavía:
 Resumen técnico:
 
 - `docs/resumen_bloque9c_kardex_pdf.md`
+
+## Bloque 10C-2 - Integración de kárdex PDF en el portal
+
+Se integra visualmente la exportación PDF del kárdex oficial en el portal Next.js. El frontend no genera el PDF ni construye el kárdex; solo consulta discentes autorizados, dispara la descarga contra el backend y muestra trazabilidad de auditoría.
+
+### Ruta frontend
+
+- `http://localhost:3000/reportes/kardex`
+
+### Endpoint backend consumido
+
+- `GET /api/exportaciones/kardex/<discente_id>/pdf/`
+
+Además se agrega el endpoint read-only para alimentar la pantalla:
+
+- `GET /api/exportaciones/kardex-disponibles/`
+
+Parámetros opcionales:
+
+- `q`
+- `carrera`
+- `situacion`
+- `page_size`
+
+### Roles autorizados
+
+La funcionalidad se muestra en el portal para:
+
+- Admin/superusuario;
+- Estadística;
+- Jefatura de carrera;
+- Jefatura académica;
+- Jefatura pedagógica.
+
+No se muestra para:
+
+- Discente;
+- Docente.
+
+El backend mantiene la validación real de permisos. Aunque un usuario intente llamar el endpoint directo sin autorización, la exportación queda bloqueada.
+
+### Funcionalidad del portal
+
+La pantalla permite:
+
+- buscar discentes autorizados;
+- filtrar por carrera;
+- filtrar por situación académica;
+- ver datos generales no sensibles del discente;
+- exportar kárdex oficial en PDF;
+- leer `Content-Disposition`;
+- leer `X-Registro-Exportacion-Id`;
+- mostrar folio técnico de auditoría;
+- consultar posteriormente el registro en historial de exportaciones.
+
+No se devuelve ni se muestra matrícula militar en el listado de kárdex disponibles.
+
+### Relación con Bloque 9C
+
+El Bloque 9C sigue siendo responsable de:
+
+- construir el contexto desde `ServicioKardex`;
+- llenar la plantilla XLSX;
+- convertir el XLSX a PDF con LibreOffice;
+- registrar `RegistroExportacion`.
+
+El Bloque 10C-2 solo integra esa capacidad en el portal.
+
+### Qué queda fuera
+
+No se implementa todavía:
+
+- kárdex Excel;
+- edición de kárdex;
+- generación de kárdex en React;
+- historial académico PDF/Excel;
+- reportes de desempeño;
+- reportes de situación académica;
+- cuadro de aprovechamiento;
+- firma digital;
+- QR o sello digital;
+- notificaciones automáticas por cada descarga.
+
+Resumen técnico:
+
+- `docs/resumen_bloque10c2_integracion_kardex_pdf.md`
