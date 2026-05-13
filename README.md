@@ -1046,3 +1046,103 @@ docker compose exec -T frontend npm run build
 - No se implementa Bloque 9.
 - No se implementan PDF ni Excel.
 - No se duplican reglas académicas en React.
+
+## Bloque 10B - Portal con datos vivos
+
+Se implementa la primera capa de datos vivos del portal Next.js creado en el Bloque 10A. El frontend deja de depender solo de placeholders y consume APIs Django para mostrar informacion autorizada por rol/cargo, manteniendo a Django como fuente de verdad funcional y de permisos.
+
+### Alcance implementado
+
+- Dashboard con resumen calculado por usuario autenticado.
+- Campana de notificaciones con contador de no leidas, listado, marcar una como leida y marcar todas.
+- Actividad reciente basada en eventos existentes del backend, sin datos inventados.
+- Calendario institucional con eventos visibles por rol/cargo/carrera/grupo.
+- Eventos proximos derivados del calendario institucional.
+- Buscador superior con resultados agrupados y filtrados por permisos.
+- Ruta `/perfil` con informacion del usuario en solo lectura.
+- Accesos rapidos/favoritos por usuario, con fallback estatico por rol cuando no hay favoritos guardados.
+
+### Modelos agregados
+
+- `NotificacionUsuario`: avisos dirigidos a usuarios del portal.
+- `EventoCalendarioInstitucional`: eventos del calendario institucional, filtrables por periodo, carrera, grupo y roles destino.
+- `AccesoRapidoUsuario`: accesos rapidos persistentes por usuario.
+
+### Servicios agregados
+
+- `portal_context`: resuelve roles, cargos, perfil principal y ambito del usuario.
+- `dashboard_resumen`: arma tarjetas del dashboard con datos reales disponibles.
+- `actividad_reciente`: consolida eventos recientes desde actas, capturas y movimientos academicos.
+- `eventos_mes` y `eventos_proximos`: filtran calendario institucional por permisos.
+- `busqueda`: busca usuarios, discentes, grupos, programas, actas y periodos segun permisos.
+- `crear_notificacion_usuario`: punto simple para generar notificaciones desde backend.
+- `notificar_acta_publicada_para_discentes`: servicio preparado para avisar a discentes cuando un acta publicada aplique.
+
+### APIs nuevas
+
+- `GET /api/dashboard/resumen/`
+- `GET /api/dashboard/actividad-reciente/`
+- `GET /api/notificaciones/`
+- `POST /api/notificaciones/<id>/leer/`
+- `POST /api/notificaciones/leer-todas/`
+- `GET /api/calendario/mes/?year=YYYY&month=M`
+- `GET /api/calendario/proximos/`
+- `GET /api/busqueda/?q=texto`
+- `GET /api/perfil/me/`
+- `GET /api/accesos-rapidos/`
+- `POST /api/accesos-rapidos/crear/`
+- `DELETE /api/accesos-rapidos/<id>/`
+
+Todas las APIs anteriores requieren autenticacion. Las operaciones de escritura mantienen CSRF y sesiones Django.
+
+### Rutas frontend actualizadas
+
+- `/dashboard`: consume resumen vivo y accesos rapidos.
+- `/perfil`: muestra datos del usuario autenticado en solo lectura.
+- `Topbar`: integra busqueda, notificaciones y menu de usuario.
+- `DashboardSidePanel`: integra actividad reciente, calendario y eventos proximos.
+
+### Seguridad y permisos
+
+- No se implementa JWT.
+- No se usan tokens en `localStorage`.
+- Se mantienen sesiones Django, cookies y CSRF.
+- El backend filtra datos por usuario, rol/cargo y ambito institucional.
+- El discente no recibe kárdex oficial en dashboard ni busqueda.
+- Las notificaciones solo son visibles para su usuario dueño.
+- El calendario filtra eventos visibles y aplicables al contexto del usuario.
+
+### Estados vacios
+
+Cuando no existen registros vivos, el portal muestra mensajes controlados, por ejemplo:
+
+- No hay actividad reciente registrada.
+- No hay eventos en el mes.
+- No hay eventos proximos registrados.
+- No hay resultados para tu perfil.
+
+No se generan metricas ni eventos inventados en el frontend.
+
+### Validaciones ejecutadas
+
+```bash
+docker compose exec -T backend python manage.py check
+docker compose exec -T backend python manage.py makemigrations --check
+docker compose exec -T backend python manage.py test core
+docker compose exec -T backend python manage.py test
+docker compose exec -T frontend npm run lint
+docker compose exec -T frontend npm run build
+docker compose exec -T backend python manage.py migrate
+```
+
+### Fuera de este bloque
+
+No se implementa Bloque 9, PDF, Excel, WebSockets, JWT, MFA/OTP, IdP externo, migracion completa de actas a React, migracion completa de captura de calificaciones a React, migracion completa de kárdex a React ni cambio de reglas academicas.
+
+### Pendientes naturales para 10C
+
+- Conectar eventos automaticos completos desde actas, cierre/apertura de periodo y trayectoria hacia notificaciones.
+- Permitir administracion operativa del calendario institucional desde pantallas dedicadas.
+- Hacer favoritos editables desde el portal visual.
+- Implementar resultados de busqueda con rutas React propias conforme se migren modulos.
+- Mejorar auditoria fina de actividad reciente si se requiere una bitacora transversal formal.

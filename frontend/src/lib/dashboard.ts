@@ -6,6 +6,8 @@ export type DashboardCardItem = {
   href?: string;
   backend?: boolean;
   badge?: string;
+  value?: number;
+  tone?: "neutral" | "guinda" | "dorado" | "verde";
 };
 
 export type DashboardProfile = {

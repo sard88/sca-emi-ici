@@ -1,12 +1,15 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { EmptyState } from "@/components/states/EmptyState";
 import { DashboardGrid } from "./DashboardGrid";
 import { getProfilesForUser, type DashboardCardItem } from "@/lib/dashboard";
+import { getDashboardResumen } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { careerBrand } from "@/config/branding";
+import type { DashboardResumen } from "@/lib/types";
 
 const careers = [
   { code: "IC", label: "Ingeniería Civil" },
@@ -17,23 +20,73 @@ const careers = [
 
 export function GeneralDashboard() {
   const { user } = useAuth();
+  const [summary, setSummary] = useState<DashboardResumen | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        setSummary(await getDashboardResumen());
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "No fue posible cargar el resumen vivo.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (user) void load();
+  }, [user]);
 
   if (!user) return null;
 
   const profiles = getProfilesForUser(user);
-  const quickAccesses = buildQuickAccesses(profiles.flatMap((profile) => profile.cards));
+  const fallbackQuickAccesses = buildQuickAccesses(profiles.flatMap((profile) => profile.cards));
+  const liveCards = summary?.cards.map((card) => ({
+    title: card.title,
+    description: card.description,
+    href: card.href ?? undefined,
+    backend: card.backend,
+    value: card.value,
+    tone: card.tone,
+  })) ?? [];
+  const quickAccesses = summary?.quick_accesses?.length
+    ? summary.quick_accesses.map((item) => ({
+        title: item.label,
+        description: item.description || "Acceso disponible para tu perfil.",
+        href: item.url,
+        backend: item.backend,
+      }))
+    : fallbackQuickAccesses;
 
   return (
     <AppShell>
       <div className="space-y-6">
         <InstitutionalHero />
 
+        <section aria-label="Resumen vivo">
+          <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-lg font-black text-[#101b18]">Resumen institucional</h3>
+              <p className="text-sm text-[#5f6764]">
+                Datos calculados desde el backend según tu rol, cargo y ámbito autorizado.
+              </p>
+            </div>
+          </div>
+          {loading ? <EmptyState title="Cargando resumen" description="Estamos consultando la información autorizada del backend." /> : null}
+          {!loading && error ? <EmptyState title="Resumen no disponible" description={error} /> : null}
+          {!loading && !error && liveCards.length > 0 ? <DashboardGrid cards={liveCards} /> : null}
+          {!loading && !error && liveCards.length === 0 ? <EmptyState title="Sin datos de resumen" description="No hay registros vivos para mostrar en este momento." /> : null}
+        </section>
+
         <section id="accesos-rapidos">
           <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h3 className="text-lg font-black text-[#101b18]">Accesos rápidos</h3>
               <p className="text-sm text-[#5f6764]">
-                Funciones disponibles según el rol o cargo activo. El orden por uso quedará listo cuando exista actividad registrada.
+                Funciones disponibles según el rol o cargo activo. Si guardas favoritos, aparecerán aquí primero.
               </p>
             </div>
           </div>
@@ -67,7 +120,7 @@ function InstitutionalHero() {
           href="#accesos-rapidos"
           className="mt-7 inline-flex items-center gap-3 rounded-xl border border-[#d4af37] px-5 py-3 text-sm font-black text-[#f4d98b] transition hover:bg-white/10"
         >
-          Ver documentación
+          Ver accesos
           <span aria-hidden="true">↗</span>
         </a>
       </div>
