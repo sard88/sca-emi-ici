@@ -150,3 +150,78 @@ export type PerfilUsuario = AuthenticatedUser & {
   last_login: string | null;
   date_joined: string | null;
 };
+
+export type ReporteCatalogoItem = {
+  codigo: string;
+  nombre: string;
+  descripcion: string;
+  formatos_soportados: string[];
+  implementado: boolean;
+  disponible: boolean;
+  requiere_objeto: boolean;
+  roles_sugeridos: string[];
+  bloque_origen: string;
+  nota: string;
+  motivo_no_disponible?: string;
+};
+
+export type ExportacionRegistro = {
+  id: number;
+  usuario: {
+    id: number;
+    username: string;
+    nombre: string;
+  };
+  tipo_documento: string;
+  tipo_documento_label: string;
+  formato: string;
+  nombre_documento: string;
+  nombre_archivo: string;
+  objeto_tipo: string;
+  objeto_id: string;
+  objeto_repr: string;
+  rol_contexto: string;
+  cargo_contexto: string;
+  ip_origen: string | null;
+  estado: string;
+  estado_label: string;
+  mensaje_error: string;
+  tamano_bytes: number | null;
+  hash_archivo: string;
+  creado_en: string | null;
+  finalizado_en: string | null;
+};
+
+export type ActaExportable = {
+  acta_id: number;
+  asignacion_docente_id: number;
+  tipo_acta: string;
+  corte_codigo: string;
+  corte_nombre: string;
+  estado_acta: string;
+  estado_acta_label: string;
+  estado_documental: string;
+  periodo: string;
+  carrera: string;
+  carrera_clave: string;
+  grupo: string;
+  programa_asignatura: string;
+  docente: string;
+  fecha_publicacion: string | null;
+  fecha_remision: string | null;
+  fecha_formalizacion: string | null;
+  puede_exportar_pdf: boolean;
+  puede_exportar_xlsx: boolean;
+  url_pdf: string;
+  url_xlsx: string;
+  es_documento_oficial: boolean;
+  motivo_no_disponible: string;
+  calificacion_final_disponible: boolean;
+  url_calificacion_final_pdf: string;
+  url_calificacion_final_xlsx: string;
+};
+
+export type DownloadResult = {
+  filename: string;
+  registroExportacionId: string | null;
+};

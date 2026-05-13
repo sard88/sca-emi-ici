@@ -5,6 +5,7 @@ from . import api_views
 urlpatterns = [
     path("reportes/catalogo/", api_views.catalogo_reportes_view, name="api-reportes-catalogo"),
     path("exportaciones/", api_views.exportaciones_usuario_view, name="api-exportaciones"),
+    path("exportaciones/actas-disponibles/", api_views.actas_disponibles_view, name="api-exportaciones-actas-disponibles"),
     path("exportaciones/actas/<int:acta_id>/pdf/", api_views.exportar_acta_pdf_view, name="api-exportaciones-acta-pdf"),
     path("exportaciones/actas/<int:acta_id>/xlsx/", api_views.exportar_acta_xlsx_view, name="api-exportaciones-acta-xlsx"),
     path(

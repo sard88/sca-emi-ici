@@ -8,6 +8,9 @@ from django.utils.dateparse import parse_date
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET, require_POST
 
+from core.portal_services import portal_context
+from evaluacion.models import Acta, ComponenteEvaluacion
+
 from .actas_services import ServicioExportacionActa
 from .models import RegistroExportacion
 from .services import CatalogoExportaciones, ServicioExportacion, ServicioPermisosExportacion
@@ -62,6 +65,15 @@ def exportaciones_usuario_view(request):
     qs = aplicar_filtros_exportaciones(qs, request.GET)
     limit = normalizar_limit(request.GET.get("limit"), default=30, maximum=100)
     return JsonResponse({"items": [serializar_registro_exportacion(item) for item in qs[:limit]]})
+
+
+@require_GET
+@api_login_required
+def actas_disponibles_view(request):
+    ctx = portal_context(request.user)
+    qs = actas_exportables_queryset(ctx)
+    limit = normalizar_limit(request.GET.get("limit"), default=100, maximum=300)
+    return JsonResponse({"items": [serializar_acta_exportable(acta) for acta in qs[:limit]]})
 
 
 @require_GET
@@ -174,6 +186,35 @@ def aplicar_filtros_exportaciones(qs, params):
     return qs.order_by("-creado_en")
 
 
+def actas_exportables_queryset(ctx):
+    qs = (
+        Acta.objects.select_related(
+            "asignacion_docente__usuario_docente",
+            "asignacion_docente__grupo_academico__periodo",
+            "asignacion_docente__programa_asignatura__materia",
+            "asignacion_docente__programa_asignatura__plan_estudios__carrera",
+        )
+        .exclude(estado_acta=Acta.ESTADO_ARCHIVADO)
+        .order_by(
+            "asignacion_docente__grupo_academico__clave_grupo",
+            "asignacion_docente__programa_asignatura__materia__nombre",
+            "corte_codigo",
+        )
+    )
+
+    if ctx.is_discente and not ctx.is_admin:
+        return qs.none()
+    if ctx.has_consulta_amplia:
+        return qs
+    if ctx.is_docente:
+        return qs.filter(asignacion_docente__usuario_docente=ctx.user)
+    if ctx.is_jefatura_carrera:
+        if ctx.carrera_ids:
+            return qs.filter(asignacion_docente__programa_asignatura__plan_estudios__carrera_id__in=ctx.carrera_ids)
+        return qs
+    return qs.none()
+
+
 def normalizar_limit(value, *, default, maximum):
     try:
         limit = int(value or default)
@@ -208,4 +249,48 @@ def serializar_registro_exportacion(registro: RegistroExportacion):
         "hash_archivo": registro.hash_archivo,
         "creado_en": registro.creado_en.isoformat() if registro.creado_en else None,
         "finalizado_en": registro.finalizado_en.isoformat() if registro.finalizado_en else None,
+    }
+
+
+def serializar_acta_exportable(acta: Acta):
+    asignacion = acta.asignacion_docente
+    programa = asignacion.programa_asignatura
+    materia = programa.materia
+    carrera = programa.plan_estudios.carrera
+    grupo = asignacion.grupo_academico
+    periodo = grupo.periodo
+    es_oficial = acta.estado_acta == Acta.ESTADO_FORMALIZADO_JEFATURA_ACADEMICA
+    tipo_acta = (
+        RegistroExportacion.TIPO_ACTA_EVALUACION_FINAL
+        if acta.corte_codigo == ComponenteEvaluacion.CORTE_FINAL
+        else RegistroExportacion.TIPO_ACTA_EVALUACION_PARCIAL
+    )
+
+    return {
+        "acta_id": acta.id,
+        "asignacion_docente_id": asignacion.id,
+        "tipo_acta": tipo_acta,
+        "corte_codigo": acta.corte_codigo,
+        "corte_nombre": acta.get_corte_codigo_display(),
+        "estado_acta": acta.estado_acta,
+        "estado_acta_label": acta.get_estado_acta_display(),
+        "estado_documental": "Documento oficial" if es_oficial else "Documento no oficial",
+        "periodo": periodo.clave,
+        "carrera": carrera.nombre,
+        "carrera_clave": carrera.clave,
+        "grupo": grupo.clave_grupo,
+        "programa_asignatura": materia.nombre,
+        "docente": asignacion.usuario_docente.nombre_visible,
+        "fecha_publicacion": acta.publicada_en.isoformat() if acta.publicada_en else None,
+        "fecha_remision": acta.remitida_en.isoformat() if acta.remitida_en else None,
+        "fecha_formalizacion": acta.formalizada_en.isoformat() if acta.formalizada_en else None,
+        "puede_exportar_pdf": True,
+        "puede_exportar_xlsx": True,
+        "url_pdf": f"/api/exportaciones/actas/{acta.id}/pdf/",
+        "url_xlsx": f"/api/exportaciones/actas/{acta.id}/xlsx/",
+        "es_documento_oficial": es_oficial,
+        "motivo_no_disponible": "",
+        "calificacion_final_disponible": True,
+        "url_calificacion_final_pdf": f"/api/exportaciones/asignaciones/{asignacion.id}/calificacion-final/pdf/",
+        "url_calificacion_final_xlsx": f"/api/exportaciones/asignaciones/{asignacion.id}/calificacion-final/xlsx/",
     }

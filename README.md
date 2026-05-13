@@ -1474,3 +1474,77 @@ No se implementa todavía:
 - almacenamiento permanente de archivos;
 - envío por correo;
 - pantallas React completas de reportes.
+
+## Bloque 10C-1 - Integración de exportaciones de actas en el portal
+
+Se integra el portal Next.js con las exportaciones reales de actas PDF/XLSX implementadas en Bloque 9B y con la auditoría documental del Bloque 9A.
+
+### Objetivo
+
+Permitir que usuarios autorizados consulten desde el portal:
+
+- catálogo de reportes/exportaciones;
+- actas exportables;
+- descargas PDF/XLSX de actas por corte;
+- descargas PDF/XLSX de acta de Calificación Final;
+- historial de exportaciones;
+- auditoría institucional de exportaciones para perfiles autorizados.
+
+El frontend no genera documentos. La generación sigue en Django mediante plantillas XLSX institucionales y conversión PDF con LibreOffice headless.
+
+### Rutas del portal
+
+- `http://localhost:3000/reportes`
+- `http://localhost:3000/reportes/actas`
+- `http://localhost:3000/reportes/exportaciones`
+- `http://localhost:3000/reportes/auditoria`
+
+### Endpoints backend consumidos
+
+- `GET /api/reportes/catalogo/`
+- `GET /api/exportaciones/`
+- `GET /api/auditoria/exportaciones/`
+- `GET /api/exportaciones/actas-disponibles/`
+- `GET /api/exportaciones/actas/<acta_id>/pdf/`
+- `GET /api/exportaciones/actas/<acta_id>/xlsx/`
+- `GET /api/exportaciones/asignaciones/<asignacion_docente_id>/calificacion-final/pdf/`
+- `GET /api/exportaciones/asignaciones/<asignacion_docente_id>/calificacion-final/xlsx/`
+
+### Descargas y trazabilidad
+
+Las descargas del portal usan sesión Django con cookies y `credentials: "include"`. Cada archivo descargado registra `RegistroExportacion` y el portal muestra el folio técnico cuando el backend entrega:
+
+- `X-Registro-Exportacion-Id`
+
+También se expone de forma controlada:
+
+- `Content-Disposition`
+
+Esto permite que el frontend recupere el nombre real del archivo y la trazabilidad sin relajar CORS.
+
+### Permisos
+
+El backend sigue siendo la autoridad.
+
+- Admin: catálogo, actas, historial y auditoría.
+- Estadística: catálogo, actas e historial/auditoría según permiso.
+- Docente: solo actas propias.
+- Jefatura de carrera: actas de su ámbito.
+- Jefatura académica/pedagógica: consulta documental autorizada.
+- Discente: no ve reportes globales, kárdex oficial ni actas completas de grupo en este bloque.
+
+### Qué queda fuera
+
+No se implementa todavía:
+
+- kárdex PDF;
+- reportes de desempeño;
+- reportes de situación académica;
+- cuadro de aprovechamiento;
+- importación desde Excel;
+- edición o formalización de actas desde React;
+- firma electrónica, QR o envío por correo.
+
+Resumen técnico:
+
+- `docs/resumen_bloque10c1_integracion_exportaciones_actas.md`

@@ -1,6 +1,7 @@
 from datetime import date
 from decimal import Decimal
 from io import BytesIO
+import json
 import subprocess
 from unittest.mock import patch
 
@@ -492,6 +493,69 @@ class ReportesBloque9BActasTests(TestCase):
         self.assertIn("Cédula profesional: 1234567", valores)
         self.assertIn("Jefe Carrera ICI", " ".join(str(valor) for valor in valores))
         self.assertIn("Jefe Académico", " ".join(str(valor) for valor in valores))
+
+    def test_endpoint_actas_disponibles_docente_lista_solo_propias(self):
+        otro_grupo = GrupoAcademico.objects.create(
+            clave_grupo="R9BG3",
+            antiguedad=self.antiguedad,
+            periodo=self.periodo,
+            semestre_numero=1,
+        )
+        otra_asignacion = AsignacionDocente.objects.create(
+            usuario_docente=self.otro_docente,
+            grupo_academico=otro_grupo,
+            programa_asignatura=self.programa,
+        )
+        acta_ajena = Acta.objects.create(
+            asignacion_docente=otra_asignacion,
+            corte_codigo=ComponenteEvaluacion.CORTE_P1,
+            estado_acta=Acta.ESTADO_BORRADOR_DOCENTE,
+            esquema=self.esquema,
+            esquema_version_snapshot=self.esquema.version,
+            peso_parciales_snapshot=self.esquema.peso_parciales,
+            peso_final_snapshot=self.esquema.peso_final,
+            umbral_exencion_snapshot=self.esquema.umbral_exencion,
+            creado_por=self.otro_docente,
+        )
+
+        self.client.force_login(self.docente)
+        response = self.client.get("/api/exportaciones/actas-disponibles/")
+
+        self.assertEqual(response.status_code, 200)
+        ids = {item["acta_id"] for item in response.json()["items"]}
+        self.assertIn(self.acta_p1.id, ids)
+        self.assertNotIn(acta_ajena.id, ids)
+
+    def test_endpoint_actas_disponibles_discente_no_lista_actas_completas(self):
+        self.client.force_login(self.discentes[0].usuario)
+        response = self.client.get("/api/exportaciones/actas-disponibles/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["items"], [])
+
+    def test_endpoint_actas_disponibles_estadistica_lista_actas_y_no_expone_matricula(self):
+        self.client.force_login(self.estadistica)
+        response = self.client.get("/api/exportaciones/actas-disponibles/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertGreaterEqual(len(payload["items"]), 4)
+        serializado = json.dumps(payload, ensure_ascii=False)
+        self.assertIn("url_pdf", payload["items"][0])
+        self.assertNotIn("R9B001", serializado)
+        self.assertNotIn("matricula", serializado.lower())
+
+    def test_descarga_expone_headers_de_auditoria_para_frontend(self):
+        self.client.force_login(self.docente)
+        response = self.client.get(
+            f"/api/exportaciones/actas/{self.acta_p1.id}/xlsx/",
+            HTTP_ORIGIN="http://localhost:3000",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["X-Registro-Exportacion-Id"], str(RegistroExportacion.objects.latest("id").id))
+        self.assertIn("Content-Disposition", response["Access-Control-Expose-Headers"])
+        self.assertIn("X-Registro-Exportacion-Id", response["Access-Control-Expose-Headers"])
 
     def test_exporta_evaluacion_final_pdf_y_xlsx(self):
         self.client.force_login(self.docente)

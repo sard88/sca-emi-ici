@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import type { AuthenticatedUser } from "@/lib/types";
-import { getProfilesForUser } from "@/lib/dashboard";
+import { canAccessReportes, getProfilesForUser } from "@/lib/dashboard";
 
 const routeByProfile: Record<string, string> = {
   ADMIN: "/admin-soporte",
@@ -20,6 +20,7 @@ const routeByProfile: Record<string, string> = {
 export function Sidebar({ user }: { user: AuthenticatedUser }) {
   const pathname = usePathname();
   const profiles = getProfilesForUser(user);
+  const showReportes = canAccessReportes(user);
 
   return (
     <aside className="hidden min-h-screen w-[292px] shrink-0 border-r border-[#eadfce] bg-[#fffaf1]/92 p-4 shadow-[18px_0_44px_rgba(87,70,45,0.08)] backdrop-blur-xl lg:sticky lg:top-0 lg:flex lg:flex-col">
@@ -85,6 +86,21 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
                 </Link>
               );
             })}
+            {showReportes ? (
+              <Link
+                href="/reportes"
+                className={clsx(
+                  "group flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition",
+                  pathname.startsWith("/reportes") ? "bg-[#f6ead7] text-[#7a123d]" : "text-[#1f2f2a] hover:bg-[#f7efe2]",
+                )}
+              >
+                <span className="flex items-center gap-3">
+                  <ModuleIcon name="REPORTES" className="h-5 w-5 text-[#46534e] group-hover:text-[#7a123d]" />
+                  Reportes y exportaciones
+                </span>
+                <span className="text-lg leading-none text-[#7b6b58]">›</span>
+              </Link>
+            ) : null}
           </div>
         </div>
       </nav>
@@ -107,6 +123,7 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
 export function MobileModuleNav({ user }: { user: AuthenticatedUser }) {
   const pathname = usePathname();
   const profiles = getProfilesForUser(user);
+  const showReportes = canAccessReportes(user);
 
   return (
     <div className="lg:hidden">
@@ -120,6 +137,7 @@ export function MobileModuleNav({ user }: { user: AuthenticatedUser }) {
             label={profile.title}
           />
         ))}
+        {showReportes ? <MobilePill href="/reportes" active={pathname.startsWith("/reportes")} label="Reportes" /> : null}
       </div>
     </div>
   );
@@ -154,6 +172,7 @@ export function ModuleIcon({ name, className }: { name: string; className?: stri
   if (normalized.includes("DOCENTE")) return <UsersIcon className={className} />;
   if (normalized.includes("DISCENTE")) return <IdIcon className={className} />;
   if (normalized.includes("JEFE") || normalized.includes("JEFATURA")) return <AcademicIcon className={className} />;
+  if (normalized.includes("REPORTE")) return <DocumentIcon className={className} />;
   if (normalized.includes("SEGURIDAD")) return <ShieldIcon className={className} />;
   if (normalized.includes("PANEL")) return <HomeIcon className={className} />;
   return <SettingsIcon className={className} />;
@@ -217,6 +236,15 @@ function ShieldIcon({ className }: { className?: string }) {
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M12 3.5 19 6v5.5c0 4.5-3 7.8-7 9-4-1.2-7-4.5-7-9V6l7-2.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
       <path d="m8.8 12.2 2.1 2.1 4.4-4.9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function DocumentIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M7 3.5h6.5L18 8v12.5H7V3.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M13.5 3.8V8H18M9.8 12h5.4M9.8 15h5.4M9.8 18h3.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

@@ -23,6 +23,9 @@ class ExplicitCorsMiddleware:
             response["Access-Control-Allow-Headers"] = (
                 "Content-Type, X-CSRFToken, X-Requested-With"
             )
+            response["Access-Control-Expose-Headers"] = (
+                "Content-Disposition, X-Registro-Exportacion-Id"
+            )
             patch_vary_headers(response, ("Origin",))
 
         return response
