@@ -104,6 +104,8 @@ class UsuarioAdminCreationForm(UsuarioRolUnicoMixin, UserCreationForm):
             "estado_cuenta",
             "grado_empleo",
             "nombre_completo",
+            "titulo_profesional",
+            "cedula_profesional",
             "correo",
             "telefono",
             "groups",

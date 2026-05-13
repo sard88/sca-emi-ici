@@ -95,6 +95,7 @@ test-results/
 
 # === Documentación generada ===
 docs/_build/
+docs/referencias_privadas/
 site/
 
 # === Temporales ===

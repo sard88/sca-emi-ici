@@ -1303,3 +1303,174 @@ No se implementa todavía:
 - 9C podrá conectar kárdex PDF manteniendo la regla de no exposición al discente.
 - 9F/9G/9I podrán construir reportes operativos y académicos sobre el catálogo.
 - 10C podrá consumir las APIs para mostrar catálogo, historial y estados de exportación en el portal.
+
+## Bloque 9B - Exportación de actas PDF/Excel
+
+Se implementa la generación real de actas en PDF y Excel usando el núcleo común de exportaciones y auditoría del Bloque 9A. El formato maestro de las actas es XLSX: el sistema carga plantillas institucionales productivas, rellena celdas específicas con datos reales y conserva celdas combinadas, bordes, anchos, alturas, orientación, márgenes y área de impresión.
+
+Para PDF, el sistema genera primero el XLSX final y después lo convierte a PDF con LibreOffice en modo headless. Cada descarga registra un `RegistroExportacion` con usuario, tipo de documento, formato, objeto, IP, user agent, tamaño, hash y estado.
+
+### Variantes implementadas
+
+- Acta de evaluación parcial en PDF y XLSX para cortes `P1`, `P2` y `P3`.
+- Acta de Evaluación Final en PDF y XLSX para corte `FINAL`.
+- Acta de Calificación Final en PDF y XLSX como documento consolidado por asignación docente.
+
+### Rutas de descarga
+
+- `GET /api/exportaciones/actas/<acta_id>/pdf/`
+- `GET /api/exportaciones/actas/<acta_id>/xlsx/`
+- `GET /api/exportaciones/asignaciones/<asignacion_docente_id>/calificacion-final/pdf/`
+- `GET /api/exportaciones/asignaciones/<asignacion_docente_id>/calificacion-final/xlsx/`
+
+Todas las rutas requieren autenticación y validan permisos en backend.
+
+### Permisos
+
+- Admin/superusuario puede exportar por soporte técnico.
+- Estadística puede exportar actas institucionales autorizadas.
+- Docente puede exportar sus propias actas y calificación final de sus asignaciones.
+- Jefatura de carrera puede exportar actas de su ámbito/carrera.
+- Jefatura académica y jefatura pedagógica conservan consulta institucional autorizada.
+- Discente no puede exportar actas completas de grupo, reportes globales ni kárdex oficial.
+
+### Auditoría
+
+Cada exportación registra:
+
+- usuario solicitante;
+- tipo de documento;
+- formato;
+- nombre del documento;
+- nombre seguro del archivo;
+- objeto asociado;
+- parámetros no sensibles;
+- rol/cargo de contexto;
+- IP y user agent;
+- estado `GENERADA` o `FALLIDA`;
+- tamaño en bytes;
+- hash SHA-256 del archivo generado;
+- fecha de finalización.
+
+Si ocurre un error durante la generación, se registra `FALLIDA` y se devuelve error controlado sin crear archivo parcial.
+
+### Datos y formato documental
+
+Las actas incluyen:
+
+- encabezado institucional;
+- carrera;
+- unidad de aprendizaje;
+- docente;
+- grupo;
+- ciclo escolar;
+- semestre;
+- evaluación;
+- estado documental;
+- tabla de discentes con grado/empleo, nombre y calificaciones;
+- componentes ponderados para actas de corte;
+- Parcial 1, Parcial 2, Parcial 3, Evaluación Final y Calificación final para el consolidado;
+- alumnos reprobados, media, moda y desviación estándar;
+- probables causas de reprobación y sugerencias, con `N/A` si están vacías;
+- leyendas institucionales;
+- espacios de firma para Evaluó, Revisó y Vo. Bo.
+
+El XLSX conserva la geometría de plantillas institucionales: encabezados combinados, resumen estadístico, firmas y leyendas. Las filas sobrantes del roster se ocultan para que la salida visible incluya solo la cantidad real de discentes del curso, sin filas en blanco dentro de la tabla.
+
+Las firmas se alimentan con datos reales cuando existen:
+
+- `Evaluó`: docente de la asignación, usando su título profesional y cédula profesional si están capturados.
+- `Revisó`: jefatura de carrera/subsección vigente asociada a la carrera del grupo.
+- `Vo. Bo.`: jefatura académica vigente.
+
+La Evaluación Final usa formato compacto propio y no se mezcla con el consolidado de Calificación Final.
+
+Las actas no formalizadas muestran marca visible de borrador o documento no oficial. La exportación no cambia estados ni modifica actas, inscripciones, historial o kárdex.
+
+### Plantillas productivas
+
+Las plantillas productivas anonimizadas se versionan en:
+
+- `backend/reportes/templates_xlsx/actas/acta_evaluacion_parcial_template.xlsx`
+- `backend/reportes/templates_xlsx/actas/acta_evaluacion_final_template.xlsx`
+- `backend/reportes/templates_xlsx/actas/acta_calificacion_final_template.xlsx`
+
+Estas plantillas conservan el formato visual de los ejemplos, pero no contienen nombres, matrículas ni calificaciones reales.
+
+### Referencias visuales
+
+Los archivos reales entregados por el equipo se copiaron solo como referencia local no versionada en:
+
+- `docs/referencias_privadas/actas_bloque9/`
+
+La carpeta `docs/referencias_privadas/` está ignorada por Git porque puede contener datos reales o sensibles.
+
+### Dependencias agregadas
+
+- `openpyxl` para XLSX.
+- `LibreOffice Calc` en el contenedor backend para convertir XLSX a PDF.
+
+La conversión usa el binario `soffice` o `libreoffice`. Puede configurarse con `LIBREOFFICE_BINARY` si el entorno lo requiere.
+
+### Cambios de modelo
+
+Se agregan campos opcionales en `Acta`:
+
+- `probables_causas_reprobacion`
+- `sugerencias_academicas`
+
+Migración:
+
+- `evaluacion.0009_acta_probables_causas_reprobacion_and_more`
+
+Se agregan campos opcionales en `Usuario` para firmas docentes:
+
+- `titulo_profesional`
+- `cedula_profesional`
+
+Migración:
+
+- `usuarios.0017_usuario_cedula_profesional_and_more`
+
+### Validaciones ejecutadas
+
+```bash
+docker compose build backend
+docker compose up -d backend
+docker compose exec -T backend python manage.py makemigrations evaluacion
+docker compose exec -T backend python manage.py makemigrations usuarios
+docker compose exec -T backend python manage.py migrate
+docker compose exec -T backend python manage.py check
+docker compose exec -T backend python manage.py makemigrations --check
+docker compose exec -T backend python manage.py test reportes
+docker compose exec -T backend python manage.py test
+```
+
+Resultados locales:
+
+- `check`: OK.
+- `makemigrations evaluacion`: creó migración `0009`.
+- `makemigrations usuarios`: creó migración `0017`.
+- `migrate`: OK.
+- `makemigrations --check`: OK, sin cambios pendientes.
+- `test reportes`: 27 pruebas OK.
+- `test`: 327 pruebas OK.
+- `docker compose build backend`: OK. Imagen backend reconstruida con LibreOffice Calc.
+- Validación PDF real: OK. `/api/exportaciones/actas/5/pdf/` respondió `200 application/pdf` y generó contenido `%PDF-`.
+
+### Fuera de alcance
+
+No se implementa todavía:
+
+- kárdex PDF/Excel;
+- historial académico exportable;
+- reportes de desempeño;
+- reportes de situación académica;
+- cuadro de aprovechamiento;
+- importación desde Excel;
+- plantillas de captura reimportables;
+- firma electrónica;
+- QR o sello digital;
+- almacenamiento permanente de archivos;
+- envío por correo;
+- pantallas React completas de reportes.

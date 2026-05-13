@@ -55,6 +55,8 @@ class UsuarioAdmin(UserAdmin):
                     "estado_cuenta",
                     "grado_empleo",
                     "nombre_completo",
+                    "titulo_profesional",
+                    "cedula_profesional",
                     "correo",
                     "telefono",
                     "ultimo_acceso",
@@ -87,6 +89,8 @@ class UsuarioAdmin(UserAdmin):
                     "estado_cuenta",
                     "grado_empleo",
                     "nombre_completo",
+                    "titulo_profesional",
+                    "cedula_profesional",
                     "correo",
                     "telefono",
                 )
