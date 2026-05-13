@@ -1146,3 +1146,160 @@ No se implementa Bloque 9, PDF, Excel, WebSockets, JWT, MFA/OTP, IdP externo, mi
 - Hacer favoritos editables desde el portal visual.
 - Implementar resultados de busqueda con rutas React propias conforme se migren modulos.
 - Mejorar auditoria fina de actividad reciente si se requiere una bitacora transversal formal.
+
+## Bloque 9A - Núcleo común de exportaciones y auditoría
+
+Se implementa la base común para registrar y auditar salidas documentales del sistema, sin generar todavía documentos PDF/Excel finales. Este bloque prepara la infraestructura para los subbloques posteriores de actas, kárdex y reportes operativos.
+
+### Objetivo
+
+Registrar toda exportación relevante como evidencia de auditoría, centralizar permisos base por rol/cargo y exponer APIs para que el portal pueda consultar catálogo e historial de exportaciones en fases posteriores.
+
+### Modelo principal
+
+Se agrega `RegistroExportacion` en la app `reportes`.
+
+Campos principales:
+
+- `usuario`
+- `tipo_documento`
+- `formato`
+- `nombre_documento`
+- `nombre_archivo`
+- `objeto_tipo`
+- `objeto_id`
+- `objeto_repr`
+- `filtros_json`
+- `parametros_json`
+- `rol_contexto`
+- `cargo_contexto`
+- `ip_origen`
+- `user_agent`
+- `estado`
+- `mensaje_error`
+- `tamano_bytes`
+- `hash_archivo`
+- `creado_en`
+- `finalizado_en`
+
+Estados soportados:
+
+- `SOLICITADA`
+- `GENERADA`
+- `FALLIDA`
+- `DESCARGADA`
+
+Formatos previstos:
+
+- `PDF`
+- `XLSX`
+- `CSV`
+
+### Catálogo de exportaciones
+
+Se crea un catálogo inicial en código con documentos y reportes previstos:
+
+- actas de evaluación parcial;
+- actas de evaluación final;
+- actas de calificación final;
+- kárdex oficial;
+- historial académico interno;
+- actas por estado;
+- actas pendientes de validación;
+- inconformidades y conformidades pendientes;
+- desempeño académico;
+- situación académica;
+- validaciones de acta;
+- exportaciones realizadas;
+- movimientos académicos;
+- auditoría de eventos.
+
+En 9A queda implementado el núcleo de catálogo/auditoría. La generación real de documentos queda marcada como pendiente para 9B, 9C, 9F, 9G y 9I.
+
+### Servicios creados
+
+- `CatalogoExportaciones`: expone el catálogo filtrado por permisos.
+- `ServicioPermisosExportacion`: define permisos base por rol/cargo.
+- `ServicioExportacion`: registra solicitudes, marca exportaciones generadas o fallidas y captura IP/user agent.
+- `construir_nombre_archivo`: normaliza nombres de archivo seguros.
+- `limpiar_json_seguro`: remueve llaves sensibles de filtros/parámetros antes de auditar.
+
+### APIs creadas
+
+- `GET /api/reportes/catalogo/`
+- `GET /api/exportaciones/`
+- `GET /api/auditoria/exportaciones/`
+- `POST /api/exportaciones/registrar-evento-prueba/`
+
+El endpoint de prueba es técnico, restringido a Admin/Estadística y sirve para validar auditoría sin generar documentos finales.
+
+### Reglas de permisos
+
+- Todas las APIs requieren autenticación.
+- Admin/superusuario puede consultar catálogo completo y auditoría.
+- Estadística puede consultar catálogo institucional y auditoría de exportaciones.
+- Jefatura de carrera ve actas y reportes operativos de su ámbito previsto.
+- Jefatura académica/pedagógica ve documentos institucionales autorizados.
+- Docente ve únicamente exportaciones potenciales de actas propias.
+- Discente no ve kárdex oficial ni reportes globales como exportables.
+- El backend valida permisos; el frontend no es fuente de autorización.
+
+### Admin Django
+
+`RegistroExportacion` queda registrado en Django Admin como consulta técnica:
+
+- campos en solo lectura;
+- sin alta manual desde admin;
+- sin edición ordinaria;
+- sin eliminación ordinaria;
+- sin acción masiva de borrado.
+
+### Seguridad documental
+
+- No se guardan archivos físicos en 9A.
+- No se almacenan payloads completos de documentos.
+- No se guardan contraseñas, tokens, cookies, CSRF ni credenciales en `filtros_json` o `parametros_json`.
+- El registro es evidencia append-only: si algo debe corregirse, se registra otro evento.
+- No se modifican actas formalizadas, kárdex ni reglas académicas.
+
+### Validación
+
+```bash
+docker compose exec -T backend python manage.py check
+docker compose exec -T backend python manage.py makemigrations reportes
+docker compose exec -T backend python manage.py migrate
+docker compose exec -T backend python manage.py makemigrations --check
+docker compose exec -T backend python manage.py test reportes
+docker compose exec -T backend python manage.py test
+```
+
+Resultados locales:
+
+- `check`: OK.
+- `migrate`: OK, `reportes.0001_initial` aplicado.
+- `makemigrations --check`: OK, sin cambios pendientes.
+- `test reportes`: 14 pruebas OK.
+- `test`: 314 pruebas OK.
+
+### Fuera de alcance
+
+No se implementa todavía:
+
+- PDF real de actas;
+- Excel real de actas;
+- kárdex PDF;
+- historial exportable;
+- reportes de desempeño reales;
+- reportes de situación académica reales;
+- importación desde Excel;
+- almacenamiento físico permanente de archivos;
+- firma electrónica;
+- QR o sello digital;
+- pantallas React de reportes.
+
+### Relación con siguientes bloques
+
+- 9B conectará generadores reales de actas PDF/Excel usando `ServicioExportacion`.
+- 9C podrá conectar kárdex PDF manteniendo la regla de no exposición al discente.
+- 9F/9G/9I podrán construir reportes operativos y académicos sobre el catálogo.
+- 10C podrá consumir las APIs para mostrar catálogo, historial y estados de exportación en el portal.
