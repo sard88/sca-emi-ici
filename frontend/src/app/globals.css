@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-guinda: #611232;
+  --color-guinda-acento: #9f2241;
+  --color-verde-institucional: #235b4e;
+  --color-verde-olivo: #3a4a32;
+  --color-dorado: #d4af37;
+  --color-dorado-institucional: #bc955c;
+  --color-marfil: #f8f4ea;
+  --color-carbon: #1f2937;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(188, 149, 92, 0.22), transparent 32rem),
+    linear-gradient(135deg, #f8f4ea 0%, #f3f4f6 52%, #ffffff 100%);
+  color: var(--color-carbon);
+}
+
+a { text-decoration: none; }
+
+/* Oculta el acceso visual a Next.js Dev Tools en demos locales del portal. */
+[data-nextjs-toast],
+nextjs-portal {
+  display: none !important;
+}

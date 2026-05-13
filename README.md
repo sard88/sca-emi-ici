@@ -880,3 +880,169 @@ docker compose exec -T backend python manage.py makemigrations --check
 docker compose exec -T backend python manage.py test actas
 docker compose exec -T backend python manage.py test
 ```
+
+## Bloque 10A - Front institucional base
+
+Se crea la base del portal visual moderno del Sistema de Control Académico EMI - ICI con Next.js, React, TypeScript y Tailwind CSS. El backend Django continúa como fuente de verdad para reglas académicas, permisos, actas, historial, kárdex y cierre/apertura de periodo.
+
+### Arquitectura
+
+- Frontend Next.js: `http://localhost:3000`
+- Backend Django: `http://localhost:8000`
+- Django Admin: `http://localhost:8000/admin/`
+- PostgreSQL en Docker.
+
+Servicios Docker esperados:
+
+- `db`
+- `backend`
+- `frontend`
+
+### Frontend
+
+La carpeta `frontend/` contiene:
+
+- Next.js con App Router.
+- React y TypeScript.
+- Tailwind CSS.
+- Componentes base equivalentes compatibles: `Button`, `Card`, `Input`, `AppShell`, `Sidebar`, `Topbar`, `DashboardCard`, `StatusBadge`, `RoleBadge`, estados de carga/error/vacío y componentes de branding.
+- Rutas iniciales:
+  - `/`
+  - `/login`
+  - `/dashboard`
+  - `/discente`
+  - `/docente`
+  - `/jefatura-carrera`
+  - `/jefatura-academica`
+  - `/jefatura-pedagogica`
+  - `/estadistica`
+  - `/admin-soporte`
+
+### Variables de entorno frontend
+
+Crear archivo local:
+
+macOS/Linux:
+
+```bash
+cp frontend/.env.example frontend/.env.local
+```
+
+Windows PowerShell:
+
+```powershell
+Copy-Item frontend/.env.example frontend/.env.local
+```
+
+Variables:
+
+```bash
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+NEXT_PUBLIC_APP_NAME=Sistema de Control Académico EMI - ICI
+NEXT_PUBLIC_APP_ENV=MVP intranet
+```
+
+No se deben colocar secretos en variables `NEXT_PUBLIC_`, porque son visibles para el navegador.
+
+### Variables backend nuevas o ajustadas
+
+```bash
+CORS_ALLOWED_ORIGINS=http://localhost:3000
+CSRF_TRUSTED_ORIGINS=http://localhost:3000
+SESSION_COOKIE_NAME=sca_sessionid
+SESSION_COOKIE_SECURE=False
+SESSION_COOKIE_SAMESITE=Lax
+SESSION_COOKIE_AGE=28800
+SESSION_EXPIRE_AT_BROWSER_CLOSE=False
+SESSION_SAVE_EVERY_REQUEST=False
+CSRF_COOKIE_NAME=sca_csrftoken
+CSRF_COOKIE_SECURE=False
+CSRF_COOKIE_SAMESITE=Lax
+CSRF_COOKIE_HTTPONLY=True
+SECURE_SSL_REDIRECT=False
+SECURE_HSTS_SECONDS=0
+```
+
+En HTTPS real se debe activar `SESSION_COOKIE_SECURE=True` y `CSRF_COOKIE_SECURE=True`. No activar `SameSite=None` sin `Secure=True`. No activar HSTS en desarrollo local.
+
+### Autenticación
+
+El Bloque 10A usa sesiones Django con cookies y CSRF:
+
+- `GET /api/auth/csrf/`: genera/devuelve token CSRF y cookie CSRF.
+- `POST /api/auth/login/`: valida credenciales, crea sesión Django y devuelve usuario mínimo.
+- `POST /api/auth/logout/`: cierra sesión Django.
+- `GET /api/auth/me/`: devuelve `authenticated=false` o datos del usuario autenticado.
+
+Reglas de seguridad:
+
+- No JWT en esta fase.
+- No MFA/OTP en esta fase.
+- No tokens en `localStorage`.
+- Cookies de sesión `HttpOnly`.
+- CSRF activo; no se desactiva globalmente.
+- CORS usa orígenes explícitos y `credentials: include`.
+
+### Identidad visual
+
+Paleta aproximada hasta recibir lineamientos oficiales:
+
+- Guinda: `#611232`
+- Guinda acento: `#9F2241`
+- Verde institucional/militar: `#235B4E`
+- Verde olivo: `#3A4A32`
+- Dorado sobrio: `#D4AF37`
+- Dorado institucional: `#BC955C`
+- Fondo marfil: `#F8F4EA`
+- Gris carbón: `#1F2937`
+
+### Logos
+
+Se prepara la estructura:
+
+```text
+frontend/public/brand/
+  institutions/
+  careers/
+```
+
+Convenciones principales:
+
+- `frontend/public/brand/institutions/emi.svg` o `.png`
+- `frontend/public/brand/institutions/emi-escudo.png`
+- `frontend/public/brand/institutions/udefa.svg` o `.png`
+- `frontend/public/brand/institutions/sedena.png`
+- `frontend/public/brand/careers/ici.svg` o `.png`
+- `frontend/public/brand/careers/ice.svg` o `.png`
+- `frontend/public/brand/careers/ic.svg` o `.png`
+- `frontend/public/brand/careers/ii.svg` o `.png`
+
+No se descargan logos de internet. Si faltan logos, el portal muestra placeholders institucionales limpios mediante la ruta interna `/brand-logo/...`, evitando imagen rota y solicitudes 404 visibles.
+
+### Levantar con Docker
+
+```bash
+docker compose build
+docker compose up -d
+docker compose ps
+```
+
+Validaciones recomendadas:
+
+```bash
+docker compose exec -T backend python manage.py check
+docker compose exec -T backend python manage.py makemigrations --check
+docker compose exec -T backend python manage.py test
+docker compose exec -T frontend npm install
+docker compose exec -T frontend npm run lint
+docker compose exec -T frontend npm run build
+```
+
+### Alcance conservado
+
+- Django Admin se mantiene.
+- Las vistas Django existentes se mantienen como respaldo operativo.
+- El frontend enlaza a rutas actuales del backend para funciones aún no migradas.
+- No se implementa Bloque 9.
+- No se implementan PDF ni Excel.
+- No se duplican reglas académicas en React.
