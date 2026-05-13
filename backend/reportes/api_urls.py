@@ -18,6 +18,7 @@ urlpatterns = [
         api_views.exportar_calificacion_final_xlsx_view,
         name="api-exportaciones-calificacion-final-xlsx",
     ),
+    path("exportaciones/kardex/<int:discente_id>/pdf/", api_views.exportar_kardex_pdf_view, name="api-exportaciones-kardex-pdf"),
     path("exportaciones/registrar-evento-prueba/", api_views.registrar_evento_prueba_view, name="api-exportaciones-prueba"),
     path("auditoria/exportaciones/", api_views.auditoria_exportaciones_view, name="api-auditoria-exportaciones"),
 ]

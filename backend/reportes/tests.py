@@ -7,18 +7,24 @@ from unittest.mock import patch
 
 from django.contrib import admin
 from django.contrib.auth.models import Group
+from django.apps import apps
 from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory, TestCase
+from django.utils import timezone
 
 from catalogos.models import Antiguedad, Carrera, GrupoAcademico, Materia, PeriodoEscolar, PlanEstudios, ProgramaAsignatura
 from evaluacion.models import Acta, CalificacionComponente, ComponenteEvaluacion, DetalleActa, EsquemaEvaluacion
 from relaciones.models import AdscripcionGrupo, AsignacionDocente, Discente, InscripcionMateria
+from trayectoria.models import CatalogoResultadoAcademico
+from trayectoria.services import registrar_extraordinario
 from usuarios.models import AsignacionCargo, UnidadOrganizacional, Usuario
 
 from .admin import RegistroExportacionAdmin
 from .catalogo import CATALOGO_EXPORTACIONES
+from .kardex_context import construir_contexto_kardex
 from .models import RegistroExportacion
 from .services import ServicioExportacion, construir_nombre_archivo
+from .utils_calificaciones import calificacion_numerica_con_letra
 
 
 class ReportesBloque9ATests(TestCase):
@@ -306,7 +312,8 @@ class ReportesBloque9BActasTests(TestCase):
         for inscripcion, calificacion in zip(self.inscripciones, [Decimal("6.70"), Decimal("8.55"), Decimal("5.95")]):
             inscripcion.calificacion_final = calificacion
             inscripcion.codigo_resultado_oficial = "APROBADO" if calificacion >= Decimal("6.0") else "REPROBADO"
-            inscripcion.save(update_fields=["calificacion_final", "codigo_resultado_oficial"])
+            inscripcion.cerrado_en = timezone.now()
+            inscripcion.save(update_fields=["calificacion_final", "codigo_resultado_oficial", "cerrado_en"])
 
     def crear_usuario(self, username, grupo, nombre=None, **extra_fields):
         user = Usuario.objects.create_user(
@@ -697,8 +704,8 @@ class ReportesBloque9BActasTests(TestCase):
                 file.write(b"%PDF-1.4\nmock")
             return subprocess.CompletedProcess(cmd, 0, b"", b"")
 
-        with patch("reportes.exportadores.actas_pdf._libreoffice_binary", return_value="soffice"), patch(
-            "reportes.exportadores.actas_pdf.subprocess.run",
+        with patch("reportes.exportadores.libreoffice_utils.libreoffice_binary", return_value="soffice"), patch(
+            "reportes.exportadores.libreoffice_utils.subprocess.run",
             side_effect=fake_run,
         ) as run_mock:
             contenido = convertir_xlsx_a_pdf(b"contenido xlsx")
@@ -708,3 +715,190 @@ class ReportesBloque9BActasTests(TestCase):
         self.assertIn("--headless", comando)
         self.assertIn("--convert-to", comando)
         self.assertIn("pdf", comando)
+
+    def test_exporta_kardex_pdf_como_estadistica(self):
+        self.client.force_login(self.estadistica)
+        with patch("reportes.exportadores.kardex_pdf.convertir_xlsx_a_pdf", return_value=b"%PDF-1.4\nkardex"):
+            response = self.client.get(f"/api/exportaciones/kardex/{self.discentes[0].id}/pdf/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertEqual(response["X-Registro-Exportacion-Id"], str(RegistroExportacion.objects.latest("id").id))
+        registro = RegistroExportacion.objects.latest("id")
+        self.assertEqual(registro.tipo_documento, RegistroExportacion.TIPO_KARDEX_OFICIAL)
+        self.assertEqual(registro.formato, RegistroExportacion.FORMATO_PDF)
+        self.assertEqual(registro.estado, RegistroExportacion.ESTADO_GENERADA)
+
+    def test_exporta_kardex_pdf_como_admin(self):
+        self.client.force_login(self.admin_user)
+        with patch("reportes.exportadores.kardex_pdf.convertir_xlsx_a_pdf", return_value=b"%PDF-1.4\nkardex"):
+            response = self.client.get(f"/api/exportaciones/kardex/{self.discentes[0].id}/pdf/")
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_jefatura_carrera_exporta_kardex_de_su_ambito(self):
+        self.client.force_login(self.jefe_carrera)
+        with patch("reportes.exportadores.kardex_pdf.convertir_xlsx_a_pdf", return_value=b"%PDF-1.4\nkardex"):
+            response = self.client.get(f"/api/exportaciones/kardex/{self.discentes[0].id}/pdf/")
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_jefatura_carrera_no_exporta_kardex_fuera_de_ambito(self):
+        otra_carrera = Carrera.objects.create(clave="R9BOTRA", nombre="Otra carrera")
+        otro_plan = PlanEstudios.objects.create(carrera=otra_carrera, clave="R9BOPLAN", nombre="Plan externo")
+        otra_antiguedad = Antiguedad.objects.create(
+            plan_estudios=otro_plan,
+            clave="R9BOANT",
+            nombre="Antigüedad externa",
+            anio_inicio=2025,
+            anio_fin=2029,
+        )
+        usuario_discente = self.crear_usuario("discenteexterno9c", "DISCENTE", nombre="Discente Externo")
+        discente_externo = Discente.objects.create(
+            usuario=usuario_discente,
+            matricula="R9BEXT",
+            plan_estudios=otro_plan,
+            antiguedad=otra_antiguedad,
+        )
+
+        self.client.force_login(self.jefe_carrera)
+        response = self.client.get(f"/api/exportaciones/kardex/{discente_externo.id}/pdf/")
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_discente_y_docente_no_exportan_kardex(self):
+        self.client.force_login(self.discentes[0].usuario)
+        response_discente = self.client.get(f"/api/exportaciones/kardex/{self.discentes[0].id}/pdf/")
+
+        self.client.force_login(self.docente)
+        response_docente = self.client.get(f"/api/exportaciones/kardex/{self.discentes[0].id}/pdf/")
+
+        self.assertEqual(response_discente.status_code, 403)
+        self.assertEqual(response_docente.status_code, 403)
+
+    def test_exportacion_kardex_fallida_registra_fallida(self):
+        self.client.force_login(self.estadistica)
+        with patch("reportes.exportadores.kardex_pdf.convertir_xlsx_a_pdf", side_effect=RuntimeError("fallo kardex")):
+            response = self.client.get(f"/api/exportaciones/kardex/{self.discentes[0].id}/pdf/")
+
+        self.assertEqual(response.status_code, 500)
+        registro = RegistroExportacion.objects.latest("id")
+        self.assertEqual(registro.tipo_documento, RegistroExportacion.TIPO_KARDEX_OFICIAL)
+        self.assertEqual(registro.estado, RegistroExportacion.ESTADO_FALLIDA)
+        self.assertIn("fallo kardex", registro.mensaje_error)
+
+    def test_nombre_archivo_kardex_no_contiene_datos_sensibles(self):
+        self.client.force_login(self.estadistica)
+        with patch("reportes.exportadores.kardex_pdf.convertir_xlsx_a_pdf", return_value=b"%PDF-1.4\nkardex"):
+            response = self.client.get(f"/api/exportaciones/kardex/{self.discentes[0].id}/pdf/")
+
+        disposition = response["Content-Disposition"]
+        self.assertNotIn(self.discentes[0].usuario.nombre_visible, disposition)
+        self.assertNotIn(self.discentes[0].matricula, disposition)
+        self.assertIn(f"discente-{self.discentes[0].id}", disposition)
+
+    def test_catalogo_marca_kardex_pdf_implementado_para_estadistica_y_no_discente(self):
+        self.client.force_login(self.estadistica)
+        response_estadistica = self.client.get("/api/reportes/catalogo/")
+        item = next(item for item in response_estadistica.json()["items"] if item["codigo"] == RegistroExportacion.TIPO_KARDEX_OFICIAL)
+
+        self.assertTrue(item["implementado"])
+        self.assertTrue(item["disponible"])
+        self.assertEqual(item["formatos_soportados"], [RegistroExportacion.FORMATO_PDF])
+
+        self.client.force_login(self.discentes[0].usuario)
+        response_discente = self.client.get("/api/reportes/catalogo/")
+        codigos = {item["codigo"] for item in response_discente.json()["items"]}
+        self.assertNotIn(RegistroExportacion.TIPO_KARDEX_OFICIAL, codigos)
+
+    def test_kardex_no_crea_modelo_transaccional(self):
+        nombres_modelos = {model.__name__ for model in apps.get_models()}
+
+        self.assertNotIn("KardexOficial", nombres_modelos)
+
+    def test_exportar_kardex_no_modifica_acta_ni_inscripcion(self):
+        estado_acta = self.acta_final.estado_acta
+        calificacion = self.inscripciones[0].calificacion_final
+
+        self.client.force_login(self.estadistica)
+        with patch("reportes.exportadores.kardex_pdf.convertir_xlsx_a_pdf", return_value=b"%PDF-1.4\nkardex"):
+            response = self.client.get(f"/api/exportaciones/kardex/{self.discentes[0].id}/pdf/")
+
+        self.assertEqual(response.status_code, 200)
+        self.acta_final.refresh_from_db()
+        self.inscripciones[0].refresh_from_db()
+        self.assertEqual(self.acta_final.estado_acta, estado_acta)
+        self.assertEqual(self.inscripciones[0].calificacion_final, calificacion)
+
+    def test_contexto_kardex_muestra_ee_y_excluye_no_numericas_del_promedio(self):
+        self.inscripciones[0].calificacion_final = Decimal("5.0")
+        self.inscripciones[0].codigo_resultado_oficial = CatalogoResultadoAcademico.CLAVE_REPROBADO
+        self.inscripciones[0].cerrado_en = timezone.now()
+        self.inscripciones[0].save(update_fields=["calificacion_final", "codigo_resultado_oficial", "cerrado_en"])
+        registrar_extraordinario(
+            self.inscripciones[0],
+            Decimal("8.0"),
+            timezone.localdate(),
+            self.estadistica,
+        )
+
+        materia_no_numerica = Materia.objects.create(
+            clave="R9BACR",
+            nombre="Formación institucional acreditable",
+            horas_totales=32,
+        )
+        programa_no_numerico = ProgramaAsignatura.objects.create(
+            plan_estudios=self.plan,
+            materia=materia_no_numerica,
+            semestre_numero=1,
+        )
+        esquema_no_numerico = EsquemaEvaluacion.objects.create(
+            programa_asignatura=programa_no_numerico,
+            version="v9b-acre",
+            num_parciales=EsquemaEvaluacion.PARCIALES_1,
+            permite_exencion=False,
+        )
+        asignacion_no_numerica = AsignacionDocente.objects.create(
+            usuario_docente=self.docente,
+            grupo_academico=self.grupo,
+            programa_asignatura=programa_no_numerico,
+        )
+        inscripcion_no_numerica = asignacion_no_numerica.inscripciones_materia.get(discente=self.discentes[0])
+        acta_no_numerica = Acta.objects.create(
+            asignacion_docente=asignacion_no_numerica,
+            corte_codigo=ComponenteEvaluacion.CORTE_FINAL,
+            estado_acta=Acta.ESTADO_FORMALIZADO_JEFATURA_ACADEMICA,
+            esquema=esquema_no_numerico,
+            esquema_version_snapshot=esquema_no_numerico.version,
+            peso_parciales_snapshot=esquema_no_numerico.peso_parciales,
+            peso_final_snapshot=esquema_no_numerico.peso_final,
+            umbral_exencion_snapshot=esquema_no_numerico.umbral_exencion,
+            creado_por=self.docente,
+        )
+        DetalleActa.objects.create(
+            acta=acta_no_numerica,
+            inscripcion_materia=inscripcion_no_numerica,
+            resultado_preliminar=DetalleActa.RESULTADO_APROBATORIO,
+            completo=True,
+        )
+        inscripcion_no_numerica.calificacion_final = None
+        inscripcion_no_numerica.codigo_resultado_oficial = CatalogoResultadoAcademico.CLAVE_ACREDITADA
+        inscripcion_no_numerica.cerrado_en = timezone.now()
+        inscripcion_no_numerica.save(
+            update_fields=["calificacion_final", "codigo_resultado_oficial", "cerrado_en"]
+        )
+
+        contexto = construir_contexto_kardex(self.discentes[0])
+        materias = [materia for anio in contexto.anios for materia in anio.materias]
+        materia_no_numerica_contexto = next(materia for materia in materias if materia.resultado_display == "ACREDITADA")
+        materia_ee = next(materia for materia in materias if materia.marca == "EE")
+
+        self.assertFalse(materia_no_numerica_contexto.es_numerica)
+        self.assertEqual(materia_no_numerica_contexto.calificacion_display, "ACREDITADA")
+        self.assertEqual(materia_ee.calificacion_display, "8.0")
+        self.assertEqual(contexto.anios[0].promedio_anual_display, "8.0")
+
+    def test_calificacion_con_letra_documental(self):
+        self.assertEqual(calificacion_numerica_con_letra(Decimal("10.0")), "10.0 (DIEZ PUNTO CERO)")
+        self.assertEqual(calificacion_numerica_con_letra(Decimal("9.5")), "9.5 (NUEVE PUNTO CINCO)")
+        self.assertEqual(calificacion_numerica_con_letra(Decimal("8.0")), "8.0 (OCHO PUNTO CERO)")

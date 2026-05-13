@@ -12,6 +12,7 @@ from core.portal_services import portal_context
 from evaluacion.models import Acta, ComponenteEvaluacion
 
 from .actas_services import ServicioExportacionActa
+from .kardex_services import ServicioExportacionKardex
 from .models import RegistroExportacion
 from .services import CatalogoExportaciones, ServicioExportacion, ServicioPermisosExportacion
 
@@ -127,6 +128,20 @@ def exportar_calificacion_final_pdf_view(request, asignacion_docente_id):
 @api_login_required
 def exportar_calificacion_final_xlsx_view(request, asignacion_docente_id):
     return _exportar_calificacion_final(request, asignacion_docente_id, RegistroExportacion.FORMATO_XLSX)
+
+
+@require_GET
+@api_login_required
+def exportar_kardex_pdf_view(request, discente_id):
+    try:
+        resultado = ServicioExportacionKardex(request.user, request=request).exportar_kardex_pdf(discente_id)
+    except Http404:
+        raise
+    except (PermissionDenied, ValidationError) as exc:
+        return _error_response(exc)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "No fue posible generar el archivo de kárdex."}, status=500)
+    return _archivo_response(resultado)
 
 
 def _exportar_acta_corte(request, acta_id, formato):

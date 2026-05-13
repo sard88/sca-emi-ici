@@ -123,6 +123,7 @@ class ServicioPermisosExportacion:
                 RegistroExportacion.TIPO_ACTA_EVALUACION_PARCIAL,
                 RegistroExportacion.TIPO_ACTA_EVALUACION_FINAL,
                 RegistroExportacion.TIPO_ACTA_CALIFICACION_FINAL,
+                RegistroExportacion.TIPO_KARDEX_OFICIAL,
                 RegistroExportacion.TIPO_REPORTE_ACTAS_ESTADO,
                 RegistroExportacion.TIPO_REPORTE_ACTAS_PENDIENTES,
                 RegistroExportacion.TIPO_REPORTE_INCONFORMIDADES,

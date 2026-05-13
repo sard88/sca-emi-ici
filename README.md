@@ -1548,3 +1548,97 @@ No se implementa todavía:
 Resumen técnico:
 
 - `docs/resumen_bloque10c1_integracion_exportaciones_actas.md`
+
+## Bloque 9C - Kárdex oficial PDF
+
+Se implementa la exportación PDF del kárdex oficial institucional como documento derivado del `ServicioKardex` existente. El kárdex no se convierte en tabla transaccional y no modifica resultados oficiales, actas, historial ni inscripciones.
+
+### Objetivo
+
+Permitir que perfiles institucionales autorizados generen un PDF del kárdex oficial para consulta o revisión, usando:
+
+- `ServicioKardex` como fuente de verdad derivada;
+- plantilla XLSX productiva como fuente maestra del formato;
+- `openpyxl` para poblar valores cerrados;
+- LibreOffice headless para convertir XLSX a PDF;
+- `RegistroExportacion` para auditoría documental.
+
+### Ruta de descarga
+
+- `GET /api/exportaciones/kardex/<discente_id>/pdf/`
+
+La respuesta entrega:
+
+- `Content-Type: application/pdf`
+- `Content-Disposition: attachment`
+- `X-Registro-Exportacion-Id`
+
+### Permisos
+
+El backend valida permisos antes de generar el documento.
+
+- Admin/superusuario: puede exportar por soporte técnico.
+- Estadística: puede exportar kárdex oficial.
+- Jefatura académica: puede exportar según permisos institucionales.
+- Jefatura pedagógica: puede exportar según permisos institucionales.
+- Jefatura de carrera: puede exportar kárdex de discentes de su ámbito.
+- Docente: no puede exportar kárdex oficial en este bloque.
+- Discente: no puede exportar ni consultar el kárdex oficial.
+
+### Plantilla XLSX
+
+La plantilla productiva anonimizada queda en:
+
+- `backend/reportes/templates_xlsx/kardex/kardex_oficial_template.xlsx`
+
+El PDF se genera desde esa plantilla. No se usa HTML, ReportLab ni WeasyPrint como fuente principal del formato.
+
+### Datos incluidos
+
+El documento muestra:
+
+- datos generales del discente;
+- carrera, plan de estudios y antigüedad;
+- situación académica;
+- materias agrupadas por año de formación y semestre;
+- calificación numérica;
+- calificación con letra;
+- marca `EE` cuando aplica extraordinario;
+- resultados no numéricos como `ACREDITADA` o equivalentes;
+- promedio anual;
+- promedio general derivado si hay datos numéricos;
+- leyendas institucionales;
+- certificación y espacio de firma.
+
+### Auditoría
+
+Cada exportación crea o actualiza un `RegistroExportacion` con:
+
+- usuario solicitante;
+- tipo `KARDEX_OFICIAL`;
+- formato `PDF`;
+- objeto exportado;
+- nombre seguro de archivo;
+- IP y user agent cuando están disponibles;
+- estado `GENERADA` o `FALLIDA`;
+- tamaño y hash SHA-256 cuando la generación termina correctamente.
+
+El nombre del archivo no incluye nombre completo ni matrícula militar.
+
+### Qué queda fuera
+
+No se implementa todavía:
+
+- kárdex Excel descargable;
+- historial académico PDF/Excel;
+- reportes de desempeño;
+- reportes de situación académica;
+- cuadro de aprovechamiento;
+- integración visual completa del botón de kárdex en el portal;
+- firma electrónica;
+- QR o sello digital;
+- almacenamiento permanente del PDF generado.
+
+Resumen técnico:
+
+- `docs/resumen_bloque9c_kardex_pdf.md`
