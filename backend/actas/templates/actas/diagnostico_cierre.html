@@ -1,0 +1,85 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Diagnóstico de cierre{% endblock %}
+{% block heading %}Diagnóstico de cierre{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h2>{{ periodo }}</h2>
+    <p>Estado actual: <strong>{{ periodo.get_estado_display }}</strong></p>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h3>Bloqueantes</h3>
+      {% if diagnostico.bloqueantes %}
+        <ul>
+          {% for item in diagnostico.bloqueantes %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">Sin bloqueantes críticos.</p>
+      {% endif %}
+    </article>
+    <article class="panel">
+      <h3>Advertencias</h3>
+      {% if diagnostico.advertencias %}
+        <ul>
+          {% for item in diagnostico.advertencias %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">Sin advertencias.</p>
+      {% endif %}
+    </article>
+  </section>
+
+  <section class="panel">
+    <h3>Resumen por grupo</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Grupo</th>
+          <th>Promovibles</th>
+          <th>Extraordinario pendiente</th>
+          <th>Baja temporal</th>
+          <th>Baja definitiva</th>
+          <th>Egresables</th>
+          <th>No promovibles</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for grupo, item in diagnostico.resumen_por_grupo.items %}
+          <tr>
+            <td>{{ grupo }}</td>
+            <td>{{ item.promovibles }}</td>
+            <td>{{ item.pendientes_extraordinario }}</td>
+            <td>{{ item.baja_temporal }}</td>
+            <td>{{ item.baja_definitiva }}</td>
+            <td>{{ item.egresables }}</td>
+            <td>{{ item.no_promovibles }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7">No hay discentes activos para clasificar.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  {% if puede_operar %}
+    <section class="panel">
+      <h3>Cierre definitivo</h3>
+      {% if diagnostico.bloqueantes %}
+        <p class="muted">El periodo no puede cerrarse hasta resolver los bloqueantes.</p>
+      {% else %}
+        <form method="post" action="{% url 'actas:ejecutar-cierre' periodo.pk %}">
+          {% csrf_token %}
+          {{ form.as_p }}
+          <button type="submit">Cerrar periodo académico</button>
+        </form>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endblock %}

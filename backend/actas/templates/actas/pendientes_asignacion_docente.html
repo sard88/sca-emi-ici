@@ -1,0 +1,46 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Pendientes de asignación docente{% endblock %}
+{% block heading %}Pendientes de asignación docente{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <form method="get">
+      <label for="periodo">Periodo académico</label>
+      <select id="periodo" name="periodo">
+        {% for item in periodos %}
+          <option value="{{ item.pk }}" {% if periodo and item.pk == periodo.pk %}selected{% endif %}>
+            {{ item }}
+          </option>
+        {% endfor %}
+      </select>
+      <button type="submit">Consultar</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>{{ periodo|default:"Sin periodo seleccionado" }}</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Grupo</th>
+          <th>Semestre</th>
+          <th>Programa de asignatura</th>
+          <th>Materia</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in pendientes %}
+          <tr>
+            <td>{{ item.grupo.clave_grupo }}</td>
+            <td>{{ item.grupo.semestre_numero }}</td>
+            <td>{{ item.programa }}</td>
+            <td>{{ item.programa.materia.nombre }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4">No hay pendientes de asignación docente para este periodo.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

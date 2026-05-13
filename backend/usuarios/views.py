@@ -34,6 +34,11 @@ from trayectoria.permisos import (
     puede_consultar_kardex,
     puede_operar_trayectoria,
 )
+from actas.permisos import (
+    puede_consultar_cierre_periodo,
+    puede_consultar_pendientes_docente,
+    puede_operar_cierre_apertura,
+)
 
 from .forms import LoginFormulario
 from .models import AsignacionCargo
@@ -111,6 +116,12 @@ def accesos_permitidos(user):
     if puede_operar_trayectoria(user):
         accesos.append(("Registrar extraordinario", "trayectoria:extraordinario-registrar"))
         accesos.append(("Registrar situación académica", "trayectoria:situacion-registrar"))
+    if puede_consultar_cierre_periodo(user):
+        accesos.append(("Cierre de periodo académico", "actas:periodos-cierre"))
+    if puede_operar_cierre_apertura(user):
+        accesos.append(("Apertura de periodo académico", "actas:apertura-periodo"))
+    if puede_consultar_pendientes_docente(user):
+        accesos.append(("Pendientes de asignación docente", "actas:pendientes-asignacion-docente"))
     if puede_consultar_relaciones(user):
         accesos.append(("Carga académica y movimientos", "usuarios:estadistica-carga"))
     if usuario_es_admin_soporte(user):

@@ -1,0 +1,47 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Cierre de periodo académico{% endblock %}
+{% block heading %}Cierre de periodo académico{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <p class="muted">
+      Consulta periodos, ejecuta diagnóstico de cierre y, si no existen bloqueantes,
+      cierra el periodo académico.
+    </p>
+    {% if puede_operar %}
+      <p>
+        <a class="button" href="{% url 'actas:apertura-periodo' %}">
+          Apertura de periodo académico
+        </a>
+      </p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <table>
+      <thead>
+        <tr>
+          <th>Clave</th>
+          <th>Año escolar</th>
+          <th>Periodo académico</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for periodo in periodos %}
+          <tr>
+            <td>{{ periodo.clave }}</td>
+            <td>{{ periodo.anio_escolar }}</td>
+            <td>{{ periodo.get_periodo_academico_display }}</td>
+            <td>{{ periodo.get_estado_display }}</td>
+            <td><a href="{% url 'actas:diagnostico-cierre' periodo.pk %}">Ver diagnóstico</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">No hay periodos registrados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

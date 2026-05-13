@@ -1,0 +1,33 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Resultado de apertura{% endblock %}
+{% block heading %}Resultado de apertura{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h2>{{ proceso.periodo_origen }} -> {{ proceso.periodo_destino }}</h2>
+    <p>Estado: <strong>{{ proceso.get_estado_display }}</strong></p>
+    <p>Ejecutado por: {{ proceso.ejecutado_por }}</p>
+    <p>Ejecutado en: {{ proceso.ejecutado_en }}</p>
+    {% if proceso.observaciones %}
+      <p>Observaciones: {{ proceso.observaciones }}</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h3>Resumen</h3>
+    <ul>
+      <li>Grupos creados: {{ proceso.resumen_json.grupos_creados|length }}</li>
+      <li>Grupos existentes reutilizados: {{ proceso.resumen_json.grupos_existentes|length }}</li>
+      <li>Adscripciones cerradas: {{ proceso.resumen_json.adscripciones_cerradas }}</li>
+      <li>Adscripciones creadas: {{ proceso.resumen_json.adscripciones_creadas }}</li>
+      <li>Discentes egresables: {{ proceso.resumen_json.egresables|length }}</li>
+      <li>Discentes omitidos: {{ proceso.resumen_json.omitidos|length }}</li>
+    </ul>
+    <p>
+      <a class="button" href="{% url 'actas:pendientes-asignacion-docente' %}?periodo={{ proceso.periodo_destino_id }}">
+        Ver pendientes de asignación docente
+      </a>
+    </p>
+  </section>
+{% endblock %}

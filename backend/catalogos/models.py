@@ -11,9 +11,18 @@ from .validators import CLAVE_MAX_LENGTH, clave_format_validator
 
 ESTADO_ACTIVO = "activo"
 ESTADO_INACTIVO = "inactivo"
+ESTADO_PLANIFICADO = "planificado"
+ESTADO_CERRADO = "cerrado"
 
 ESTADO_CHOICES = [
     (ESTADO_ACTIVO, "Activo"),
+    (ESTADO_INACTIVO, "Inactivo"),
+]
+
+PERIODO_ESTADO_CHOICES = [
+    (ESTADO_PLANIFICADO, "Planificado"),
+    (ESTADO_ACTIVO, "Abierto"),
+    (ESTADO_CERRADO, "Cerrado"),
     (ESTADO_INACTIVO, "Inactivo"),
 ]
 
@@ -190,7 +199,7 @@ class PeriodoEscolar(models.Model):
     fecha_fin = models.DateField(null=True, verbose_name="Fecha de fin")
     estado = models.CharField(
         max_length=20,
-        choices=ESTADO_CHOICES,
+        choices=PERIODO_ESTADO_CHOICES,
         default=ESTADO_ACTIVO,
         verbose_name="Estado",
     )

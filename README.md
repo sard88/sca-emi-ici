@@ -828,3 +828,55 @@ docker compose exec -T backend python manage.py makemigrations --check
 docker compose exec -T backend python manage.py test trayectoria
 docker compose exec -T backend python manage.py test
 ```
+
+## Bloque 8.5 - Cierre y apertura de periodo académico
+
+Se implementa el cierre y apertura de periodo como proceso asistido. El sistema diagnostica primero si un periodo puede cerrarse, revisando actas `FINAL`, actas vivas, resultados oficiales, extraordinarios pendientes, situación académica y adscripciones. Si no existen bloqueantes, el periodo se marca como cerrado y se registra trazabilidad del proceso.
+
+### Modelos agregados
+
+- `ProcesoCierrePeriodo`
+- `DetalleCierrePeriodoDiscente`
+- `ProcesoAperturaPeriodo`
+
+### Servicios creados
+
+- `ServicioDiagnosticoCierrePeriodo`
+- `ServicioCierrePeriodo`
+- `ServicioAperturaPeriodo`
+- `listar_pendientes_asignacion_docente`
+
+### Rutas principales
+
+- `GET /actas/periodos/`
+- `GET /actas/periodos/<id>/diagnostico/`
+- `POST /actas/periodos/<id>/cerrar/`
+- `GET /actas/cierres/<id>/`
+- `GET/POST /actas/apertura/`
+- `GET /actas/aperturas/<id>/`
+- `GET /actas/pendientes-asignacion-docente/`
+
+### Reglas principales
+
+- No se permite cerrar un periodo con actas `FINAL` faltantes.
+- No se permite cerrar con actas vivas pendientes.
+- No se permite cerrar con resultados oficiales faltantes.
+- No se promueven discentes con extraordinario pendiente.
+- No se promueven discentes en baja temporal o baja definitiva.
+- La apertura requiere un periodo origen cerrado y un periodo destino existente.
+- La apertura crea grupos destino y adscripciones de manera idempotente.
+- No se asignan docentes automáticamente.
+- Los programas esperados sin docente se muestran como pendientes para jefatura.
+
+### Fuera de este bloque
+
+No se implementan exportaciones PDF/Excel, reportes formales, cuadros de aprovechamiento, rectificación de actas, reapertura de actas, actas extraordinarias formales ni asignación automática de docentes.
+
+Validaciones recomendadas:
+
+```bash
+docker compose exec -T backend python manage.py check
+docker compose exec -T backend python manage.py makemigrations --check
+docker compose exec -T backend python manage.py test actas
+docker compose exec -T backend python manage.py test
+```

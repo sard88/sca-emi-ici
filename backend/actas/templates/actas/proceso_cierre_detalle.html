@@ -1,0 +1,46 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Resultado de cierre{% endblock %}
+{% block heading %}Resultado de cierre{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h2>{{ proceso.periodo }}</h2>
+    <p>Estado del proceso: <strong>{{ proceso.get_estado_display }}</strong></p>
+    <p>Ejecutado por: {{ proceso.ejecutado_por }}</p>
+    <p>Ejecutado en: {{ proceso.ejecutado_en }}</p>
+    {% if proceso.observaciones %}
+      <p>Observaciones: {{ proceso.observaciones }}</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h3>Detalle por discente</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Discente</th>
+          <th>Grupo origen</th>
+          <th>Clasificación</th>
+          <th>Promovible</th>
+          <th>Extraordinario</th>
+          <th>Motivo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for detalle in proceso.detalles_discente.all %}
+          <tr>
+            <td>{{ detalle.discente.usuario.nombre_completo|default:detalle.discente }}</td>
+            <td>{{ detalle.grupo_origen|default:"-" }}</td>
+            <td>{{ detalle.get_clasificacion_display }}</td>
+            <td>{{ detalle.promovible|yesno:"Sí,No" }}</td>
+            <td>{{ detalle.requiere_extraordinario|yesno:"Sí,No" }}</td>
+            <td>{{ detalle.motivo }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6">No se registraron detalles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "usuarios/validacion/base.html" %}
+
+{% block title %}Apertura de periodo académico{% endblock %}
+{% block heading %}Apertura de periodo académico{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <p class="muted">
+      La apertura promueve únicamente discentes marcados como promovibles en el cierre.
+      No asigna docentes automáticamente ni genera inscripciones a asignatura.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">Ejecutar apertura</button>
+    </form>
+  </section>
+{% endblock %}

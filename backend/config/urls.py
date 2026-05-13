@@ -7,6 +7,7 @@ admin.site.site_url = "/dashboard/"
 
 urlpatterns = [
     path("", include("usuarios.urls")),
+    path("actas/", include("actas.urls")),
     path("relaciones/", include("relaciones.urls")),
     path("evaluacion/", include("evaluacion.urls")),
     path("trayectoria/", include("trayectoria.urls")),
