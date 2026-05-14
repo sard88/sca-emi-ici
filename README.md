@@ -2014,3 +2014,117 @@ No se implementa todavía:
 Resumen técnico:
 
 - `docs/resumen_bloque9g_h_reportes_desempeno.md`
+
+## Bloque 10C-3B - Integración visual de reportes de desempeño
+
+Se integra en el portal Next.js la consulta y descarga de los reportes de desempeño académico y cuadro de aprovechamiento implementados en el Bloque 9G-H.
+
+### Objetivo
+
+Permitir que perfiles institucionales autorizados consulten vista previa, apliquen filtros y descarguen XLSX auditados desde el portal, sin calcular reportes ni generar archivos en React.
+
+### Rutas frontend
+
+- `/reportes/desempeno`
+- `/reportes/desempeno/aprobados-reprobados`
+- `/reportes/desempeno/promedios`
+- `/reportes/desempeno/distribucion`
+- `/reportes/desempeno/exentos`
+- `/reportes/desempeno/docentes`
+- `/reportes/desempeno/cohorte`
+- `/reportes/desempeno/reprobados-nominal`
+- `/reportes/desempeno/cuadro-aprovechamiento`
+
+La ruta específica usa una pantalla dinámica:
+
+- `/reportes/desempeno/[slug]`
+
+### Reportes integrados
+
+- Aprobados y reprobados.
+- Promedios académicos.
+- Distribución de calificaciones.
+- Exentos por asignatura.
+- Desempeño por docente.
+- Desempeño por cohorte.
+- Reprobados nominal.
+- Cuadro de aprovechamiento académico.
+
+### Endpoints backend consumidos
+
+Vista previa JSON:
+
+- `GET /api/reportes/desempeno/aprobados-reprobados/`
+- `GET /api/reportes/desempeno/promedios/`
+- `GET /api/reportes/desempeno/distribucion/`
+- `GET /api/reportes/desempeno/exentos/`
+- `GET /api/reportes/desempeno/docentes/`
+- `GET /api/reportes/desempeno/cohorte/`
+- `GET /api/reportes/desempeno/reprobados-nominal/`
+- `GET /api/reportes/desempeno/cuadro-aprovechamiento/`
+
+Descarga XLSX:
+
+- `GET /api/exportaciones/reportes/aprobados-reprobados/xlsx/`
+- `GET /api/exportaciones/reportes/promedios/xlsx/`
+- `GET /api/exportaciones/reportes/distribucion/xlsx/`
+- `GET /api/exportaciones/reportes/exentos/xlsx/`
+- `GET /api/exportaciones/reportes/desempeno-docente/xlsx/`
+- `GET /api/exportaciones/reportes/desempeno-cohorte/xlsx/`
+- `GET /api/exportaciones/reportes/reprobados-nominal/xlsx/`
+- `GET /api/exportaciones/reportes/cuadro-aprovechamiento/xlsx/`
+
+La descarga usa `credentials: "include"`, lee `Content-Disposition` y muestra el folio técnico `X-Registro-Exportacion-Id` cuando el backend lo devuelve.
+
+### Filtros visuales
+
+Se agregan filtros compatibles con backend:
+
+- periodo;
+- carrera;
+- grupo;
+- asignatura;
+- docente;
+- antigüedad;
+- año de formación;
+- semestre;
+- fecha desde/hasta;
+- incluir no numéricas;
+- incluir extraordinarios;
+- incluir con reprobadas;
+- rango de aprovechamiento.
+
+Los filtros vacíos se eliminan antes de llamar al backend. La descarga XLSX usa los mismos filtros aplicados en pantalla.
+
+### Permisos
+
+Pueden ver Reportes de desempeño:
+
+- Admin;
+- Estadística;
+- Jefatura académica;
+- Jefatura pedagógica;
+- Jefatura de carrera.
+
+No ven Reportes de desempeño:
+
+- Docente;
+- Discente.
+
+El frontend solo oculta o muestra opciones. El backend sigue validando permisos y ámbito institucional.
+
+### Qué queda fuera
+
+No se implementa en este bloque:
+
+- PDF del cuadro de aprovechamiento;
+- generación XLSX en frontend;
+- nuevas métricas o cálculos académicos;
+- gráficas;
+- reportes de situación académica;
+- historial académico exportable;
+- edición de datos desde reportes.
+
+Resumen técnico:
+
+- `docs/resumen_bloque10c3b_reportes_desempeno_portal.md`

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import type { AuthenticatedUser } from "@/lib/types";
-import { canAccessKardexPdf, canAccessReportes, canAccessReportesOperativos, getProfilesForUser } from "@/lib/dashboard";
+import { canAccessKardexPdf, canAccessReportes, canAccessReportesDesempeno, canAccessReportesOperativos, getProfilesForUser } from "@/lib/dashboard";
 
 const routeByProfile: Record<string, string> = {
   ADMIN: "/admin-soporte",
@@ -23,6 +23,7 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
   const showReportes = canAccessReportes(user);
   const showKardex = canAccessKardexPdf(user);
   const showReportesOperativos = canAccessReportesOperativos(user);
+  const showReportesDesempeno = canAccessReportesDesempeno(user);
 
   return (
     <aside className="hidden min-h-screen w-[292px] shrink-0 border-r border-[#eadfce] bg-[#fffaf1]/92 p-4 shadow-[18px_0_44px_rgba(87,70,45,0.08)] backdrop-blur-xl lg:sticky lg:top-0 lg:flex lg:flex-col">
@@ -117,6 +118,18 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
                     <span className="text-base leading-none text-[#7b6b58]">›</span>
                   </Link>
                 ) : null}
+                {showReportesDesempeno ? (
+                  <Link
+                    href="/reportes/desempeno"
+                    className={clsx(
+                      "ml-7 flex items-center justify-between rounded-2xl px-3 py-2 text-xs font-black transition",
+                      pathname.startsWith("/reportes/desempeno") ? "bg-[#fff4df] text-[#7a4b0d]" : "text-[#46534e] hover:bg-[#f7efe2]",
+                    )}
+                  >
+                    Desempeño académico
+                    <span className="text-base leading-none text-[#7b6b58]">›</span>
+                  </Link>
+                ) : null}
                 {showKardex ? (
                   <Link
                     href="/reportes/kardex"
@@ -156,6 +169,7 @@ export function MobileModuleNav({ user }: { user: AuthenticatedUser }) {
   const showReportes = canAccessReportes(user);
   const showKardex = canAccessKardexPdf(user);
   const showReportesOperativos = canAccessReportesOperativos(user);
+  const showReportesDesempeno = canAccessReportesDesempeno(user);
 
   return (
     <div className="lg:hidden">
@@ -171,6 +185,7 @@ export function MobileModuleNav({ user }: { user: AuthenticatedUser }) {
         ))}
         {showReportes ? <MobilePill href="/reportes" active={pathname.startsWith("/reportes")} label="Reportes" /> : null}
         {showReportesOperativos ? <MobilePill href="/reportes/operativos" active={pathname.startsWith("/reportes/operativos")} label="Operativos" /> : null}
+        {showReportesDesempeno ? <MobilePill href="/reportes/desempeno" active={pathname.startsWith("/reportes/desempeno")} label="Desempeño" /> : null}
         {showKardex ? <MobilePill href="/reportes/kardex" active={pathname === "/reportes/kardex"} label="Kárdex" /> : null}
       </div>
     </div>

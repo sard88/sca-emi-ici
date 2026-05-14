@@ -13,6 +13,8 @@ import type {
   NotificacionesResponse,
   PerfilUsuario,
   PortalQuickAccess,
+  ReporteDesempenoCodigo,
+  ReporteDesempenoRespuesta,
   ReporteOperativoCodigo,
   ReporteOperativoRespuesta,
   ReporteCatalogoItem,
@@ -249,6 +251,92 @@ export async function descargarReporteValidacionesActaXlsx(params: Record<string
 
 export async function descargarReporteExportacionesRealizadasXlsx(params: Record<string, string> = {}) {
   return descargarReporteOperativoXlsx("exportaciones-realizadas", params);
+}
+
+export async function getReporteDesempeno(slug: ReporteDesempenoCodigo, params: Record<string, string> = {}) {
+  return apiGet<ReporteDesempenoRespuesta>(`/api/reportes/desempeno/${slug}/${queryString(params)}`);
+}
+
+export async function getReporteDesempenoAprobadosReprobados(params: Record<string, string> = {}) {
+  return getReporteDesempeno("aprobados-reprobados", params);
+}
+
+export async function getReporteDesempenoPromedios(params: Record<string, string> = {}) {
+  return getReporteDesempeno("promedios", params);
+}
+
+export async function getReporteDesempenoDistribucion(params: Record<string, string> = {}) {
+  return getReporteDesempeno("distribucion", params);
+}
+
+export async function getReporteDesempenoExentos(params: Record<string, string> = {}) {
+  return getReporteDesempeno("exentos", params);
+}
+
+export async function getReporteDesempenoDocentes(params: Record<string, string> = {}) {
+  return getReporteDesempeno("docentes", params);
+}
+
+export async function getReporteDesempenoCohorte(params: Record<string, string> = {}) {
+  return getReporteDesempeno("cohorte", params);
+}
+
+export async function getReporteDesempenoReprobadosNominal(params: Record<string, string> = {}) {
+  return getReporteDesempeno("reprobados-nominal", params);
+}
+
+export async function getReporteDesempenoCuadroAprovechamiento(params: Record<string, string> = {}) {
+  return getReporteDesempeno("cuadro-aprovechamiento", params);
+}
+
+const desempenoDownloadEndpoint: Record<ReporteDesempenoCodigo, string> = {
+  "aprobados-reprobados": "aprobados-reprobados",
+  promedios: "promedios",
+  distribucion: "distribucion",
+  exentos: "exentos",
+  docentes: "desempeno-docente",
+  cohorte: "desempeno-cohorte",
+  "reprobados-nominal": "reprobados-nominal",
+  "cuadro-aprovechamiento": "cuadro-aprovechamiento",
+};
+
+export async function descargarReporteDesempenoXlsx(slug: ReporteDesempenoCodigo, params: Record<string, string> = {}) {
+  return downloadFile(`/api/exportaciones/reportes/${desempenoDownloadEndpoint[slug]}/xlsx/${queryString(params)}`, {
+    forbidden: "No tienes permiso para exportar este reporte de desempeño.",
+    fallback: "La descarga del reporte falló. Intenta nuevamente o contacta soporte.",
+  });
+}
+
+export async function descargarReporteAprobadosReprobadosXlsx(params: Record<string, string> = {}) {
+  return descargarReporteDesempenoXlsx("aprobados-reprobados", params);
+}
+
+export async function descargarReportePromediosXlsx(params: Record<string, string> = {}) {
+  return descargarReporteDesempenoXlsx("promedios", params);
+}
+
+export async function descargarReporteDistribucionXlsx(params: Record<string, string> = {}) {
+  return descargarReporteDesempenoXlsx("distribucion", params);
+}
+
+export async function descargarReporteExentosXlsx(params: Record<string, string> = {}) {
+  return descargarReporteDesempenoXlsx("exentos", params);
+}
+
+export async function descargarReporteDesempenoDocenteXlsx(params: Record<string, string> = {}) {
+  return descargarReporteDesempenoXlsx("docentes", params);
+}
+
+export async function descargarReporteDesempenoCohorteXlsx(params: Record<string, string> = {}) {
+  return descargarReporteDesempenoXlsx("cohorte", params);
+}
+
+export async function descargarReporteReprobadosNominalXlsx(params: Record<string, string> = {}) {
+  return descargarReporteDesempenoXlsx("reprobados-nominal", params);
+}
+
+export async function descargarReporteCuadroAprovechamientoXlsx(params: Record<string, string> = {}) {
+  return descargarReporteDesempenoXlsx("cuadro-aprovechamiento", params);
 }
 
 export function backendUrl(path: string) {
