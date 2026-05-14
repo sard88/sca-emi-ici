@@ -445,6 +445,25 @@ class TrayectoriaBloque7Tests(TestCase):
         self.assertEqual(registro.status_code, 302)
         self.assertTrue(Extraordinario.objects.filter(inscripcion_materia=self.inscripcion).exists())
 
+    def test_api_opciones_inscripciones_extraordinario_restringe_y_no_expone_matricula(self):
+        self.formalizar_final(calificacion=Decimal("5.0"))
+
+        anonimo = self.client.get("/api/trayectoria/opciones/inscripciones-extraordinario/")
+        self.assertEqual(anonimo.status_code, 401)
+
+        self.client.force_login(self.usuario_docente)
+        docente = self.client.get("/api/trayectoria/opciones/inscripciones-extraordinario/")
+        self.assertEqual(docente.status_code, 403)
+
+        self.client.force_login(self.usuario_estadistica)
+        response = self.client.get("/api/trayectoria/opciones/inscripciones-extraordinario/", {"q": "Materia"})
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["total"], 1)
+        self.assertEqual(data["items"][0]["inscripcion_materia_id"], self.inscripcion.id)
+        self.assertNotIn("matricula", json.dumps(data).lower())
+
     def test_jefatura_consulta_historial_sin_accesos_operativos_de_trayectoria(self):
         self.client.force_login(self.usuario_jefatura)
 

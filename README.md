@@ -2790,3 +2790,36 @@ Comandos ejecutados durante el bloque:
 Resumen técnico:
 
 - `docs/resumen_bloque9k_bitacora_eventos_criticos.md`
+
+## Bloque 10D-1 - Estabilización UX funcional del portal
+
+### Objetivo
+
+Se corrigen los hallazgos P1 del diagnóstico UX funcional 10D-0 sin rediseñar el portal ni modificar reglas académicas. El bloque estabiliza navegación, layout, permisos visuales y formularios críticos del portal Next.js.
+
+### Cambios principales
+
+- `AppShell` oculta el panel derecho por defecto; solo dashboards/home/perfil lo activan explícitamente.
+- Rutas antiguas hacia Django Admin o vistas Django se reemplazan por equivalentes Next.js cuando ya existen.
+- `/reportes/auditoria` separa permisos visuales de exportaciones y eventos críticos.
+- Periodos oculta acciones de cierre/apertura a perfiles de consulta.
+- Extraordinarios, situaciones, movimientos, cambio de grupo y apertura de periodo usan selectores/buscadores en lugar de IDs manuales.
+- `RelationSelect` soporta filtros activos, búsqueda, parámetros contextuales y dependencias.
+- Se agrega endpoint read-only de opciones para inscripciones candidatas a extraordinario.
+
+### Validación
+
+Comandos ejecutados durante el bloque:
+
+- `docker compose exec -T frontend npm run lint`
+- `docker compose exec -T frontend npm run build`
+- `docker compose exec -T backend python manage.py check`
+- `docker compose exec -T backend python manage.py makemigrations --check`
+- `docker compose exec -T backend python manage.py test trayectoria`
+- `docker compose exec -T backend python manage.py test relaciones`
+- `docker compose exec -T backend python manage.py test catalogos usuarios`
+- `docker compose exec -T backend python manage.py test`
+
+Resumen técnico:
+
+- `docs/resumen_bloque10d1_estabilizacion_ux_funcional.md`

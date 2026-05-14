@@ -1,5 +1,5 @@
-import { backendUrl } from "@/lib/api";
 import type { DashboardCardItem } from "@/lib/dashboard";
+import { resolvePortalHref } from "@/lib/route-mapping";
 import { StatusBadge } from "./StatusBadge";
 
 const cardStyles = [
@@ -17,7 +17,9 @@ const toneStyles = {
 };
 
 export function DashboardCard({ item, index = 0 }: { item: DashboardCardItem; index?: number }) {
-  const href = item.href ? (item.backend ? backendUrl(item.href) : item.href) : undefined;
+  const resolved = resolvePortalHref(item.href, item.backend);
+  const href = resolved?.href;
+  const backend = resolved?.backend ?? false;
   const style = item.tone ? toneStyles[item.tone] : cardStyles[index % cardStyles.length];
   const content = (
     <article className="group flex h-full min-h-[174px] flex-col justify-between rounded-[1.45rem] border border-[#eadfce] bg-white/88 p-5 shadow-institutional transition hover:-translate-y-1 hover:border-[#d8c5a7] hover:bg-white">
@@ -42,7 +44,7 @@ export function DashboardCard({ item, index = 0 }: { item: DashboardCardItem; in
 
   if (!href) return content;
   return (
-    <a href={href} target={item.backend ? "_blank" : undefined} rel={item.backend ? "noreferrer" : undefined} className="block h-full">
+    <a href={href} target={backend ? "_blank" : undefined} rel={backend ? "noreferrer" : undefined} className="block h-full">
       {content}
     </a>
   );

@@ -28,7 +28,7 @@ export default function PerfilPage() {
   }, []);
 
   return (
-    <AppShell>
+    <AppShell showRightPanel>
       <div className="space-y-6">
         <section className="relative overflow-hidden rounded-[1.75rem] bg-[#073f34] p-6 text-white shadow-institutional sm:p-8">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_24%_20%,rgba(255,255,255,0.12),transparent_18rem),linear-gradient(135deg,#073f34_0%,#075445_52%,#07372f_100%)]" />

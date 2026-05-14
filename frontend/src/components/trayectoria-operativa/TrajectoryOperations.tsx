@@ -29,10 +29,12 @@ import {
   getMiHistorial,
   getMovimientoAcademico,
   getMovimientosAcademicos,
+  getOpcionesInscripcionesExtraordinario,
   getPendientesAsignacionDocente,
   getPeriodos,
   getSituacion,
   getSituaciones,
+  listResource,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { canAccessMiHistorialAcademico, canAccessPeriodosOperativos, canAccessTrayectoriaInstitucional, canAccessTrayectoriaOperativa, canOperateTrayectoria } from "@/lib/dashboard";
@@ -49,6 +51,7 @@ import type {
 
 type RecordValue = Record<string, unknown>;
 type FilterState = Record<string, string>;
+type SelectOption = { value: string; label: string };
 
 type LoadState<T> = {
   data: T | null;
@@ -344,17 +347,17 @@ export function PeriodsOperationalList() {
   }, []);
   return (
     <AccessPage title="Periodos operativos" description="Diagnóstico, cierre, apertura y pendientes de asignación docente." allowed={canAccessPeriodosOperativos}>
-      {() => (
+      {(user) => (
         <div className="space-y-5">
           <div className="flex flex-wrap gap-2">
             <LinkButton href="/periodos/cierres">Procesos de cierre</LinkButton>
-            <LinkButton href="/periodos/apertura">Abrir periodo</LinkButton>
+            {canOperateTrayectoria(user) ? <LinkButton href="/periodos/apertura">Abrir periodo</LinkButton> : null}
             <LinkButton href="/periodos/aperturas">Procesos de apertura</LinkButton>
             <LinkButton href="/periodos/pendientes-asignacion-docente">Pendientes de asignación docente</LinkButton>
           </div>
           <StateBlock state={state} loadingLabel="Cargando periodos..." emptyTitle="No hay periodos registrados." />
           <div className="grid gap-4 xl:grid-cols-2">
-            {(state.data || []).map((periodo) => <PeriodCard key={periodo.id} periodo={periodo} />)}
+            {(state.data || []).map((periodo) => <PeriodCard key={periodo.id} periodo={periodo} canOperate={canOperateTrayectoria(user)} />)}
           </div>
         </div>
       )}
@@ -362,7 +365,7 @@ export function PeriodsOperationalList() {
   );
 }
 
-function PeriodCard({ periodo }: { periodo: PeriodoOperativoDTO }) {
+function PeriodCard({ periodo, canOperate }: { periodo: PeriodoOperativoDTO; canOperate: boolean }) {
   return (
     <Card className="p-5">
       <div className="flex items-start justify-between gap-3">
@@ -375,7 +378,7 @@ function PeriodCard({ periodo }: { periodo: PeriodoOperativoDTO }) {
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         {periodo.acciones?.puede_diagnosticar ? <LinkButton href={`/periodos/${periodo.id}/diagnostico`}>Diagnosticar cierre</LinkButton> : null}
-        {periodo.acciones?.puede_usarse_como_origen_apertura ? <LinkButton href="/periodos/apertura">Usar como origen</LinkButton> : null}
+        {canOperate && periodo.acciones?.puede_usarse_como_origen_apertura ? <LinkButton href="/periodos/apertura">Usar como origen</LinkButton> : null}
       </div>
     </Card>
   );
@@ -414,7 +417,7 @@ export function ClosureDiagnosticPanel({ periodoId }: { periodoId: string }) {
 
   return (
     <AccessPage title="Diagnóstico de cierre" description="El diagnóstico no modifica datos; solo evalúa bloqueantes y advertencias." allowed={canAccessPeriodosOperativos}>
-      {() => (
+      {(user) => (
         <div className="space-y-5">
           <StateBlock state={state} loadingLabel="Diagnosticando periodo..." emptyTitle="No hay diagnóstico." />
           {state.data ? (
@@ -423,7 +426,7 @@ export function ClosureDiagnosticPanel({ periodoId }: { periodoId: string }) {
               <ClosureBlockersList title="Bloqueantes" items={state.data.bloqueantes} tone="danger" />
               <ClosureBlockersList title="Advertencias" items={state.data.advertencias} tone="warning" />
               <ClosureStudentClassificationTable diagnostico={state.data} />
-              <ClosePeriodActionPanel canClose={state.data.puede_cerrar} observaciones={observaciones} setObservaciones={setObservaciones} saving={saving} onClose={closePeriod} />
+              <ClosePeriodActionPanel canOperate={canOperateTrayectoria(user)} canClose={state.data.puede_cerrar} observaciones={observaciones} setObservaciones={setObservaciones} saving={saving} onClose={closePeriod} />
             </>
           ) : null}
         </div>
@@ -456,14 +459,18 @@ export function ClosureStudentClassificationTable({ diagnostico }: { diagnostico
   return <DataSection title="Clasificación de discentes" items={rows} columns={["clasificacion", "discente_id", "nombre", "grupo", "motivo"]} />;
 }
 
-export function ClosePeriodActionPanel({ canClose, observaciones, setObservaciones, saving, onClose }: { canClose: boolean; observaciones: string; setObservaciones: (value: string) => void; saving: boolean; onClose: () => void }) {
+export function ClosePeriodActionPanel({ canOperate, canClose, observaciones, setObservaciones, saving, onClose }: { canOperate: boolean; canClose: boolean; observaciones: string; setObservaciones: (value: string) => void; saving: boolean; onClose: () => void }) {
   return (
     <Card className="border-[#7a123d]/20 bg-[#fff8e6] p-5">
       <h2 className="text-lg font-black text-[#101b18]">Cierre de periodo</h2>
-      <p className="mt-2 text-sm leading-6 text-[#5f6764]">Cerrar genera evidencia de cierre. La promoción y apertura ocurren en otro paso.</p>
-      <textarea className="mt-4 min-h-28 w-full rounded-2xl border border-[#d8c5a7] bg-white px-4 py-3 text-sm outline-none focus:border-[#7a123d]" value={observaciones} onChange={(event) => setObservaciones(event.target.value)} placeholder="Observaciones opcionales" />
-      <Button className="mt-3" disabled={!canClose || saving} onClick={onClose}>{saving ? "Cerrando..." : "Cerrar periodo"}</Button>
-      {!canClose ? <p className="mt-2 text-sm font-bold text-[#7a123d]">El cierre está bloqueado por el diagnóstico.</p> : null}
+      <p className="mt-2 text-sm leading-6 text-[#5f6764]">{canOperate ? "Cerrar genera evidencia de cierre. La promoción y apertura ocurren en otro paso." : "Consulta de diagnóstico. Tu perfil no ejecuta el cierre desde el portal."}</p>
+      {canOperate ? (
+        <>
+          <textarea className="mt-4 min-h-28 w-full rounded-2xl border border-[#d8c5a7] bg-white px-4 py-3 text-sm outline-none focus:border-[#7a123d]" value={observaciones} onChange={(event) => setObservaciones(event.target.value)} placeholder="Observaciones opcionales" />
+          <Button className="mt-3" disabled={!canClose || saving} onClick={onClose}>{saving ? "Cerrando..." : "Cerrar periodo"}</Button>
+          {!canClose ? <p className="mt-2 text-sm font-bold text-[#7a123d]">El cierre está bloqueado por el diagnóstico.</p> : null}
+        </>
+      ) : null}
     </Card>
   );
 }
@@ -568,7 +575,14 @@ function FormPage({ title, description, allowed, payload, setPayload, fields, st
         <Card className="p-5">
           <SensitiveInfoNotice text="Captura únicamente IDs internos autorizados. No uses matrícula militar." />
           <div className="mt-4 grid gap-4 md:grid-cols-2">
-            {fields.map((field) => <TextField key={field} label={labelFor(field)} value={payload[field] || ""} onChange={(value) => setPayload({ ...payload, [field]: value })} textarea={field === "observaciones" || field === "motivo"} />)}
+            {fields.map((field) => (
+              <SmartFormField
+                key={field}
+                field={field}
+                payload={payload}
+                onChange={(value) => setPayload({ ...payload, [field]: value })}
+              />
+            ))}
           </div>
           {state.error ? <div className="mt-4"><ErrorMessage message={state.error} /></div> : null}
           {state.ok ? <OperationSuccessNotice text={state.ok} /> : null}
@@ -576,6 +590,158 @@ function FormPage({ title, description, allowed, payload, setPayload, fields, st
         </Card>
       )}
     </AccessPage>
+  );
+}
+
+function SmartFormField({ field, payload, onChange }: { field: string; payload: FilterState; onChange: (value: string) => void }) {
+  const value = payload[field] || "";
+  if (field === "inscripcion_materia_id") {
+    return (
+      <AsyncSelectField
+        label={labelFor(field)}
+        value={value}
+        onChange={onChange}
+        searchEnabled
+        loadOptions={(q) => getOpcionesInscripcionesExtraordinario({ q, page_size: "50" }).then((data) => data.items.map((item) => ({ value: String(item.inscripcion_materia_id), label: item.label })))}
+      />
+    );
+  }
+  if (field === "discente_id") {
+    return (
+      <AsyncSelectField
+        label={labelFor(field)}
+        value={value}
+        onChange={onChange}
+        searchEnabled
+        loadOptions={(q) => buscarHistoriales({ q, page_size: "50" }).then((data) => data.items.map((item) => ({ value: String(item.id), label: formatValue(item) })))}
+      />
+    );
+  }
+  if (field === "situacion_codigo") {
+    return (
+      <AsyncSelectField
+        label={labelFor(field)}
+        value={value}
+        onChange={onChange}
+        loadOptions={() => listResource("/api/catalogos/situaciones-academicas/", { activo: "true", page_size: "100" }).then((data) => data.items.map((item) => ({ value: String(item.clave), label: optionLabel(item) })))}
+      />
+    );
+  }
+  if (field === "periodo_id") {
+    return (
+      <AsyncSelectField
+        label={labelFor(field)}
+        value={value}
+        onChange={onChange}
+        loadOptions={() => getPeriodos({ estado: "activo", page_size: "100" }).then((data) => data.items.map((item) => ({ value: String(item.id), label: optionLabel(item) })))}
+      />
+    );
+  }
+  if (field === "periodo_origen_id") {
+    return (
+      <AsyncSelectField
+        label={labelFor(field)}
+        value={value}
+        onChange={onChange}
+        loadOptions={() => getPeriodos({ estado: "cerrado", page_size: "100" }).then((data) => data.items.map((item) => ({ value: String(item.id), label: optionLabel(item) })))}
+      />
+    );
+  }
+  if (field === "periodo_destino_id") {
+    return (
+      <AsyncSelectField
+        label={labelFor(field)}
+        value={value}
+        onChange={onChange}
+        loadOptions={async () => {
+          const [planificados, activos] = await Promise.all([
+            getPeriodos({ estado: "planificado", page_size: "100" }),
+            getPeriodos({ estado: "activo", page_size: "100" }),
+          ]);
+          return [...planificados.items, ...activos.items].map((item) => ({ value: String(item.id), label: optionLabel(item) }));
+        }}
+      />
+    );
+  }
+  if (field === "tipo_movimiento") {
+    return (
+      <StaticSelectField
+        label={labelFor(field)}
+        value={value}
+        onChange={onChange}
+        options={[
+          { value: "cambio_grupo", label: "Cambio de grupo" },
+          { value: "alta_extemporanea", label: "Alta extemporánea" },
+          { value: "baja_extemporanea", label: "Baja extemporánea" },
+        ]}
+      />
+    );
+  }
+  if (field === "grupo_origen_id" || field === "grupo_destino_id") {
+    const excludeValue = field === "grupo_destino_id" ? payload.grupo_origen_id : "";
+    return (
+      <AsyncSelectField
+        label={labelFor(field)}
+        value={value}
+        onChange={onChange}
+        searchEnabled
+        disabled={!payload.periodo_id}
+        helper={!payload.periodo_id ? "Selecciona primero el periodo." : undefined}
+        loadOptions={(q) => listResource("/api/catalogos/grupos/", { activo: "true", periodo: payload.periodo_id, q, page_size: "100" }).then((data) => data.items.filter((item) => String(item.id) !== String(excludeValue)).map((item) => ({ value: String(item.id), label: optionLabel(item) })))}
+        reloadKey={payload.periodo_id}
+      />
+    );
+  }
+  if (field === "calificacion") {
+    return <TextField label={labelFor(field)} value={value} onChange={onChange} type="number" min="0" max="10" step="0.1" />;
+  }
+  return <TextField label={labelFor(field)} value={value} onChange={onChange} textarea={field === "observaciones" || field === "motivo"} type={field.startsWith("fecha") ? "date" : "text"} />;
+}
+
+function AsyncSelectField({ label, value, onChange, loadOptions, searchEnabled = false, disabled = false, helper, reloadKey = "" }: { label: string; value: string; onChange: (value: string) => void; loadOptions: (q: string) => Promise<SelectOption[]>; searchEnabled?: boolean; disabled?: boolean; helper?: string; reloadKey?: string }) {
+  const [options, setOptions] = useState<SelectOption[]>([]);
+  const [search, setSearch] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    if (disabled) {
+      setOptions([]);
+      return;
+    }
+    loadOptions(search)
+      .then((items) => {
+        if (active) setOptions(items);
+      })
+      .catch((err) => {
+        if (active) setError(err instanceof Error ? err.message : "No fue posible cargar opciones.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [disabled, loadOptions, reloadKey, search]);
+  return (
+    <label className="block">
+      <span className="text-xs font-black uppercase tracking-[0.16em] text-[#7a4b0d]">{label}</span>
+      {searchEnabled ? <input className="mt-2 w-full rounded-2xl border border-[#d8c5a7] bg-white px-4 py-3 text-sm outline-none focus:border-[#7a123d]" value={search} disabled={disabled} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar..." /> : null}
+      <select className="mt-2 w-full rounded-2xl border border-[#d8c5a7] bg-white px-4 py-3 text-sm outline-none focus:border-[#7a123d] disabled:bg-[#f5efe6] disabled:text-[#8a8176]" value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
+        <option value="">Seleccionar</option>
+        {options.map((option) => <option key={`${label}-${option.value}`} value={option.value}>{option.label}</option>)}
+      </select>
+      {helper ? <span className="mt-1 block text-xs font-bold text-[#7a4b0d]">{helper}</span> : null}
+      {error ? <span className="mt-1 block text-xs font-bold text-[#7a123d]">{error}</span> : null}
+    </label>
+  );
+}
+
+function StaticSelectField({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: SelectOption[] }) {
+  return (
+    <label className="block">
+      <span className="text-xs font-black uppercase tracking-[0.16em] text-[#7a4b0d]">{label}</span>
+      <select className="mt-2 w-full rounded-2xl border border-[#d8c5a7] bg-white px-4 py-3 text-sm outline-none focus:border-[#7a123d]" value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="">Seleccionar</option>
+        {options.map((option) => <option key={`${label}-${option.value}`} value={option.value}>{option.label}</option>)}
+      </select>
+    </label>
   );
 }
 
@@ -653,14 +819,20 @@ function FiltersBar({ filters, setFilters, fields, onSearch }: { filters: Filter
   );
 }
 
-function TextField({ label, value, onChange, type = "text", textarea = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; textarea?: boolean }) {
+function TextField({ label, value, onChange, type = "text", textarea = false, min, max, step }: { label: string; value: string; onChange: (value: string) => void; type?: string; textarea?: boolean; min?: string; max?: string; step?: string }) {
   const className = "w-full rounded-2xl border border-[#d8c5a7] bg-white px-4 py-3 text-sm outline-none focus:border-[#7a123d]";
   return (
     <label className="block">
       <span className="text-xs font-black uppercase tracking-[0.16em] text-[#7a4b0d]">{label}</span>
-      {textarea ? <textarea className={`${className} mt-2 min-h-28`} value={value} onChange={(event) => onChange(event.target.value)} /> : <input className={`${className} mt-2`} type={type} value={value} onChange={(event) => onChange(event.target.value)} />}
+      {textarea ? <textarea className={`${className} mt-2 min-h-28`} value={value} onChange={(event) => onChange(event.target.value)} /> : <input className={`${className} mt-2`} type={type} min={min} max={max} step={step} value={value} onChange={(event) => onChange(event.target.value)} />}
     </label>
   );
+}
+
+function optionLabel(item: unknown) {
+  if (!item || typeof item !== "object") return String(item ?? "Opción");
+  const record = item as RecordValue;
+  return String(record.label || record.nombre_institucional || record.nombre || record.clave || record.username || record.id || "Opción");
 }
 
 function StateBlock<T>({ state, loadingLabel, emptyTitle }: { state: LoadState<T>; loadingLabel: string; emptyTitle: string }) {

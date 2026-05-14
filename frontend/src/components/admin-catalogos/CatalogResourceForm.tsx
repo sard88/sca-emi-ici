@@ -84,6 +84,7 @@ export function CatalogResourceForm({
               value={values[field.key] ?? ""}
               disabled={!canWrite || Boolean(field.readOnly) || loading}
               onChange={(value) => setValues((current) => ({ ...current, [field.key]: value }))}
+              values={values}
             />
             {field.help ? <span className="block px-1 text-xs font-bold leading-5 text-[#7b837f]">{field.help}</span> : null}
           </label>

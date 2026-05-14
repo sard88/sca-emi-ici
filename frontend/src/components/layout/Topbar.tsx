@@ -5,13 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  backendUrl,
   buscarPortal,
   getNotificaciones,
   marcarNotificacionLeida,
   marcarTodasNotificacionesLeidas,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { resolvePortalHref } from "@/lib/route-mapping";
 import type { AuthenticatedUser, BusquedaGrupo, Notificacion } from "@/lib/types";
 
 export function Topbar({ user }: { user: AuthenticatedUser }) {
@@ -136,9 +136,10 @@ function PortalSearch() {
             <div key={group.label} className="py-1">
               <p className="px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#9f6a22]">{group.label}</p>
               {group.items.map((item) => {
-                const href = item.backend ? backendUrl(item.url) : item.url;
+                const resolved = resolvePortalHref(item.url, item.backend);
+                if (!resolved) return null;
                 return (
-                  <a key={`${group.label}-${item.type}-${item.title}-${item.url}`} href={href} target={item.backend ? "_blank" : undefined} rel={item.backend ? "noreferrer" : undefined} className="block rounded-xl px-3 py-2.5 hover:bg-[#f7efe2]">
+                  <a key={`${group.label}-${item.type}-${item.title}-${item.url}`} href={resolved.href} target={resolved.backend ? "_blank" : undefined} rel={resolved.backend ? "noreferrer" : undefined} className="block rounded-xl px-3 py-2.5 hover:bg-[#f7efe2]">
                     <p className="text-sm font-black text-[#152b25]">{item.title}</p>
                     <p className="mt-0.5 text-xs font-medium text-[#66716c]">{item.subtitle}</p>
                   </a>
@@ -211,11 +212,7 @@ function NotificationBell() {
                   <p className="mt-1 text-xs leading-5 text-[#66716c]">{item.mensaje}</p>
                   <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[#9f6a22]">{formatDateTime(item.creada_en)}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {item.url_destino ? (
-                      <a href={backendUrl(item.url_destino)} target="_blank" rel="noreferrer" className="text-xs font-black text-[#0b4a3d]">
-                        Abrir
-                      </a>
-                    ) : null}
+                    <NotificationDestinationLink url={item.url_destino} />
                     {!item.leida ? (
                       <button type="button" onClick={() => markRead(item.id)} className="text-xs font-black text-[#7a123d]">
                         Marcar leída
@@ -229,6 +226,16 @@ function NotificationBell() {
         </div>
       </div>
     </details>
+  );
+}
+
+function NotificationDestinationLink({ url }: { url?: string | null }) {
+  const resolved = resolvePortalHref(url, true);
+  if (!resolved) return null;
+  return (
+    <a href={resolved.href} target={resolved.backend ? "_blank" : undefined} rel={resolved.backend ? "noreferrer" : undefined} className="text-xs font-black text-[#0b4a3d]">
+      Abrir
+    </a>
   );
 }
 

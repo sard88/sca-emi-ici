@@ -11,7 +11,7 @@ import { Sidebar, MobileModuleNav } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { useAuth } from "@/lib/auth";
 
-export function AppShell({ children, showRightPanel = true }: { children: ReactNode; showRightPanel?: boolean }) {
+export function AppShell({ children, showRightPanel = false }: { children: ReactNode; showRightPanel?: boolean }) {
   const { user, loading, error } = useAuth();
   const router = useRouter();
 

@@ -12,7 +12,7 @@ export function ProfilePanel({ profileKey }: { profileKey: keyof typeof dashboar
   const profile = dashboardProfiles[profileKey];
 
   return (
-    <AppShell>
+    <AppShell showRightPanel>
       {user && !canAccessProfile(user, profile) ? (
         <ErrorMessage message="No tienes permisos para visualizar esta sección del portal." />
       ) : null}

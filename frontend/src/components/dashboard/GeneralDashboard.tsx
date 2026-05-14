@@ -62,7 +62,7 @@ export function GeneralDashboard() {
     : fallbackQuickAccesses;
 
   return (
-    <AppShell>
+    <AppShell showRightPanel>
       <div className="space-y-6">
         <InstitutionalHero />
 

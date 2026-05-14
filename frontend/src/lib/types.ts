@@ -504,6 +504,13 @@ export type ResourceFormField = {
   relationEndpoint?: string;
   relationLabelKey?: string;
   relationValueKey?: string;
+  relationActiveOnly?: boolean;
+  relationSearchEnabled?: boolean;
+  relationMinSearchLength?: number;
+  relationQueryParams?: Record<string, string | number | boolean | undefined>;
+  relationDependsOn?: string[];
+  relationParamMap?: Record<string, string>;
+  relationDisabledReason?: string;
 };
 
 export type ResourceTableColumn = {
@@ -786,6 +793,18 @@ export type ExtraordinarioDTO = Record<string, unknown> & {
   calificacion?: number | null;
   aprobado?: boolean;
   codigo_marca?: string;
+};
+
+export type InscripcionExtraordinarioOpcion = {
+  id: number;
+  inscripcion_materia_id: number;
+  label: string;
+  calificacion_ordinaria?: number | null;
+  codigo_resultado_oficial?: string;
+  discente?: DiscenteMinimo | Record<string, unknown>;
+  materia?: CatalogoMinimo | Record<string, unknown>;
+  grupo?: CatalogoMinimo | Record<string, unknown>;
+  periodo?: CatalogoMinimo | Record<string, unknown>;
 };
 
 export type ExtraordinarioPayload = {
