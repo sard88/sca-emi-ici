@@ -6,6 +6,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from auditoria.eventos import MODULO_MOVIMIENTOS, SEVERIDAD_ADVERTENCIA, SEVERIDAD_INFO
+from auditoria.services import registrar_evento_bloqueado, registrar_evento_exitoso
 from core.api_views import api_login_required
 from trayectoria.permisos import carreras_ambito_usuario
 
@@ -206,7 +208,34 @@ def _crear_movimiento_desde_payload(request, force_tipo=None):
             payload["fecha_movimiento"] = fecha_movimiento
         movimiento = MovimientoAcademico.objects.create(**payload)
     except Exception as exc:
+        registrar_evento_bloqueado(
+            request=request,
+            modulo=MODULO_MOVIMIENTOS,
+            evento_codigo="CAMBIO_GRUPO_BLOQUEADO" if force_tipo == MovimientoAcademico.CAMBIO_GRUPO else "MOVIMIENTO_ACADEMICO_REGISTRADO",
+            severidad=SEVERIDAD_ADVERTENCIA,
+            resumen="Movimiento academico bloqueado o rechazado.",
+            metadatos={"tipo_movimiento": force_tipo or data.get("tipo_movimiento"), "motivo_bloqueo": str(exc)[:300]},
+        )
         return _error_response(exc)
+    impacto = _impacto_movimiento(movimiento)
+    registrar_evento_exitoso(
+        request=request,
+        modulo=MODULO_MOVIMIENTOS,
+        evento_codigo="CAMBIO_GRUPO_APLICADO" if movimiento.tipo_movimiento == MovimientoAcademico.CAMBIO_GRUPO else "MOVIMIENTO_ACADEMICO_REGISTRADO",
+        severidad=SEVERIDAD_INFO,
+        objeto=movimiento,
+        resumen="Movimiento academico registrado.",
+        metadatos={
+            "movimiento_id": movimiento.id,
+            "discente_id": movimiento.discente_id,
+            "periodo_id": movimiento.periodo_id,
+            "tipo_movimiento": movimiento.tipo_movimiento,
+            "grupo_origen_id": movimiento.grupo_origen_id,
+            "grupo_destino_id": movimiento.grupo_destino_id,
+            "total_inscripciones_baja": impacto.get("inscripciones_origen_activas", 0),
+            "total_inscripciones_creadas": impacto.get("inscripciones_destino_activas", 0),
+        },
+    )
     return JsonResponse({"ok": True, "item": _movimiento_item(movimiento, include_impacto=True)}, status=201)
 
 

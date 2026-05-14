@@ -192,6 +192,45 @@ export type ExportacionRegistro = {
   finalizado_en: string | null;
 };
 
+export type BitacoraEventoCritico = {
+  id: number;
+  creado_en: string | null;
+  usuario: {
+    id: number | null;
+    username: string;
+    nombre: string;
+  };
+  rol_contexto: string;
+  cargo_contexto: string;
+  modulo: string;
+  modulo_label: string;
+  evento_codigo: string;
+  evento_nombre: string;
+  severidad: string;
+  severidad_label: string;
+  resultado: string;
+  resultado_label: string;
+  objeto_tipo: string;
+  objeto_id: string;
+  objeto_repr: string;
+  estado_anterior: string;
+  estado_nuevo: string;
+  resumen: string;
+  ip_origen: string | null;
+  ruta: string;
+  metodo_http: string;
+  request_id: string;
+  correlacion_id: string;
+};
+
+export type BitacoraEventosResponse = {
+  ok: boolean;
+  total: number;
+  page: number;
+  page_size: number;
+  items: BitacoraEventoCritico[];
+};
+
 export type ActaExportable = {
   acta_id: number;
   asignacion_docente_id: number;

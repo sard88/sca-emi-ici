@@ -357,5 +357,5 @@ export function canAccessEstadisticaActas(user: AuthenticatedUser) {
 export function canAccessAuditoriaExportaciones(user: AuthenticatedUser) {
   if (user.perfil_principal === "ADMIN" || user.roles.includes("ADMIN") || user.roles.includes("ADMIN_SISTEMA")) return true;
   const values = roleValues(user);
-  return ["ENCARGADO_ESTADISTICA", "ESTADISTICA"].some((role) => values.has(role));
+  return ["ENCARGADO_ESTADISTICA", "ESTADISTICA", "JEFE_ACADEMICO", "JEFATURA_ACADEMICA", "JEFE_PEDAGOGICA", "JEFE_SUB_PLAN_EVAL"].some((role) => values.has(role));
 }

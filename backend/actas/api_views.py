@@ -6,6 +6,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET, require_POST
 
+from auditoria.eventos import MODULO_PERIODOS, SEVERIDAD_ADVERTENCIA, SEVERIDAD_INFO
+from auditoria.services import registrar_evento_bloqueado, registrar_evento_exitoso
 from catalogos.models import ESTADO_ACTIVO, ESTADO_CERRADO, ESTADO_PLANIFICADO, PeriodoEscolar
 from core.api_views import api_login_required
 
@@ -234,6 +236,20 @@ def diagnostico_cierre_view(request, periodo_id):
     if not periodo:
         return JsonResponse({"ok": False, "message": "Periodo no encontrado."}, status=404)
     diagnostico = ServicioDiagnosticoCierrePeriodo(periodo).diagnosticar()
+    registrar_evento_exitoso(
+        request=request,
+        modulo=MODULO_PERIODOS,
+        evento_codigo="DIAGNOSTICO_CIERRE_EJECUTADO",
+        severidad=SEVERIDAD_INFO,
+        objeto=periodo,
+        resumen="Diagnostico de cierre ejecutado.",
+        metadatos={
+            "periodo_id": periodo.id,
+            "total_bloqueantes": len(diagnostico.get("bloqueantes", [])),
+            "total_advertencias": len(diagnostico.get("advertencias", [])),
+            "puede_cerrar": not bool(diagnostico.get("bloqueantes")),
+        },
+    )
     return JsonResponse(_diagnostico_payload(periodo, diagnostico))
 
 
@@ -252,7 +268,34 @@ def cerrar_periodo_view(request, periodo_id):
     try:
         proceso = ServicioCierrePeriodo(periodo, request.user, observaciones=(data.get("observaciones") or "").strip()).cerrar()
     except Exception as exc:
+        registrar_evento_bloqueado(
+            request=request,
+            modulo=MODULO_PERIODOS,
+            evento_codigo="CIERRE_PERIODO_BLOQUEADO",
+            severidad=SEVERIDAD_ADVERTENCIA,
+            objeto=periodo,
+            resumen="Cierre de periodo bloqueado.",
+            metadatos={"periodo_id": periodo.id, "motivo_bloqueo": str(exc)[:300]},
+        )
         return _error_response(exc)
+    resumen = proceso.resumen_json or {}
+    registrar_evento_exitoso(
+        request=request,
+        modulo=MODULO_PERIODOS,
+        evento_codigo="CIERRE_PERIODO_EJECUTADO",
+        severidad=SEVERIDAD_INFO,
+        objeto=proceso,
+        resumen="Cierre de periodo ejecutado.",
+        metadatos={
+            "periodo_id": periodo.id,
+            "proceso_cierre_id": proceso.id,
+            "total_promovibles": len(resumen.get("discentes_promovibles", [])),
+            "total_extraordinario_pendiente": len(resumen.get("discentes_pendientes_extraordinario", [])),
+            "total_baja_temporal": len(resumen.get("discentes_baja_temporal", [])),
+            "total_baja_definitiva": len(resumen.get("discentes_baja_definitiva", [])),
+            "total_egresables": len(resumen.get("discentes_egresables", [])),
+        },
+    )
     return JsonResponse({"ok": True, "item": _cierre_item(proceso, include_detalles=True)}, status=201)
 
 
@@ -296,7 +339,37 @@ def apertura_create_view(request):
     except PeriodoEscolar.DoesNotExist:
         return JsonResponse({"ok": False, "message": "Periodo origen o destino no encontrado."}, status=404)
     except Exception as exc:
+        registrar_evento_bloqueado(
+            request=request,
+            modulo=MODULO_PERIODOS,
+            evento_codigo="APERTURA_PERIODO_BLOQUEADA",
+            severidad=SEVERIDAD_ADVERTENCIA,
+            resumen="Apertura de periodo bloqueada.",
+            metadatos={
+                "periodo_origen_id": data.get("periodo_origen_id") or data.get("periodo_origen"),
+                "periodo_destino_id": data.get("periodo_destino_id") or data.get("periodo_destino"),
+                "motivo_bloqueo": str(exc)[:300],
+            },
+        )
         return _error_response(exc)
+    resumen = proceso.resumen_json or {}
+    registrar_evento_exitoso(
+        request=request,
+        modulo=MODULO_PERIODOS,
+        evento_codigo="APERTURA_PERIODO_EJECUTADA",
+        severidad=SEVERIDAD_INFO,
+        objeto=proceso,
+        resumen="Apertura de periodo ejecutada.",
+        metadatos={
+            "periodo_origen_id": proceso.periodo_origen_id,
+            "periodo_destino_id": proceso.periodo_destino_id,
+            "proceso_apertura_id": proceso.id,
+            "total_promovidos": resumen.get("adscripciones_creadas", 0),
+            "total_egresables": len(resumen.get("egresables", [])),
+            "total_grupos_creados": len(resumen.get("grupos_creados", [])),
+            "total_grupos_reutilizados": len(resumen.get("grupos_existentes", [])),
+        },
+    )
     return JsonResponse({"ok": True, "item": _apertura_item(proceso)}, status=201)
 
 

@@ -8,6 +8,9 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_POST
 
+from auditoria.eventos import MODULO_AUTENTICACION, SEVERIDAD_ADVERTENCIA, SEVERIDAD_INFO
+from auditoria.services import registrar_evento_exitoso, registrar_evento_fallido
+
 from .models import AsignacionCargo, Usuario
 
 
@@ -202,16 +205,42 @@ def login_view(request):
     password = data.get("password", "")
     user = authenticate(request, username=username, password=password)
     if not user or not user.is_active or user.estado_cuenta != Usuario.ESTADO_ACTIVO:
+        registrar_evento_fallido(
+            request=request,
+            usuario=None,
+            modulo=MODULO_AUTENTICACION,
+            evento_codigo="LOGIN_FALLIDO",
+            severidad=SEVERIDAD_ADVERTENCIA,
+            resumen="Intento de login fallido.",
+            metadatos={"username_intentado": str(username)[:150]},
+        )
         return JsonResponse({"ok": False, "error": "Usuario o contraseña incorrectos."}, status=400)
 
     login(request, user)
+    registrar_evento_exitoso(
+        request=request,
+        usuario=user,
+        modulo=MODULO_AUTENTICACION,
+        evento_codigo="LOGIN_EXITOSO",
+        severidad=SEVERIDAD_INFO,
+        resumen="Login exitoso.",
+    )
     return JsonResponse({"ok": True, "csrfToken": get_token(request), "user": serializar_usuario(user)})
 
 
 @require_POST
 @csrf_protect
 def logout_view(request):
+    usuario = request.user if request.user.is_authenticated else None
     logout(request)
+    registrar_evento_exitoso(
+        request=request,
+        usuario=usuario,
+        modulo=MODULO_AUTENTICACION,
+        evento_codigo="LOGOUT",
+        severidad=SEVERIDAD_INFO,
+        resumen="Logout exitoso.",
+    )
     return JsonResponse({"ok": True})
 
 

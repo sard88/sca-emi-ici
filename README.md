@@ -2726,3 +2726,67 @@ Comandos ejecutados durante el cierre del bloque:
 Resumen técnico:
 
 - `docs/resumen_bloque10c6_trayectoria_cierre_apertura_portal.md`
+
+## Bloque 9K - Bitácora transversal de eventos críticos
+
+### Objetivo
+
+Se implementa una auditoría institucional append-only para registrar eventos críticos de operación académica, administrativa y de control. La bitácora no reemplaza `RegistroExportacion`: las exportaciones siguen auditándose ahí con detalle documental, mientras que `BitacoraEventoCritico` guarda evidencia transversal resumida de mutaciones, transiciones de estado, bloqueos y exportaciones relevantes.
+
+### Modelo y servicio
+
+- Nueva entidad `BitacoraEventoCritico` en `auditoria`.
+- Registro append-only: no se editan ni eliminan eventos en operación ordinaria.
+- Admin Django de solo lectura, sin alta manual, cambio, eliminación ni acciones masivas.
+- Servicio central `auditoria.services` con sanitización, extracción de contexto de request, snapshots de usuario, rol/cargo, IP, user agent, ruta y método.
+- `AUDITORIA_STRICT=False` por defecto para que un fallo de auditoría no rompa el flujo académico normal.
+
+### Eventos cubiertos
+
+- Autenticación: login exitoso, login fallido y logout.
+- Administración: usuarios, grados/empleos, unidades organizacionales y asignaciones de cargo.
+- Catálogos: creación, actualización, activación/inactivación, esquemas y componentes de evaluación.
+- Evaluación y actas: captura preliminar guardada/eliminada/bloqueada, generación/regeneración de borradores, publicación, remisión, validación, formalización y acciones bloqueadas.
+- Conformidad: acuse, conforme, inconforme, rechazo sin comentario y bloqueo posterior a remisión.
+- Trayectoria y movimientos: extraordinarios, situaciones académicas, bajas/reingresos y cambios de grupo/movimientos.
+- Periodos: diagnóstico, cierre/apertura ejecutada y bloqueada.
+- Exportaciones: solicitud, generación y fallo resumidos, vinculados a `RegistroExportacion`.
+
+### APIs
+
+- `GET /api/auditoria/eventos/`
+- `GET /api/auditoria/eventos/<id>/`
+- `GET /api/auditoria/eventos/resumen/`
+- `GET /api/exportaciones/auditoria/eventos/xlsx/`
+
+Los endpoints requieren autenticación y permisos institucionales. Docentes y discentes no consultan la bitácora general.
+
+### Privacidad y sanitización
+
+La bitácora no guarda contraseñas, tokens, cookies, sesiones, CSRF, llaves privadas, firmas ni payloads completos de calificaciones, actas, historiales o reportes. Para capturas, actas, conformidad, movimientos y periodos se guardan IDs, estados, conteos y resúmenes.
+
+### Portal
+
+`/reportes/auditoria` incorpora dos pestañas:
+
+- Exportaciones.
+- Eventos críticos.
+
+La pestaña de eventos consume la API de bitácora, ofrece filtros básicos y descarga XLSX con folio técnico de `RegistroExportacion`.
+
+### Validación
+
+Comandos ejecutados durante el bloque:
+
+- `docker compose exec -T backend python manage.py check`
+- `docker compose exec -T backend python manage.py migrate`
+- `docker compose exec -T backend python manage.py makemigrations --check`
+- `docker compose exec -T backend python manage.py test auditoria`
+- `docker compose exec -T backend python manage.py test usuarios catalogos evaluacion actas trayectoria relaciones reportes`
+- `docker compose exec -T backend python manage.py test`
+- `docker compose exec -T frontend npm run lint`
+- `docker compose exec -T frontend npm run build`
+
+Resumen técnico:
+
+- `docs/resumen_bloque9k_bitacora_eventos_criticos.md`

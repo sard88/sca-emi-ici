@@ -8,6 +8,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from auditoria.eventos import MODULO_EVALUACION, SEVERIDAD_ADVERTENCIA, SEVERIDAD_INFO
+from auditoria.services import registrar_evento_bloqueado, registrar_evento_exitoso
 from core.api_views import api_login_required
 from relaciones.models import AsignacionDocente, Discente, InscripcionMateria
 from relaciones.permisos import usuario_es_admin_soporte, usuario_es_docente, usuario_es_estadistica
@@ -606,6 +608,20 @@ def docente_captura_corte_view(request, pk, corte_codigo):
     acta_bloqueante = obtener_acta_bloqueante_captura(asignacion, corte)
     if request.method == "POST":
         if acta_bloqueante:
+            registrar_evento_bloqueado(
+                request=request,
+                modulo=MODULO_EVALUACION,
+                evento_codigo="CAPTURA_PRELIMINAR_BLOQUEADA",
+                severidad=SEVERIDAD_ADVERTENCIA,
+                objeto=asignacion,
+                resumen="Captura preliminar bloqueada por acta avanzada.",
+                metadatos={
+                    "asignacion_docente_id": asignacion.id,
+                    "corte_codigo": corte,
+                    "acta_bloqueante_id": acta_bloqueante.id,
+                    "estado_acta": acta_bloqueante.estado_acta,
+                },
+            )
             return _bad_request("Este corte ya tiene un acta publicada, remitida, validada o formalizada. La captura preliminar quedó bloqueada.")
         data = _json_body(request)
         if data is None:
@@ -616,6 +632,38 @@ def docente_captura_corte_view(request, pk, corte_codigo):
             return _error_response(exc, message="No fue posible guardar la captura preliminar.")
         except (InvalidOperation, ValueError) as exc:
             return _error_response(ValidationError(str(exc)), message="No fue posible guardar la captura preliminar.")
+        total_recibidos = len(data.get("valores") or data.get("capturas") or []) if isinstance(data, dict) else 0
+        registrar_evento_exitoso(
+            request=request,
+            modulo=MODULO_EVALUACION,
+            evento_codigo="CAPTURA_PRELIMINAR_GUARDADA",
+            severidad=SEVERIDAD_INFO,
+            objeto=asignacion,
+            resumen="Captura preliminar guardada con resumen de valores.",
+            metadatos={
+                "asignacion_docente_id": asignacion.id,
+                "corte_codigo": corte,
+                "total_discentes": asignacion.inscripciones_materia.filter(estado_inscripcion=InscripcionMateria.ESTADO_INSCRITA).count(),
+                "total_componentes": len(componentes),
+                "total_valores_recibidos": total_recibidos,
+                "total_valores_guardados": saved,
+                "total_valores_borrados": deleted,
+            },
+        )
+        if deleted:
+            registrar_evento_exitoso(
+                request=request,
+                modulo=MODULO_EVALUACION,
+                evento_codigo="CAPTURA_PRELIMINAR_ELIMINADA",
+                severidad=SEVERIDAD_INFO,
+                objeto=asignacion,
+                resumen="Valores de captura preliminar eliminados por campo vacio.",
+                metadatos={
+                    "asignacion_docente_id": asignacion.id,
+                    "corte_codigo": corte,
+                    "total_valores_borrados": deleted,
+                },
+            )
     else:
         saved = deleted = 0
 

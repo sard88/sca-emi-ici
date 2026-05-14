@@ -5,6 +5,8 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from auditoria.eventos import MODULO_ACTAS, MODULO_CONFORMIDAD, SEVERIDAD_ADVERTENCIA, SEVERIDAD_INFO
+from auditoria.services import registrar_evento_bloqueado, registrar_evento_exitoso, registrar_evento_fallido
 from relaciones.models import InscripcionMateria
 from relaciones.permisos import usuario_es_admin_soporte
 from usuarios.models import AsignacionCargo
@@ -23,6 +25,19 @@ from .models import (
 
 CALIFICACION_APROBATORIA = Decimal("6.0")
 UMBRAL_EXENCION_INSTITUCIONAL = Decimal("9.0")
+
+
+def _metadatos_acta(acta, extra=None):
+    data = {
+        "acta_id": acta.id,
+        "asignacion_docente_id": acta.asignacion_docente_id,
+        "corte_codigo": acta.corte_codigo,
+        "total_detalles": acta.detalles.count() if acta.pk else 0,
+        "es_final": getattr(acta, "es_final", False),
+    }
+    if extra:
+        data.update(extra)
+    return data
 
 
 def redondear_visualizacion_un_decimal(valor):
@@ -248,8 +263,19 @@ def crear_o_regenerar_borrador_acta(asignacion_docente, corte_codigo, usuario):
 
     acta = obtener_acta_activa(asignacion_docente, corte_codigo)
     if acta and acta.estado_acta != Acta.ESTADO_BORRADOR_DOCENTE:
+        registrar_evento_bloqueado(
+            usuario=usuario,
+            modulo=MODULO_ACTAS,
+            evento_codigo="ACTA_ACCION_BLOQUEADA",
+            severidad=SEVERIDAD_ADVERTENCIA,
+            objeto=acta,
+            estado_anterior=acta.estado_acta,
+            resumen="Intento bloqueado de regenerar acta fuera de estado borrador docente.",
+            metadatos=_metadatos_acta(acta),
+        )
         raise ValidationError("Solo se puede regenerar un acta en estado borrador docente.")
 
+    existia = bool(acta)
     if not acta:
         acta = Acta(
             asignacion_docente=asignacion_docente,
@@ -293,6 +319,16 @@ def crear_o_regenerar_borrador_acta(asignacion_docente, corte_codigo, usuario):
                 valor_calculado=normalizar_decimal_6(componente_detalle["ponderado"]),
                 sustituido_por_exencion=componente_detalle["sustituido_por_exencion"],
             )
+    registrar_evento_exitoso(
+        usuario=usuario,
+        modulo=MODULO_ACTAS,
+        evento_codigo="ACTA_BORRADOR_REGENERADA" if existia else "ACTA_BORRADOR_GENERADA",
+        severidad=SEVERIDAD_INFO,
+        objeto=acta,
+        estado_nuevo=acta.estado_acta,
+        resumen="Acta borrador regenerada desde capturas preliminares." if existia else "Acta borrador generada desde capturas preliminares.",
+        metadatos=_metadatos_acta(acta),
+    )
     return acta
 
 
@@ -343,8 +379,19 @@ def registrar_validacion_acta(acta, usuario, etapa, accion, asignacion_cargo=Non
 @transaction.atomic
 def publicar_acta(acta, usuario, ip_origen=None):
     if acta.estado_acta != Acta.ESTADO_BORRADOR_DOCENTE:
+        registrar_evento_bloqueado(
+            usuario=usuario,
+            modulo=MODULO_ACTAS,
+            evento_codigo="ACTA_ACCION_BLOQUEADA",
+            severidad=SEVERIDAD_ADVERTENCIA,
+            objeto=acta,
+            estado_anterior=acta.estado_acta,
+            resumen="Intento bloqueado de publicar acta fuera de borrador docente.",
+            metadatos=_metadatos_acta(acta),
+        )
         raise ValidationError("Solo se puede publicar un acta en borrador docente.")
     validar_acta_completa(acta)
+    estado_anterior = acta.estado_acta
     acta.estado_acta = Acta.ESTADO_PUBLICADO_DISCENTE
     acta.publicada_en = timezone.now()
     acta.save(update_fields=["estado_acta", "publicada_en", "actualizado_en"])
@@ -355,13 +402,36 @@ def publicar_acta(acta, usuario, ip_origen=None):
         ValidacionActa.ACCION_PUBLICA,
         ip_origen=ip_origen,
     )
+    registrar_evento_exitoso(
+        usuario=usuario,
+        modulo=MODULO_ACTAS,
+        evento_codigo="ACTA_PUBLICADA",
+        severidad=SEVERIDAD_INFO,
+        objeto=acta,
+        estado_anterior=estado_anterior,
+        estado_nuevo=acta.estado_acta,
+        ip_origen=ip_origen,
+        resumen="Acta publicada para consulta de discentes.",
+        metadatos=_metadatos_acta(acta),
+    )
     return acta
 
 
 @transaction.atomic
 def remitir_acta(acta, usuario, ip_origen=None):
     if acta.estado_acta != Acta.ESTADO_PUBLICADO_DISCENTE:
+        registrar_evento_bloqueado(
+            usuario=usuario,
+            modulo=MODULO_ACTAS,
+            evento_codigo="ACTA_ACCION_BLOQUEADA",
+            severidad=SEVERIDAD_ADVERTENCIA,
+            objeto=acta,
+            estado_anterior=acta.estado_acta,
+            resumen="Intento bloqueado de remitir acta fuera de estado publicado a discentes.",
+            metadatos=_metadatos_acta(acta),
+        )
         raise ValidationError("Solo se puede remitir un acta publicada a discentes.")
+    estado_anterior = acta.estado_acta
     acta.estado_acta = Acta.ESTADO_REMITIDO_JEFATURA_CARRERA
     acta.remitida_en = timezone.now()
     acta.save(update_fields=["estado_acta", "remitida_en", "actualizado_en"])
@@ -371,6 +441,18 @@ def remitir_acta(acta, usuario, ip_origen=None):
         ValidacionActa.ETAPA_DOCENTE,
         ValidacionActa.ACCION_REMITE,
         ip_origen=ip_origen,
+    )
+    registrar_evento_exitoso(
+        usuario=usuario,
+        modulo=MODULO_ACTAS,
+        evento_codigo="ACTA_REMITIDA",
+        severidad=SEVERIDAD_INFO,
+        objeto=acta,
+        estado_anterior=estado_anterior,
+        estado_nuevo=acta.estado_acta,
+        ip_origen=ip_origen,
+        resumen="Acta remitida a jefatura de carrera.",
+        metadatos=_metadatos_acta(acta),
     )
     return acta
 
@@ -427,14 +509,34 @@ def obtener_cargo_jefatura_academica(usuario):
 @transaction.atomic
 def validar_acta_jefatura_carrera(acta, usuario, ip_origen=None):
     if acta.estado_acta != Acta.ESTADO_REMITIDO_JEFATURA_CARRERA:
+        registrar_evento_bloqueado(
+            usuario=usuario,
+            modulo=MODULO_ACTAS,
+            evento_codigo="ACTA_ACCION_BLOQUEADA",
+            severidad=SEVERIDAD_ADVERTENCIA,
+            objeto=acta,
+            estado_anterior=acta.estado_acta,
+            resumen="Intento bloqueado de validar acta no remitida a jefatura de carrera.",
+            metadatos=_metadatos_acta(acta),
+        )
         raise ValidationError("Solo se puede validar un acta remitida a jefatura de carrera.")
 
     cargo = None
     if not usuario_es_admin_soporte(usuario):
         cargo = obtener_cargo_jefatura_carrera_para_acta(usuario, acta)
         if not cargo:
+            registrar_evento_bloqueado(
+                usuario=usuario,
+                modulo=MODULO_ACTAS,
+                evento_codigo="ACTA_ACCION_BLOQUEADA",
+                severidad=SEVERIDAD_ADVERTENCIA,
+                objeto=acta,
+                resumen="Intento bloqueado de validar acta sin jefatura de carrera vigente.",
+                metadatos=_metadatos_acta(acta),
+            )
             raise ValidationError("El usuario no tiene jefatura de carrera vigente para esta acta.")
 
+    estado_anterior = acta.estado_acta
     acta.estado_acta = Acta.ESTADO_VALIDADO_JEFATURA_CARRERA
     acta.save(update_fields=["estado_acta", "actualizado_en"])
     registrar_validacion_acta(
@@ -444,6 +546,18 @@ def validar_acta_jefatura_carrera(acta, usuario, ip_origen=None):
         ValidacionActa.ACCION_VALIDA,
         asignacion_cargo=cargo,
         ip_origen=ip_origen,
+    )
+    registrar_evento_exitoso(
+        usuario=usuario,
+        modulo=MODULO_ACTAS,
+        evento_codigo="ACTA_VALIDADA_JEFATURA_CARRERA",
+        severidad=SEVERIDAD_INFO,
+        objeto=acta,
+        estado_anterior=estado_anterior,
+        estado_nuevo=acta.estado_acta,
+        ip_origen=ip_origen,
+        resumen="Acta validada por jefatura de carrera.",
+        metadatos=_metadatos_acta(acta, {"cargo_contexto": cargo.cargo_codigo if cargo else ""}),
     )
     return acta
 
@@ -472,19 +586,48 @@ def _actualizar_campos_oficiales_final(acta):
 @transaction.atomic
 def formalizar_acta_jefatura_academica(acta, usuario, ip_origen=None):
     if acta.estado_acta != Acta.ESTADO_VALIDADO_JEFATURA_CARRERA:
+        registrar_evento_bloqueado(
+            usuario=usuario,
+            modulo=MODULO_ACTAS,
+            evento_codigo="ACTA_ACCION_BLOQUEADA",
+            severidad=SEVERIDAD_ADVERTENCIA,
+            objeto=acta,
+            estado_anterior=acta.estado_acta,
+            resumen="Intento bloqueado de formalizar acta no validada por jefatura de carrera.",
+            metadatos=_metadatos_acta(acta),
+        )
         raise ValidationError("Solo se puede formalizar un acta validada por jefatura de carrera.")
     if not acta.validaciones.filter(
         etapa_validacion=ValidacionActa.ETAPA_JEFATURA_CARRERA,
         accion=ValidacionActa.ACCION_VALIDA,
     ).exists():
+        registrar_evento_bloqueado(
+            usuario=usuario,
+            modulo=MODULO_ACTAS,
+            evento_codigo="ACTA_ACCION_BLOQUEADA",
+            severidad=SEVERIDAD_ADVERTENCIA,
+            objeto=acta,
+            resumen="Intento bloqueado de formalizar acta sin validacion previa de carrera.",
+            metadatos=_metadatos_acta(acta),
+        )
         raise ValidationError("No se puede formalizar sin validación previa de jefatura de carrera.")
 
     cargo = None
     if not usuario_es_admin_soporte(usuario):
         cargo = obtener_cargo_jefatura_academica(usuario)
         if not cargo:
+            registrar_evento_bloqueado(
+                usuario=usuario,
+                modulo=MODULO_ACTAS,
+                evento_codigo="ACTA_ACCION_BLOQUEADA",
+                severidad=SEVERIDAD_ADVERTENCIA,
+                objeto=acta,
+                resumen="Intento bloqueado de formalizar acta sin jefatura academica vigente.",
+                metadatos=_metadatos_acta(acta),
+            )
             raise ValidationError("El usuario no tiene jefatura académica vigente.")
 
+    estado_anterior = acta.estado_acta
     if acta.es_final:
         _actualizar_campos_oficiales_final(acta)
 
@@ -499,14 +642,50 @@ def formalizar_acta_jefatura_academica(acta, usuario, ip_origen=None):
         asignacion_cargo=cargo,
         ip_origen=ip_origen,
     )
+    registrar_evento_exitoso(
+        usuario=usuario,
+        modulo=MODULO_ACTAS,
+        evento_codigo="ACTA_FORMALIZADA_JEFATURA_ACADEMICA",
+        severidad=SEVERIDAD_INFO,
+        objeto=acta,
+        estado_anterior=estado_anterior,
+        estado_nuevo=acta.estado_acta,
+        ip_origen=ip_origen,
+        resumen="Acta formalizada por jefatura academica.",
+        metadatos=_metadatos_acta(
+            acta,
+            {
+                "cargo_contexto": cargo.cargo_codigo if cargo else "",
+                "actualizo_resultados_oficiales": bool(acta.es_final),
+            },
+        ),
+    )
     return acta
 
 
 @transaction.atomic
 def registrar_conformidad_discente(detalle, usuario, estado_conformidad, comentario=""):
     if detalle.acta.estado_acta == Acta.ESTADO_BORRADOR_DOCENTE:
+        registrar_evento_bloqueado(
+            usuario=usuario,
+            modulo=MODULO_CONFORMIDAD,
+            evento_codigo="CONFORMIDAD_BLOQUEADA_POR_REMISION",
+            severidad=SEVERIDAD_ADVERTENCIA,
+            objeto=detalle,
+            resumen="Intento bloqueado de conformidad sobre acta no publicada.",
+            metadatos={"detalle_acta_id": detalle.id, "acta_id": detalle.acta_id, "estado_acta": detalle.acta.estado_acta},
+        )
         raise ValidationError("El acta todavía no está publicada para discentes.")
     if detalle.acta.estado_acta != Acta.ESTADO_PUBLICADO_DISCENTE:
+        registrar_evento_bloqueado(
+            usuario=usuario,
+            modulo=MODULO_CONFORMIDAD,
+            evento_codigo="CONFORMIDAD_BLOQUEADA_POR_REMISION",
+            severidad=SEVERIDAD_ADVERTENCIA,
+            objeto=detalle,
+            resumen="Intento bloqueado de conformidad despues de remision.",
+            metadatos={"detalle_acta_id": detalle.id, "acta_id": detalle.acta_id, "estado_acta": detalle.acta.estado_acta},
+        )
         raise ValidationError(
             "La conformidad quedó en solo lectura después de remitir el acta."
         )
@@ -515,6 +694,15 @@ def registrar_conformidad_discente(detalle, usuario, estado_conformidad, comenta
 
     comentario = (comentario or "").strip()
     if estado_conformidad == ConformidadDiscente.ESTADO_INCONFORME and not comentario:
+        registrar_evento_fallido(
+            usuario=usuario,
+            modulo=MODULO_CONFORMIDAD,
+            evento_codigo="CONFORMIDAD_RECHAZADA_SIN_COMENTARIO",
+            severidad=SEVERIDAD_ADVERTENCIA,
+            objeto=detalle,
+            resumen="Inconformidad rechazada por falta de comentario.",
+            metadatos={"detalle_acta_id": detalle.id, "acta_id": detalle.acta_id, "tipo_conformidad": estado_conformidad, "comentario_presente": False},
+        )
         raise ValidationError(
             "El comentario es obligatorio cuando se registra inconformidad."
         )
@@ -525,10 +713,31 @@ def registrar_conformidad_discente(detalle, usuario, estado_conformidad, comenta
         vigente=True,
     ).update(vigente=False, invalidado_en=timezone.now())
 
-    return ConformidadDiscente.objects.create(
+    conformidad = ConformidadDiscente.objects.create(
         detalle=detalle,
         discente=detalle.inscripcion_materia.discente,
         usuario=usuario,
         estado_conformidad=estado_conformidad,
         comentario=comentario,
     )
+    evento_codigo = {
+        ConformidadDiscente.ESTADO_ACUSE: "CONFORMIDAD_ACUSE_REGISTRADO",
+        ConformidadDiscente.ESTADO_CONFORME: "CONFORMIDAD_CONFORME_REGISTRADA",
+        ConformidadDiscente.ESTADO_INCONFORME: "CONFORMIDAD_INCONFORME_REGISTRADA",
+    }.get(estado_conformidad, "CONFORMIDAD_ACUSE_REGISTRADO")
+    registrar_evento_exitoso(
+        usuario=usuario,
+        modulo=MODULO_CONFORMIDAD,
+        evento_codigo=evento_codigo,
+        severidad=SEVERIDAD_INFO,
+        objeto=conformidad,
+        resumen="Conformidad de discente registrada.",
+        metadatos={
+            "detalle_acta_id": detalle.id,
+            "acta_id": detalle.acta_id,
+            "tipo_conformidad": estado_conformidad,
+            "comentario_presente": bool(comentario),
+            "estado_acta": detalle.acta.estado_acta,
+        },
+    )
+    return conformidad

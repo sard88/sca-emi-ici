@@ -9,6 +9,8 @@ from django.utils.dateparse import parse_date
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods, require_POST
 
+from auditoria.eventos import MODULO_CATALOGOS, SEVERIDAD_INFO
+from auditoria.services import registrar_evento_exitoso
 from core.api_views import api_login_required
 from core.portal_services import portal_context
 from evaluacion.models import ComponenteEvaluacion, EsquemaEvaluacion
@@ -200,6 +202,37 @@ def _set_fields(instance, data, fields, fk_fields=None):
         setattr(instance, field_name, int(value) if value not in ("", None) else None)
 
 
+def _evento_catalogo(slug, created=False, active=None):
+    if slug == "esquemas-evaluacion":
+        return "ESQUEMA_EVALUACION_CREADO" if created else "ESQUEMA_EVALUACION_ACTUALIZADO"
+    if slug == "componentes-evaluacion":
+        return "COMPONENTE_EVALUACION_CREADO" if created else "COMPONENTE_EVALUACION_ACTUALIZADO"
+    if active is True:
+        return "CATALOGO_ACTIVADO"
+    if active is False:
+        return "CATALOGO_INACTIVADO"
+    return "CATALOGO_CREADO" if created else "CATALOGO_ACTUALIZADO"
+
+
+def _auditar_catalogo(request, *, slug, item, created=False, active=None, campos=None, estado_anterior="", estado_nuevo=""):
+    registrar_evento_exitoso(
+        request=request,
+        modulo=MODULO_CATALOGOS,
+        evento_codigo=_evento_catalogo(slug, created=created, active=active),
+        severidad=SEVERIDAD_INFO,
+        objeto=item,
+        estado_anterior=estado_anterior,
+        estado_nuevo=estado_nuevo,
+        resumen=f"Operacion critica en catalogo {slug}.",
+        metadatos={
+            "catalogo": slug,
+            "modelo": item.__class__.__name__,
+            "id": item.pk,
+            "campos_recibidos": sorted(str(key) for key in (campos or [])),
+        },
+    )
+
+
 def _save(instance):
     instance.full_clean()
     instance.save()
@@ -221,7 +254,7 @@ def _collection(request, slug):
     if data is None:
         return JsonResponse({"ok": False, "message": "Solicitud inválida.", "errors": {"__all__": ["JSON inválido."]}}, status=400)
     instance = config["model"]()
-    return config["save"](instance, data, True)
+    return config["save"](request, instance, data, True)
 
 
 def _detail(request, slug, pk):
@@ -241,7 +274,7 @@ def _detail(request, slug, pk):
     data = _json_body(request)
     if data is None:
         return JsonResponse({"ok": False, "message": "Solicitud inválida.", "errors": {"__all__": ["JSON inválido."]}}, status=400)
-    return config["save"](item, data, False)
+    return config["save"](request, item, data, False)
 
 
 def _activate(request, slug, pk, active):
@@ -252,34 +285,50 @@ def _activate(request, slug, pk, active):
         item = config["queryset"]().get(pk=pk)
     except config["model"].DoesNotExist:
         return JsonResponse({"ok": False, "message": "Registro no encontrado."}, status=404)
+    estado_anterior = ""
     if _has_field(config["model"], "estado"):
+        estado_anterior = item.estado
         item.estado = ESTADO_ACTIVO if active else ESTADO_INACTIVO
     elif _has_field(config["model"], "activo"):
+        estado_anterior = "ACTIVO" if item.activo else "INACTIVO"
         item.activo = active
     else:
         return JsonResponse({"ok": False, "message": "Este recurso no admite activación/inactivación desde el portal."}, status=400)
     try:
         _save(item)
+        _auditar_catalogo(
+            request,
+            slug=slug,
+            item=item,
+            active=active,
+            campos=["estado" if _has_field(config["model"], "estado") else "activo"],
+            estado_anterior=estado_anterior,
+            estado_nuevo=ESTADO_ACTIVO if active else ESTADO_INACTIVO,
+        )
         return JsonResponse({"ok": True, "item": config["serializer"](item)})
     except (ValidationError, IntegrityError) as exc:
         return _error_response(exc)
 
 
-def _save_simple(instance, data, created=False):
+def _save_simple(request, instance, data, created=False):
     config = RESOURCE_CONFIG[data.pop("_slug")]
+    slug = data.pop("_audit_slug")
+    campos = list(data.keys())
     _set_fields(instance, data, config["fields"], config.get("fk_fields"))
     try:
         _save(instance)
+        _auditar_catalogo(request, slug=slug, item=instance, created=created, campos=campos)
         return JsonResponse({"ok": True, "item": config["serializer"](instance)}, status=201 if created else 200)
     except (ValidationError, IntegrityError) as exc:
         return _error_response(exc)
 
 
 def _simple_save_for(slug):
-    def save(instance, data, created=False):
+    def save(request, instance, data, created=False):
         payload = dict(data)
         payload["_slug"] = slug
-        return _save_simple(instance, payload, created)
+        payload["_audit_slug"] = slug
+        return _save_simple(request, instance, payload, created)
 
     return save
 
@@ -563,7 +612,7 @@ def componentes_collection_view(request, esquema_id):
     if data is None:
         return JsonResponse({"ok": False, "message": "Solicitud inválida.", "errors": {"__all__": ["JSON inválido."]}}, status=400)
     componente = ComponenteEvaluacion(esquema_id=esquema_id)
-    return _save_componente(componente, data, True)
+    return _save_componente(request, componente, data, True)
 
 
 @require_http_methods(["GET", "PATCH"])
@@ -583,13 +632,20 @@ def componente_detail_view(request, esquema_id, componente_id):
     data = _json_body(request)
     if data is None:
         return JsonResponse({"ok": False, "message": "Solicitud inválida.", "errors": {"__all__": ["JSON inválido."]}}, status=400)
-    return _save_componente(item, data, False)
+    return _save_componente(request, item, data, False)
 
 
-def _save_componente(item, data, created=False):
+def _save_componente(request, item, data, created=False):
     _set_fields(item, data, ["corte_codigo", "nombre", "porcentaje", "es_examen", "orden"])
     try:
         _save(item)
+        _auditar_catalogo(
+            request,
+            slug="componentes-evaluacion",
+            item=item,
+            created=created,
+            campos=data.keys(),
+        )
         return JsonResponse({"ok": True, "item": serialize_componente(item)}, status=201 if created else 200)
     except (ValidationError, IntegrityError) as exc:
         return _error_response(exc)

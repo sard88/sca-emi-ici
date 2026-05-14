@@ -7,6 +7,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from auditoria.eventos import MODULO_TRAYECTORIA, SEVERIDAD_ADVERTENCIA, SEVERIDAD_INFO
+from auditoria.services import registrar_evento_exitoso, registrar_evento_fallido
 from catalogos.models import GrupoAcademico, PeriodoEscolar
 from core.api_views import api_login_required
 from relaciones.models import AdscripcionGrupo, Discente, InscripcionMateria, MovimientoAcademico
@@ -514,7 +516,32 @@ def extraordinario_create_view(request):
     except InscripcionMateria.DoesNotExist:
         return JsonResponse({"ok": False, "message": "Inscripción a materia no encontrada.", "errors": {"inscripcion_materia_id": ["No existe."]}}, status=404)
     except Exception as exc:
+        registrar_evento_fallido(
+            request=request,
+            modulo=MODULO_TRAYECTORIA,
+            evento_codigo="EXTRAORDINARIO_RECHAZADO",
+            severidad=SEVERIDAD_ADVERTENCIA,
+            resumen="Registro de extraordinario rechazado.",
+            metadatos={"inscripcion_materia_id": data.get("inscripcion_materia_id") or data.get("inscripcion_materia"), "error": str(exc)[:300]},
+        )
         return _error_response(exc)
+    registrar_evento_exitoso(
+        request=request,
+        modulo=MODULO_TRAYECTORIA,
+        evento_codigo="EXTRAORDINARIO_REGISTRADO",
+        severidad=SEVERIDAD_INFO,
+        objeto=extraordinario,
+        resumen="Extraordinario registrado.",
+        metadatos={
+            "extraordinario_id": extraordinario.id,
+            "discente_id": extraordinario.inscripcion_materia.discente_id,
+            "inscripcion_materia_id": extraordinario.inscripcion_materia_id,
+            "periodo_id": extraordinario.inscripcion_materia.asignacion_docente.grupo_academico.periodo_id,
+            "aprobado": extraordinario.aprobado,
+            "marca_generada": extraordinario.codigo_marca,
+            "fecha_aplicacion": _date(extraordinario.fecha_aplicacion),
+        },
+    )
     return JsonResponse({"ok": True, "item": _extraordinario_item(extraordinario)}, status=201)
 
 
@@ -603,4 +630,27 @@ def situacion_create_view(request):
         return JsonResponse({"ok": False, "message": "Periodo no encontrado.", "errors": {"periodo_id": ["No existe."]}}, status=404)
     except Exception as exc:
         return _error_response(exc)
+    situacion_clave = evento.situacion.clave.upper()
+    evento_codigo = "SITUACION_ACADEMICA_REGISTRADA"
+    if "BAJA_TEMPORAL" in situacion_clave:
+        evento_codigo = "BAJA_TEMPORAL_REGISTRADA"
+    elif "BAJA_DEFINITIVA" in situacion_clave:
+        evento_codigo = "BAJA_DEFINITIVA_REGISTRADA"
+    elif "REINGRESO" in situacion_clave:
+        evento_codigo = "REINGRESO_REGISTRADO"
+    registrar_evento_exitoso(
+        request=request,
+        modulo=MODULO_TRAYECTORIA,
+        evento_codigo=evento_codigo,
+        severidad=SEVERIDAD_INFO,
+        objeto=evento,
+        resumen="Situacion academica registrada.",
+        metadatos={
+            "evento_situacion_id": evento.id,
+            "discente_id": evento.discente_id,
+            "periodo_id": evento.periodo_id,
+            "situacion_codigo": evento.situacion.clave,
+            "fecha_aplicacion": _date(evento.fecha_inicio),
+        },
+    )
     return JsonResponse({"ok": True, "item": _evento_item(evento)}, status=201)

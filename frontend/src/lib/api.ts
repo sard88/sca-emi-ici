@@ -6,6 +6,7 @@ import type {
   AsignacionesListResponse,
   AuthMe,
   AuthenticatedUser,
+  BitacoraEventosResponse,
   BusquedaResponse,
   CalendarioMes,
   CapturaPreliminarCorte,
@@ -184,6 +185,17 @@ export async function getExportaciones(params: Record<string, string> = {}) {
 
 export async function getAuditoriaExportaciones(params: Record<string, string> = {}) {
   return apiGet<{ items: ExportacionRegistro[] }>(`/api/auditoria/exportaciones/${queryString(params)}`);
+}
+
+export async function getAuditoriaEventos(params: Record<string, string> = {}) {
+  return apiGet<BitacoraEventosResponse>(`/api/auditoria/eventos/${queryString(params)}`);
+}
+
+export async function descargarAuditoriaEventosXlsx(params: Record<string, string> = {}) {
+  return downloadFile(`/api/exportaciones/auditoria/eventos/xlsx/${queryString(params)}`, {
+    forbidden: "No tienes permiso para exportar la bitácora de eventos.",
+    fallback: "La descarga de la bitácora falló. Intenta nuevamente o contacta soporte.",
+  });
 }
 
 export async function getActasExportables() {

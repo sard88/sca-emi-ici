@@ -8,6 +8,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from auditoria.eventos import MODULO_ADMINISTRACION, SEVERIDAD_INFO
+from auditoria.services import registrar_evento_exitoso
 from catalogos.models import Carrera
 from core.api_views import api_login_required
 
@@ -240,6 +242,28 @@ def _set_fields(instance, data, allowed_fields, fk_fields=None):
         setattr(instance, field_name, int(value) if value not in ("", None) else None)
 
 
+def _campos_recibidos(data):
+    return sorted(str(key) for key in data.keys() if str(key).lower() not in {"password", "password1", "password2"})
+
+
+def _auditar_admin(request, *, evento_codigo, item, resumen, campos=None, estado_anterior="", estado_nuevo=""):
+    registrar_evento_exitoso(
+        request=request,
+        modulo=MODULO_ADMINISTRACION,
+        evento_codigo=evento_codigo,
+        severidad=SEVERIDAD_INFO,
+        objeto=item,
+        estado_anterior=estado_anterior,
+        estado_nuevo=estado_nuevo,
+        resumen=resumen,
+        metadatos={
+            "modelo": item.__class__.__name__,
+            "id": item.pk,
+            "campos_recibidos": campos or [],
+        },
+    )
+
+
 @require_GET
 @api_login_required
 def roles_view(request):
@@ -282,7 +306,7 @@ def usuarios_collection_view(request):
     if data is None:
         return JsonResponse({"ok": False, "message": "Solicitud inválida.", "errors": {"__all__": ["JSON inválido."]}}, status=400)
     user = Usuario(username=(data.get("username") or "").strip())
-    return _save_usuario(user, data, created=True)
+    return _save_usuario(request, user, data, created=True)
 
 
 @require_http_methods(["GET", "PATCH"])
@@ -304,10 +328,10 @@ def usuarios_detail_view(request, pk):
     data = _json_body(request)
     if data is None:
         return JsonResponse({"ok": False, "message": "Solicitud inválida.", "errors": {"__all__": ["JSON inválido."]}}, status=400)
-    return _save_usuario(item, data, created=False)
+    return _save_usuario(request, item, data, created=False)
 
 
-def _save_usuario(user, data, created=False):
+def _save_usuario(request, user, data, created=False):
     _set_fields(
         user,
         data,
@@ -328,6 +352,13 @@ def _save_usuario(user, data, created=False):
         if role_name:
             group = Group.objects.get(name=role_name)
             user.groups.set([group])
+        _auditar_admin(
+            request,
+            evento_codigo="USUARIO_CREADO" if created else "USUARIO_ACTUALIZADO",
+            item=user,
+            resumen="Usuario creado desde portal administrativo." if created else "Usuario actualizado desde portal administrativo.",
+            campos=_campos_recibidos(data),
+        )
         return JsonResponse({"ok": True, "item": _serialize_usuario(user)}, status=201 if created else 200)
     except Group.DoesNotExist:
         return JsonResponse({"ok": False, "message": "No fue posible guardar el registro.", "errors": {"rol": ["Rol no válido."]}}, status=400)
@@ -345,9 +376,19 @@ def usuario_estado_view(request, pk, activo):
         item = Usuario.objects.get(pk=pk)
     except Usuario.DoesNotExist:
         return JsonResponse({"ok": False, "message": "Usuario no encontrado."}, status=404)
+    estado_anterior = item.estado_cuenta
     item.is_active = activo
     item.estado_cuenta = Usuario.ESTADO_ACTIVO if activo else Usuario.ESTADO_INACTIVO
     item.save(update_fields=["is_active", "estado_cuenta"])
+    _auditar_admin(
+        request,
+        evento_codigo="USUARIO_ACTIVADO" if activo else "USUARIO_INACTIVADO",
+        item=item,
+        resumen="Usuario activado." if activo else "Usuario inactivado.",
+        campos=["is_active", "estado_cuenta"],
+        estado_anterior=estado_anterior,
+        estado_nuevo=item.estado_cuenta,
+    )
     return JsonResponse({"ok": True, "item": _serialize_usuario(item)})
 
 
@@ -365,11 +406,18 @@ def grados_detail_view(request, pk):
     return _simple_detail(request, GradoEmpleo, pk, _serialize_grado, _save_grado, "Grado/empleo no encontrado.")
 
 
-def _save_grado(item, data, created=False):
+def _save_grado(request, item, data, created=False):
     _set_fields(item, data, ["clave", "abreviatura", "nombre", "tipo", "activo"])
     try:
         item.full_clean()
         item.save()
+        _auditar_admin(
+            request,
+            evento_codigo="GRADO_EMPLEO_CREADO" if created else "GRADO_EMPLEO_ACTUALIZADO",
+            item=item,
+            resumen="Grado/empleo creado." if created else "Grado/empleo actualizado.",
+            campos=_campos_recibidos(data),
+        )
         return JsonResponse({"ok": True, "item": _serialize_grado(item)}, status=201 if created else 200)
     except (ValidationError, IntegrityError) as exc:
         return _error_response(exc)
@@ -390,7 +438,7 @@ def unidades_detail_view(request, pk):
     return _simple_detail(request, UnidadOrganizacional, pk, _serialize_unidad, _save_unidad, "Unidad organizacional no encontrada.", select_related=("padre", "carrera"))
 
 
-def _save_unidad(item, data, created=False):
+def _save_unidad(request, item, data, created=False):
     _set_fields(
         item,
         data,
@@ -399,6 +447,13 @@ def _save_unidad(item, data, created=False):
     )
     try:
         item.save()
+        _auditar_admin(
+            request,
+            evento_codigo="UNIDAD_ORGANIZACIONAL_CREADA" if created else "UNIDAD_ORGANIZACIONAL_ACTUALIZADA",
+            item=item,
+            resumen="Unidad organizacional creada." if created else "Unidad organizacional actualizada.",
+            campos=_campos_recibidos(data),
+        )
         return JsonResponse({"ok": True, "item": _serialize_unidad(item)}, status=201 if created else 200)
     except (ValidationError, IntegrityError) as exc:
         return _error_response(exc)
@@ -419,7 +474,7 @@ def cargos_detail_view(request, pk):
     return _simple_detail(request, AsignacionCargo, pk, _serialize_cargo, _save_cargo, "Asignación de cargo no encontrada.", select_related=("usuario", "unidad_organizacional", "carrera"))
 
 
-def _save_cargo(item, data, created=False):
+def _save_cargo(request, item, data, created=False):
     _set_fields(
         item,
         data,
@@ -435,6 +490,13 @@ def _save_cargo(item, data, created=False):
     )
     try:
         item.save()
+        _auditar_admin(
+            request,
+            evento_codigo="ASIGNACION_CARGO_CREADA" if created else "ASIGNACION_CARGO_ACTUALIZADA",
+            item=item,
+            resumen="Asignacion de cargo creada." if created else "Asignacion de cargo actualizada.",
+            campos=_campos_recibidos(data),
+        )
         return JsonResponse({"ok": True, "item": _serialize_cargo(item)}, status=201 if created else 200)
     except (ValidationError, IntegrityError) as exc:
         return _error_response(exc)
@@ -451,10 +513,20 @@ def cargo_cerrar_view(request, pk):
     except AsignacionCargo.DoesNotExist:
         return JsonResponse({"ok": False, "message": "Asignación de cargo no encontrada."}, status=404)
     data = _json_body(request) or {}
+    estado_anterior = "ACTIVO" if item.activo else "INACTIVO"
     item.vigente_hasta = data.get("vigente_hasta") or item.vigente_hasta
     item.activo = False
     try:
         item.save()
+        _auditar_admin(
+            request,
+            evento_codigo="ASIGNACION_CARGO_CERRADA",
+            item=item,
+            resumen="Asignacion de cargo cerrada.",
+            campos=_campos_recibidos(data) + ["activo"],
+            estado_anterior=estado_anterior,
+            estado_nuevo="INACTIVO",
+        )
         return JsonResponse({"ok": True, "item": _serialize_cargo(item)})
     except ValidationError as exc:
         return _error_response(exc)
@@ -478,9 +550,24 @@ def simple_estado_view(request, resource, pk, activo):
         item = model.objects.get(pk=pk)
     except model.DoesNotExist:
         return JsonResponse({"ok": False, "message": "Registro no encontrado."}, status=404)
+    estado_anterior = "ACTIVO" if getattr(item, field) else "INACTIVO"
     setattr(item, field, activo)
     try:
         item.save()
+        evento_por_modelo = {
+            GradoEmpleo: "GRADO_EMPLEO_ACTIVADO" if activo else "GRADO_EMPLEO_INACTIVADO",
+            UnidadOrganizacional: "UNIDAD_ORGANIZACIONAL_ACTIVADA" if activo else "UNIDAD_ORGANIZACIONAL_INACTIVADA",
+            AsignacionCargo: "ASIGNACION_CARGO_ACTUALIZADA" if activo else "ASIGNACION_CARGO_INACTIVADA",
+        }
+        _auditar_admin(
+            request,
+            evento_codigo=evento_por_modelo[model],
+            item=item,
+            resumen="Estado administrativo actualizado.",
+            campos=[field],
+            estado_anterior=estado_anterior,
+            estado_nuevo="ACTIVO" if activo else "INACTIVO",
+        )
         return JsonResponse({"ok": True, "item": serializer(item)})
     except ValidationError as exc:
         return _error_response(exc)
@@ -502,7 +589,7 @@ def _simple_collection(request, qs, serializer, search_fields, save_func):
     data = _json_body(request)
     if data is None:
         return JsonResponse({"ok": False, "message": "Solicitud inválida.", "errors": {"__all__": ["JSON inválido."]}}, status=400)
-    return save_func(qs.model(), data, created=True)
+    return save_func(request, qs.model(), data, created=True)
 
 
 def _simple_detail(request, model, pk, serializer, save_func, not_found, select_related=()):
@@ -524,4 +611,4 @@ def _simple_detail(request, model, pk, serializer, save_func, not_found, select_
     data = _json_body(request)
     if data is None:
         return JsonResponse({"ok": False, "message": "Solicitud inválida.", "errors": {"__all__": ["JSON inválido."]}}, status=400)
-    return save_func(item, data, created=False)
+    return save_func(request, item, data, created=False)
