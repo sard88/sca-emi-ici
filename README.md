@@ -2213,3 +2213,150 @@ No se implementa en este bloque:
 Resumen técnico:
 
 - `docs/resumen_bloque9i_m_e_reportes_situacion_historial.md`
+
+## Bloque 10C-3C - Integración visual de reportes de trayectoria y situación académica
+
+Se integra en el portal Next.js la consulta y descarga de los reportes implementados en el Bloque 9I-M-E.
+
+### Objetivo
+
+Permitir que perfiles institucionales autorizados consulten vista previa, apliquen filtros y descarguen XLSX auditados de situación académica, movimientos académicos e historial interno.
+
+El frontend no genera XLSX, no calcula reportes, no genera PDF y no modifica historial ni movimientos. Solo consume APIs Django y dispara descargas auditadas.
+
+### Rutas frontend
+
+- `/reportes/trayectoria`
+- `/reportes/trayectoria/extraordinarios`
+- `/reportes/trayectoria/situacion-actual`
+- `/reportes/trayectoria/bajas-temporales`
+- `/reportes/trayectoria/bajas-definitivas`
+- `/reportes/trayectoria/reingresos`
+- `/reportes/trayectoria/egresables`
+- `/reportes/trayectoria/situacion-agregado`
+- `/reportes/trayectoria/movimientos-academicos`
+- `/reportes/trayectoria/cambios-grupo`
+- `/reportes/trayectoria/historial-interno`
+- `/reportes/trayectoria/historial-interno-discente`
+
+La ruta específica usa pantalla dinámica:
+
+- `/reportes/trayectoria/[slug]`
+
+### Reportes integrados
+
+- Extraordinarios registrados.
+- Situación académica actual.
+- Bajas temporales.
+- Bajas definitivas.
+- Reingresos.
+- Egresables / egresados.
+- Situación académica agregada.
+- Movimientos académicos.
+- Cambios de grupo.
+- Historial académico interno institucional.
+- Historial interno por discente.
+
+### Endpoints backend consumidos
+
+Vista previa JSON:
+
+- `GET /api/reportes/situacion/extraordinarios/`
+- `GET /api/reportes/situacion/actual/`
+- `GET /api/reportes/situacion/bajas-temporales/`
+- `GET /api/reportes/situacion/bajas-definitivas/`
+- `GET /api/reportes/situacion/reingresos/`
+- `GET /api/reportes/situacion/egresables/`
+- `GET /api/reportes/situacion/agregado/`
+- `GET /api/reportes/movimientos/`
+- `GET /api/reportes/movimientos/cambios-grupo/`
+- `GET /api/reportes/historial-interno/`
+- `GET /api/reportes/historial-interno/<discente_id>/`
+
+Descarga XLSX:
+
+- `GET /api/exportaciones/reportes/extraordinarios/xlsx/`
+- `GET /api/exportaciones/reportes/situacion-actual/xlsx/`
+- `GET /api/exportaciones/reportes/bajas-temporales/xlsx/`
+- `GET /api/exportaciones/reportes/bajas-definitivas/xlsx/`
+- `GET /api/exportaciones/reportes/reingresos/xlsx/`
+- `GET /api/exportaciones/reportes/egresables/xlsx/`
+- `GET /api/exportaciones/reportes/situacion-agregado/xlsx/`
+- `GET /api/exportaciones/reportes/movimientos-academicos/xlsx/`
+- `GET /api/exportaciones/reportes/cambios-grupo/xlsx/`
+- `GET /api/exportaciones/reportes/historial-interno/xlsx/`
+- `GET /api/exportaciones/reportes/historial-interno/<discente_id>/xlsx/`
+
+La descarga usa `credentials: "include"`, lee `Content-Disposition` y muestra `X-Registro-Exportacion-Id` cuando el backend lo devuelve.
+
+### Filtros visuales
+
+Se integran filtros compatibles con backend:
+
+- periodo;
+- carrera;
+- grupo;
+- plan;
+- antigüedad;
+- año de formación;
+- semestre;
+- asignatura;
+- docente;
+- discente;
+- discente_id;
+- situación;
+- tipo de movimiento;
+- grupo origen;
+- grupo destino;
+- aprobado;
+- baja abierta;
+- fecha desde/hasta;
+- incluir extraordinarios;
+- incluir eventos;
+- incluir movimientos.
+
+Los filtros vacíos se eliminan antes de consultar. La descarga XLSX usa los mismos filtros aplicados en pantalla.
+
+### Historial interno por discente
+
+`/reportes/trayectoria/historial-interno-discente` requiere capturar `discente_id` antes de consultar o descargar.
+
+El portal muestra aviso explícito:
+
+- el historial interno no es kárdex oficial;
+- no se debe usar matrícula militar como identificador principal;
+- la exportación está reservada para perfiles institucionales autorizados.
+
+### Permisos
+
+Pueden ver reportes de trayectoria:
+
+- Admin;
+- Estadística;
+- Jefatura académica;
+- Jefatura pedagógica;
+- Jefatura de carrera.
+
+No ven reportes de trayectoria:
+
+- Docente;
+- Discente.
+
+El frontend solo oculta opciones. El backend sigue validando permisos y ámbito institucional.
+
+### Qué queda fuera
+
+No se implementa en este bloque:
+
+- nuevos reportes backend;
+- generación XLSX en frontend;
+- PDF de situación o historial;
+- kárdex Excel;
+- importación Excel;
+- bitácora transversal completa;
+- edición de eventos, movimientos o trayectoria;
+- gráficas o dashboards BI.
+
+Resumen técnico:
+
+- `docs/resumen_bloque10c3c_reportes_trayectoria_portal.md`

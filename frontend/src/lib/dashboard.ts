@@ -31,6 +31,7 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
       { title: "Reportes y exportaciones", description: "Catálogo, actas exportables e historial documental.", href: "/reportes" },
       { title: "Reportes operativos y auditoría", description: "Actas, validaciones y exportaciones en XLSX.", href: "/reportes/operativos" },
       { title: "Reportes de desempeño", description: "Aprobados, reprobados, promedios y aprovechamiento académico.", href: "/reportes/desempeno" },
+      { title: "Reportes de trayectoria", description: "Situación académica, movimientos e historial interno.", href: "/reportes/trayectoria" },
       { title: "Kárdex oficial", description: "Exportación PDF institucional de kárdex.", href: "/reportes/kardex" },
       { title: "Auditoría de exportaciones", description: "Trazabilidad institucional de documentos generados.", href: "/reportes/auditoria" },
       { title: "Django Admin", description: "Administración técnica completa.", href: "/admin/", backend: true },
@@ -51,6 +52,7 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
       { title: "Reportes y exportaciones", description: "Actas PDF/XLSX, historial y catálogo de reportes.", href: "/reportes" },
       { title: "Reportes operativos", description: "Actas, validaciones y exportaciones en XLSX.", href: "/reportes/operativos" },
       { title: "Desempeño académico", description: "Aprobados, reprobados, promedios y aprovechamiento.", href: "/reportes/desempeno" },
+      { title: "Situación académica y trayectoria", description: "Extraordinarios, bajas, reingresos, movimientos e historial interno.", href: "/reportes/trayectoria" },
       { title: "Kárdex oficial PDF", description: "Exportación institucional para perfiles autorizados.", href: "/reportes/kardex" },
     ],
   },
@@ -92,6 +94,7 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
       { title: "Actas exportables", description: "Descarga documental de actas del ámbito autorizado.", href: "/reportes/actas" },
       { title: "Seguimiento de actas", description: "Reportes operativos filtrados por ámbito.", href: "/reportes/operativos" },
       { title: "Desempeño de mi carrera", description: "Indicadores académicos filtrados por ámbito.", href: "/reportes/desempeno" },
+      { title: "Trayectoria de mi carrera", description: "Situación, movimientos e historial interno del ámbito autorizado.", href: "/reportes/trayectoria" },
       { title: "Kárdex oficial", description: "Exportación PDF de discentes del ámbito autorizado.", href: "/reportes/kardex" },
     ],
   },
@@ -108,6 +111,7 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
       { title: "Reportes y exportaciones", description: "Actas, historial de descargas y auditoría documental.", href: "/reportes" },
       { title: "Reportes operativos", description: "Validaciones, pendientes y formalización de actas.", href: "/reportes/operativos" },
       { title: "Desempeño académico", description: "Indicadores institucionales y cuadro de aprovechamiento.", href: "/reportes/desempeno" },
+      { title: "Seguimiento de trayectoria", description: "Situación académica, bajas, reingresos e historial interno.", href: "/reportes/trayectoria" },
       { title: "Kárdex oficial", description: "Consulta documental PDF de kárdex institucional.", href: "/reportes/kardex" },
     ],
   },
@@ -123,6 +127,7 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
       { title: "Reportes y exportaciones", description: "Catálogo documental y salidas disponibles.", href: "/reportes" },
       { title: "Consulta institucional", description: "Reportes operativos autorizados en XLSX.", href: "/reportes/operativos" },
       { title: "Desempeño académico", description: "Reportes autorizados de resultados y aprovechamiento.", href: "/reportes/desempeno" },
+      { title: "Seguimiento de trayectoria", description: "Reportes autorizados de situación académica e historial interno.", href: "/reportes/trayectoria" },
       { title: "Kárdex oficial", description: "Exportación PDF autorizada de kárdex.", href: "/reportes/kardex" },
     ],
   },
@@ -196,6 +201,23 @@ export function canAccessReportesOperativos(user: AuthenticatedUser) {
 }
 
 export function canAccessReportesDesempeno(user: AuthenticatedUser) {
+  if (user.perfil_principal === "ADMIN" || user.roles.includes("ADMIN") || user.roles.includes("ADMIN_SISTEMA")) return true;
+  const values = roleValues(user);
+  if (values.has("DISCENTE") || values.has("DOCENTE")) return false;
+  return [
+    "ENCARGADO_ESTADISTICA",
+    "ESTADISTICA",
+    "JEFE_CARRERA",
+    "JEFATURA_CARRERA",
+    "JEFE_SUB_EJEC_CTR",
+    "JEFE_ACADEMICO",
+    "JEFATURA_ACADEMICA",
+    "JEFE_PEDAGOGICA",
+    "JEFE_SUB_PLAN_EVAL",
+  ].some((role) => values.has(role));
+}
+
+export function canAccessReportesTrayectoria(user: AuthenticatedUser) {
   if (user.perfil_principal === "ADMIN" || user.roles.includes("ADMIN") || user.roles.includes("ADMIN_SISTEMA")) return true;
   const values = roleValues(user);
   if (values.has("DISCENTE") || values.has("DOCENTE")) return false;

@@ -17,6 +17,8 @@ import type {
   ReporteDesempenoRespuesta,
   ReporteOperativoCodigo,
   ReporteOperativoRespuesta,
+  ReporteTrayectoriaCodigo,
+  ReporteTrayectoriaRespuesta,
   ReporteCatalogoItem,
 } from "./types";
 
@@ -337,6 +339,152 @@ export async function descargarReporteReprobadosNominalXlsx(params: Record<strin
 
 export async function descargarReporteCuadroAprovechamientoXlsx(params: Record<string, string> = {}) {
   return descargarReporteDesempenoXlsx("cuadro-aprovechamiento", params);
+}
+
+const trayectoriaPreviewEndpoint: Record<ReporteTrayectoriaCodigo, string> = {
+  extraordinarios: "/api/reportes/situacion/extraordinarios/",
+  "situacion-actual": "/api/reportes/situacion/actual/",
+  "bajas-temporales": "/api/reportes/situacion/bajas-temporales/",
+  "bajas-definitivas": "/api/reportes/situacion/bajas-definitivas/",
+  reingresos: "/api/reportes/situacion/reingresos/",
+  egresables: "/api/reportes/situacion/egresables/",
+  "situacion-agregado": "/api/reportes/situacion/agregado/",
+  "movimientos-academicos": "/api/reportes/movimientos/",
+  "cambios-grupo": "/api/reportes/movimientos/cambios-grupo/",
+  "historial-interno": "/api/reportes/historial-interno/",
+  "historial-interno-discente": "/api/reportes/historial-interno/",
+};
+
+const trayectoriaDownloadEndpoint: Record<ReporteTrayectoriaCodigo, string> = {
+  extraordinarios: "/api/exportaciones/reportes/extraordinarios/xlsx/",
+  "situacion-actual": "/api/exportaciones/reportes/situacion-actual/xlsx/",
+  "bajas-temporales": "/api/exportaciones/reportes/bajas-temporales/xlsx/",
+  "bajas-definitivas": "/api/exportaciones/reportes/bajas-definitivas/xlsx/",
+  reingresos: "/api/exportaciones/reportes/reingresos/xlsx/",
+  egresables: "/api/exportaciones/reportes/egresables/xlsx/",
+  "situacion-agregado": "/api/exportaciones/reportes/situacion-agregado/xlsx/",
+  "movimientos-academicos": "/api/exportaciones/reportes/movimientos-academicos/xlsx/",
+  "cambios-grupo": "/api/exportaciones/reportes/cambios-grupo/xlsx/",
+  "historial-interno": "/api/exportaciones/reportes/historial-interno/xlsx/",
+  "historial-interno-discente": "/api/exportaciones/reportes/historial-interno/",
+};
+
+export async function getReporteTrayectoria(slug: ReporteTrayectoriaCodigo, params: Record<string, string> = {}) {
+  if (slug === "historial-interno-discente") {
+    const discenteId = params.discente_id;
+    if (!discenteId) throw new Error("Captura un ID de discente válido para consultar el historial interno por discente.");
+    const rest = { ...params };
+    delete rest.discente_id;
+    return getReporteHistorialInternoDiscente(discenteId, rest);
+  }
+  return apiGet<ReporteTrayectoriaRespuesta>(`${trayectoriaPreviewEndpoint[slug]}${queryString(params)}`);
+}
+
+export async function getReporteSituacionExtraordinarios(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("extraordinarios", params);
+}
+
+export async function getReporteSituacionActual(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("situacion-actual", params);
+}
+
+export async function getReporteBajasTemporales(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("bajas-temporales", params);
+}
+
+export async function getReporteBajasDefinitivas(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("bajas-definitivas", params);
+}
+
+export async function getReporteReingresos(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("reingresos", params);
+}
+
+export async function getReporteEgresables(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("egresables", params);
+}
+
+export async function getReporteSituacionAgregado(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("situacion-agregado", params);
+}
+
+export async function getReporteMovimientosAcademicos(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("movimientos-academicos", params);
+}
+
+export async function getReporteCambiosGrupo(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("cambios-grupo", params);
+}
+
+export async function getReporteHistorialInterno(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("historial-interno", params);
+}
+
+export async function getReporteHistorialInternoDiscente(discenteId: string | number, params: Record<string, string> = {}) {
+  return apiGet<ReporteTrayectoriaRespuesta>(`/api/reportes/historial-interno/${encodeURIComponent(String(discenteId))}/${queryString(params)}`);
+}
+
+export async function descargarReporteTrayectoriaXlsx(slug: ReporteTrayectoriaCodigo, params: Record<string, string> = {}) {
+  if (slug === "historial-interno-discente") {
+    const discenteId = params.discente_id;
+    if (!discenteId) throw new Error("Captura un ID de discente válido para descargar el historial interno por discente.");
+    const rest = { ...params };
+    delete rest.discente_id;
+    return descargarReporteHistorialInternoDiscenteXlsx(discenteId, rest);
+  }
+  return downloadFile(`${trayectoriaDownloadEndpoint[slug]}${queryString(params)}`, {
+    forbidden: "No tienes permiso para exportar este reporte de trayectoria.",
+    notFound: "No se encontró información suficiente para generar este reporte.",
+    fallback: "La descarga del reporte falló. Intenta nuevamente o contacta soporte.",
+  });
+}
+
+export async function descargarReporteExtraordinariosXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("extraordinarios", params);
+}
+
+export async function descargarReporteSituacionActualXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("situacion-actual", params);
+}
+
+export async function descargarReporteBajasTemporalesXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("bajas-temporales", params);
+}
+
+export async function descargarReporteBajasDefinitivasXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("bajas-definitivas", params);
+}
+
+export async function descargarReporteReingresosXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("reingresos", params);
+}
+
+export async function descargarReporteEgresablesXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("egresables", params);
+}
+
+export async function descargarReporteSituacionAgregadoXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("situacion-agregado", params);
+}
+
+export async function descargarReporteMovimientosAcademicosXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("movimientos-academicos", params);
+}
+
+export async function descargarReporteCambiosGrupoXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("cambios-grupo", params);
+}
+
+export async function descargarReporteHistorialInternoXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("historial-interno", params);
+}
+
+export async function descargarReporteHistorialInternoDiscenteXlsx(discenteId: string | number, params: Record<string, string> = {}) {
+  return downloadFile(`/api/exportaciones/reportes/historial-interno/${encodeURIComponent(String(discenteId))}/xlsx/${queryString(params)}`, {
+    forbidden: "No tienes permiso para exportar este historial interno.",
+    notFound: "No se encontró el discente o no existe información suficiente para generar el historial interno.",
+    fallback: "No fue posible descargar el historial interno. Intenta nuevamente o contacta soporte.",
+  });
 }
 
 export function backendUrl(path: string) {

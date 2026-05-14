@@ -359,3 +359,70 @@ export type ReporteDesempenoConfig = {
   datosSensibles: boolean;
   privacidad?: string;
 };
+
+export type ReporteTrayectoriaCodigo =
+  | "extraordinarios"
+  | "situacion-actual"
+  | "bajas-temporales"
+  | "bajas-definitivas"
+  | "reingresos"
+  | "egresables"
+  | "situacion-agregado"
+  | "movimientos-academicos"
+  | "cambios-grupo"
+  | "historial-interno"
+  | "historial-interno-discente";
+
+export type ReporteTrayectoriaColumna = {
+  key: string;
+  label: string;
+};
+
+export type ReporteTrayectoriaItem = Record<string, unknown>;
+
+export type ReporteTrayectoriaSheet = {
+  titulo: string;
+  total: number;
+  columnas: ReporteTrayectoriaColumna[];
+};
+
+export type ReporteTrayectoriaRespuesta = {
+  ok: boolean;
+  slug: ReporteTrayectoriaCodigo;
+  nombre: string;
+  total: number;
+  filtros: Record<string, string>;
+  columnas: ReporteTrayectoriaColumna[];
+  items: ReporteTrayectoriaItem[];
+  resumen?: Record<string, unknown>;
+  sheets?: ReporteTrayectoriaSheet[];
+};
+
+export type ReporteTrayectoriaFiltro = {
+  key: string;
+  label: string;
+  type?: "text" | "select" | "date";
+  placeholder?: string;
+  options?: Array<{ value: string; label: string }>;
+};
+
+export type ReporteTrayectoriaConfig = {
+  slug: ReporteTrayectoriaCodigo;
+  titulo: string;
+  descripcion: string;
+  ruta: string;
+  tipoDocumento: string;
+  endpointVistaPrevia: string;
+  endpointDescarga: string;
+  formatosDisponibles: string[];
+  pdfPendiente: boolean;
+  filtros: ReporteTrayectoriaFiltro[];
+  columnasDestacadas: string[];
+  rolesSugeridos: string[];
+  ayuda: string;
+  nominal: boolean;
+  agregado: boolean;
+  datosSensibles: boolean;
+  privacidad?: string;
+  requiereDiscenteId?: boolean;
+};
