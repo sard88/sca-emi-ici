@@ -1728,3 +1728,94 @@ No se implementa todavía:
 Resumen técnico:
 
 - `docs/resumen_bloque10c2_integracion_kardex_pdf.md`
+
+## Bloque 9F-J-L - Reportes operativos de actas, validaciones y exportaciones
+
+Se implementa el paquete backend de reportes operativos en formato XLSX para seguimiento institucional de actas, validaciones y exportaciones realizadas. Este bloque no genera PDF, no modifica datos académicos y no crea documentos oficiales nuevos; únicamente consulta información existente, aplica permisos, produce Excel y audita cada descarga mediante `RegistroExportacion`.
+
+### Reportes implementados
+
+- Actas por estado.
+- Actas pendientes de validación.
+- Actas con inconformidades.
+- Actas sin conformidad de discentes.
+- Actas formalizadas por periodo/carrera/grupo.
+- Historial de validaciones de acta.
+- Exportaciones realizadas.
+
+### Endpoints JSON de vista previa
+
+- `GET /api/reportes/operativos/actas-estado/`
+- `GET /api/reportes/operativos/actas-pendientes/`
+- `GET /api/reportes/operativos/inconformidades/`
+- `GET /api/reportes/operativos/sin-conformidad/`
+- `GET /api/reportes/operativos/actas-formalizadas/`
+- `GET /api/reportes/operativos/validaciones-acta/`
+- `GET /api/reportes/operativos/exportaciones-realizadas/`
+
+### Endpoints XLSX
+
+- `GET /api/exportaciones/reportes/actas-estado/xlsx/`
+- `GET /api/exportaciones/reportes/actas-pendientes/xlsx/`
+- `GET /api/exportaciones/reportes/inconformidades/xlsx/`
+- `GET /api/exportaciones/reportes/sin-conformidad/xlsx/`
+- `GET /api/exportaciones/reportes/actas-formalizadas/xlsx/`
+- `GET /api/exportaciones/reportes/validaciones-acta/xlsx/`
+- `GET /api/exportaciones/reportes/exportaciones-realizadas/xlsx/`
+
+Cada descarga devuelve un archivo Excel con `Content-Disposition` y `X-Registro-Exportacion-Id`.
+
+### Permisos y privacidad
+
+- Admin/superusuario y Estadística pueden consultar y exportar reportes institucionales.
+- Jefatura académica y jefatura pedagógica consultan reportes institucionales autorizados.
+- Jefatura de carrera consulta/exporta reportes filtrados a su carrera o ámbito cuando se puede inferir.
+- Docente no accede a reportes globales en este paquete.
+- Discente no accede a estos reportes.
+- No se muestra matrícula militar por defecto.
+- Los comentarios de inconformidad se incluyen solo en el reporte autorizado de inconformidades.
+- Los filtros guardados en auditoría se sanitizan y no conservan credenciales, tokens ni datos sensibles.
+
+### Auditoría
+
+Cada exportación XLSX crea un `RegistroExportacion` con:
+
+- usuario;
+- tipo de reporte;
+- formato `XLSX`;
+- filtros sanitizados;
+- nombre de archivo seguro;
+- IP y user agent cuando están disponibles;
+- estado `GENERADA` o `FALLIDA`;
+- tamaño y hash SHA-256 cuando la generación termina correctamente.
+
+### Catálogo
+
+El catálogo de exportaciones marca como implementados en XLSX:
+
+- `REPORTE_ACTAS_ESTADO`
+- `REPORTE_ACTAS_PENDIENTES`
+- `REPORTE_INCONFORMIDADES`
+- `REPORTE_ACTAS_SIN_CONFORMIDAD`
+- `REPORTE_ACTAS_FORMALIZADAS`
+- `REPORTE_VALIDACIONES_ACTA`
+- `REPORTE_EXPORTACIONES`
+
+PDF queda pendiente para un subbloque posterior.
+
+### Qué queda fuera
+
+No se implementa todavía:
+
+- PDF de reportes operativos;
+- reportes de desempeño académico;
+- reportes de situación académica;
+- cuadro de aprovechamiento;
+- historial académico exportable;
+- kárdex Excel;
+- importación Excel;
+- integración visual completa en Next.js para estos reportes.
+
+Resumen técnico:
+
+- `docs/resumen_bloque9f_j_l_reportes_operativos.md`
