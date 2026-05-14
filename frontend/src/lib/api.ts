@@ -1,18 +1,27 @@
 import type {
   ActividadRecienteItem,
   ActaExportable,
+  ActaDetalle,
+  ActasListResponse,
+  AsignacionesListResponse,
   AuthMe,
   AuthenticatedUser,
   BusquedaResponse,
   CalendarioMes,
+  CapturaPreliminarCorte,
+  CapturaPreliminarPayload,
   DashboardResumen,
+  DiscenteActaDetalle,
+  DiscenteActasResponse,
   DownloadResult,
+  DocenteAsignacionDetalle,
   EventoCalendario,
   ExportacionRegistro,
   KardexExportable,
   NotificacionesResponse,
   PerfilUsuario,
   PortalQuickAccess,
+  ResumenCalculoAcademico,
   ReporteDesempenoCodigo,
   ReporteDesempenoRespuesta,
   ReporteOperativoCodigo,
@@ -519,6 +528,94 @@ export async function deactivateResource(endpoint: string, id: number | string) 
 
 export async function closeResource(endpoint: string, id: number | string, payload: Record<string, unknown> = {}) {
   return apiMutate<ResourceDetailResponse>(`${ensureTrailingSlash(endpoint)}${encodeURIComponent(String(id))}/cerrar/`, "POST", payload);
+}
+
+export async function getDocenteAsignaciones(params: Record<string, string> = {}) {
+  return apiGet<AsignacionesListResponse>(`/api/docente/asignaciones/${queryString(params)}`);
+}
+
+export async function getDocenteAsignacionDetalle(id: number | string) {
+  return apiGet<DocenteAsignacionDetalle>(`/api/docente/asignaciones/${encodeURIComponent(String(id))}/`);
+}
+
+export async function getDocenteCaptura(asignacionId: number | string, corte: string) {
+  return apiGet<CapturaPreliminarCorte>(`/api/docente/asignaciones/${encodeURIComponent(String(asignacionId))}/captura/${encodeURIComponent(corte)}/`);
+}
+
+export async function guardarDocenteCaptura(asignacionId: number | string, corte: string, payload: CapturaPreliminarPayload) {
+  return apiMutate<CapturaPreliminarCorte>(`/api/docente/asignaciones/${encodeURIComponent(String(asignacionId))}/captura/${encodeURIComponent(corte)}/`, "POST", payload);
+}
+
+export async function getDocenteResumen(asignacionId: number | string) {
+  return apiGet<ResumenCalculoAcademico>(`/api/docente/asignaciones/${encodeURIComponent(String(asignacionId))}/resumen/`);
+}
+
+export async function getDocenteActas(params: Record<string, string> = {}) {
+  return apiGet<ActasListResponse>(`/api/docente/actas/${queryString(params)}`);
+}
+
+export async function getDocenteActaDetalle(actaId: number | string) {
+  return apiGet<ActaDetalle>(`/api/docente/actas/${encodeURIComponent(String(actaId))}/`);
+}
+
+export async function generarActaDocente(asignacionId: number | string, corte: string) {
+  return apiMutate<{ ok: true; item: unknown; detalle: ActaDetalle }>(`/api/docente/asignaciones/${encodeURIComponent(String(asignacionId))}/actas/generar/`, "POST", { corte_codigo: corte });
+}
+
+export async function regenerarActaDocente(actaId: number | string) {
+  return apiMutate<{ ok: true; item: unknown }>(`/api/docente/actas/${encodeURIComponent(String(actaId))}/regenerar/`);
+}
+
+export async function publicarActaDocente(actaId: number | string) {
+  return apiMutate<{ ok: true; item: unknown; detalle: ActaDetalle }>(`/api/docente/actas/${encodeURIComponent(String(actaId))}/publicar/`);
+}
+
+export async function remitirActaDocente(actaId: number | string) {
+  return apiMutate<{ ok: true; item: unknown; detalle: ActaDetalle }>(`/api/docente/actas/${encodeURIComponent(String(actaId))}/remitir/`);
+}
+
+export async function getDiscenteActas() {
+  return apiGet<DiscenteActasResponse>("/api/discente/actas/");
+}
+
+export async function getDiscenteActaDetalle(detalleId: number | string) {
+  return apiGet<DiscenteActaDetalle>(`/api/discente/actas/${encodeURIComponent(String(detalleId))}/`);
+}
+
+export async function registrarConformidadDiscente(detalleId: number | string, payload: { tipo_conformidad: string; comentario?: string }) {
+  return apiMutate<{ ok: true; item: unknown }>(`/api/discente/actas/${encodeURIComponent(String(detalleId))}/conformidad/`, "POST", payload);
+}
+
+export async function getJefaturaCarreraActasPendientes(params: Record<string, string> = {}) {
+  return apiGet<ActasListResponse>(`/api/jefatura-carrera/actas/pendientes/${queryString(params)}`);
+}
+
+export async function getJefaturaCarreraActaDetalle(actaId: number | string) {
+  return apiGet<ActaDetalle>(`/api/jefatura-carrera/actas/${encodeURIComponent(String(actaId))}/`);
+}
+
+export async function validarActaJefaturaCarrera(actaId: number | string, payload: { observacion?: string } = {}) {
+  return apiMutate<{ ok: true; item: unknown; detalle: ActaDetalle }>(`/api/jefatura-carrera/actas/${encodeURIComponent(String(actaId))}/validar/`, "POST", payload);
+}
+
+export async function getJefaturaAcademicaActasPendientes(params: Record<string, string> = {}) {
+  return apiGet<ActasListResponse>(`/api/jefatura-academica/actas/pendientes/${queryString(params)}`);
+}
+
+export async function getJefaturaAcademicaActaDetalle(actaId: number | string) {
+  return apiGet<ActaDetalle>(`/api/jefatura-academica/actas/${encodeURIComponent(String(actaId))}/`);
+}
+
+export async function formalizarActaJefaturaAcademica(actaId: number | string, payload: { observacion?: string } = {}) {
+  return apiMutate<{ ok: true; item: unknown; detalle: ActaDetalle }>(`/api/jefatura-academica/actas/${encodeURIComponent(String(actaId))}/formalizar/`, "POST", payload);
+}
+
+export async function getEstadisticaActas(params: Record<string, string> = {}) {
+  return apiGet<ActasListResponse>(`/api/estadistica/actas/${queryString(params)}`);
+}
+
+export async function getEstadisticaActaDetalle(actaId: number | string) {
+  return apiGet<ActaDetalle>(`/api/estadistica/actas/${encodeURIComponent(String(actaId))}/`);
 }
 
 export function backendUrl(path: string) {

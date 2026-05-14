@@ -2495,3 +2495,128 @@ Comandos ejecutados durante el cierre del bloque:
 Resumen técnico:
 
 - `docs/resumen_bloque10c4_admin_catalogos_portal.md`
+
+## Bloque 10C-5 – Interfaces operativas de calificaciones y actas
+
+### Objetivo
+
+Migrar al portal Next.js las pantallas operativas principales de captura preliminar, resumen académico, gestión de actas, conformidad del discente, validación por jefatura de carrera, formalización por jefatura académica y consulta operativa de Estadística/Admin.
+
+El backend Django sigue siendo la fuente de verdad. El frontend solo consume APIs, muestra datos autorizados y dispara acciones existentes.
+
+### Rutas frontend nuevas
+
+Docente:
+
+- `/docente/asignaciones`
+- `/docente/asignaciones/[id]`
+- `/docente/asignaciones/[id]/captura/[corte]`
+- `/docente/asignaciones/[id]/resumen`
+- `/docente/actas`
+- `/docente/actas/[id]`
+
+Discente:
+
+- `/discente/actas`
+- `/discente/actas/[detalleId]`
+
+Jefaturas:
+
+- `/jefatura-carrera/actas`
+- `/jefatura-carrera/actas/[id]`
+- `/jefatura-academica/actas`
+- `/jefatura-academica/actas/[id]`
+
+Estadística/Admin:
+
+- `/estadistica/actas`
+- `/estadistica/actas/[id]`
+
+### APIs backend creadas
+
+Docente:
+
+- `GET /api/docente/asignaciones/`
+- `GET /api/docente/asignaciones/<id>/`
+- `GET|POST /api/docente/asignaciones/<id>/captura/<corte>/`
+- `GET /api/docente/asignaciones/<id>/resumen/`
+- `POST /api/docente/asignaciones/<id>/actas/generar/`
+- `GET /api/docente/actas/`
+- `GET /api/docente/actas/<acta_id>/`
+- `POST /api/docente/actas/<acta_id>/regenerar/`
+- `POST /api/docente/actas/<acta_id>/publicar/`
+- `POST /api/docente/actas/<acta_id>/remitir/`
+
+Discente:
+
+- `GET /api/discente/actas/`
+- `GET /api/discente/actas/<detalle_id>/`
+- `POST /api/discente/actas/<detalle_id>/conformidad/`
+
+Jefaturas y Estadística:
+
+- `GET /api/jefatura-carrera/actas/pendientes/`
+- `GET /api/jefatura-carrera/actas/<acta_id>/`
+- `POST /api/jefatura-carrera/actas/<acta_id>/validar/`
+- `GET /api/jefatura-academica/actas/pendientes/`
+- `GET /api/jefatura-academica/actas/<acta_id>/`
+- `POST /api/jefatura-academica/actas/<acta_id>/formalizar/`
+- `GET /api/estadistica/actas/`
+- `GET /api/estadistica/actas/<acta_id>/`
+
+### Reglas de operación
+
+- La captura preliminar acepta valores de 0.0 a 10.0 y vacío para limpiar captura.
+- La captura queda bloqueada si existe acta publicada, remitida, validada, formalizada o archivada del mismo corte/asignación.
+- Regenerar acta solo está disponible en `BORRADOR_DOCENTE`.
+- Publicar, remitir, validar y formalizar llaman a servicios Django existentes.
+- Discente solo ve su detalle individual y puede registrar conformidad únicamente en `PUBLICADO_DISCENTE`.
+- Inconformidad requiere comentario obligatorio.
+- Estadística consulta actas en solo lectura; no valida ni formaliza.
+- Las descargas PDF/XLSX de actas reutilizan endpoints existentes y auditoría de exportaciones.
+
+### Permisos
+
+- Docente: solo asignaciones y actas propias.
+- Discente: solo actas publicadas donde tiene detalle propio.
+- Jefatura de carrera: actas remitidas de su ámbito.
+- Jefatura académica: actas validadas pendientes de formalización.
+- Estadística/Admin: consulta operativa y exportación autorizada.
+- Backend valida permisos aunque el frontend oculte rutas.
+
+### Seguridad y privacidad
+
+- No se muestra matrícula militar por defecto.
+- No se usan JWT ni `localStorage`.
+- Mutaciones con sesión Django, cookies y CSRF.
+- No se editan actas formalizadas.
+- No se modifican reglas de cálculo académico, estados de acta, kárdex, historial ni reportes.
+
+### Qué queda fuera
+
+No se implementa en este bloque:
+
+- rectificación posterior a formalización;
+- reapertura/devolución/rechazo formal de acta;
+- importación Excel de calificaciones;
+- cierre/apertura de periodo en React;
+- kárdex, historial o reportes nuevos;
+- bitácora transversal completa.
+
+### Validación
+
+Comandos ejecutados durante el cierre del bloque:
+
+- `docker compose exec -T backend python manage.py check`
+- `docker compose exec -T backend python manage.py makemigrations`
+- `docker compose exec -T backend python manage.py migrate`
+- `docker compose exec -T backend python manage.py makemigrations --check`
+- `docker compose exec -T backend python manage.py test evaluacion`
+- `docker compose exec -T backend python manage.py test usuarios relaciones`
+- `docker compose exec -T backend python manage.py test`
+- `docker compose exec -T frontend npm run lint`
+- `docker compose exec -T frontend npm run build`
+
+Resumen técnico:
+
+- `docs/resumen_bloque10c5_calificaciones_actas_portal.md`

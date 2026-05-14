@@ -1,3 +1,4 @@
+import json
 from datetime import date
 from decimal import Decimal
 
@@ -1665,3 +1666,198 @@ class ActaFormalBloque6Tests(CapturaCalificacionPreliminarBaseTests):
         self.assertEqual(self.inscripcion.codigo_resultado_oficial, "APROBADO")
         self.assertEqual(self.inscripcion.codigo_marca, "")
         self.assertIsNotNone(self.inscripcion.cerrado_en)
+
+    def post_json(self, path, payload=None):
+        return self.client.post(
+            path,
+            data=json.dumps(payload or {}),
+            content_type="application/json",
+        )
+
+    def test_api_anonimo_no_accede_a_operacion_docente(self):
+        self.client.logout()
+
+        response = self.client.get("/api/docente/asignaciones/")
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_api_docente_lista_solo_asignaciones_propias_sin_matricula(self):
+        self.client.force_login(self.usuario_docente)
+
+        response = self.client.get("/api/docente/asignaciones/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["total"], 1)
+        self.assertEqual(payload["items"][0]["asignacion_id"], self.asignacion.id)
+        self.assertNotIn("CAP0001", response.content.decode())
+
+    def test_api_docente_no_accede_a_asignacion_ajena(self):
+        self.client.force_login(self.otro_docente)
+
+        response = self.client.get(f"/api/docente/asignaciones/{self.asignacion.id}/")
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_api_docente_guarda_y_borra_captura_preliminar(self):
+        self.client.force_login(self.usuario_docente)
+        path = f"/api/docente/asignaciones/{self.asignacion.id}/captura/P1/"
+
+        response = self.post_json(
+            path,
+            {
+                "valores": [
+                    {
+                        "inscripcion_id": self.inscripcion.id,
+                        "componente_id": self.componente_p1_tareas.id,
+                        "valor": "8.5",
+                    }
+                ]
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            CapturaCalificacionPreliminar.objects.filter(
+                inscripcion_materia=self.inscripcion,
+                componente=self.componente_p1_tareas,
+                valor=Decimal("8.5"),
+            ).exists()
+        )
+
+        response = self.post_json(
+            path,
+            {
+                "valores": [
+                    {
+                        "inscripcion_id": self.inscripcion.id,
+                        "componente_id": self.componente_p1_tareas.id,
+                        "valor": "",
+                    }
+                ]
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(
+            CapturaCalificacionPreliminar.objects.filter(
+                inscripcion_materia=self.inscripcion,
+                componente=self.componente_p1_tareas,
+            ).exists()
+        )
+
+    def test_api_docente_rechaza_captura_fuera_de_rango(self):
+        self.client.force_login(self.usuario_docente)
+
+        response = self.post_json(
+            f"/api/docente/asignaciones/{self.asignacion.id}/captura/P1/",
+            {
+                "valores": [
+                    {
+                        "inscripcion_id": self.inscripcion.id,
+                        "componente_id": self.componente_p1_tareas.id,
+                        "valor": "12.0",
+                    }
+                ]
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(CapturaCalificacionPreliminar.objects.exists())
+
+    def test_api_captura_bloqueada_si_existe_acta_avanzada(self):
+        acta = self.publicar_acta_p1()
+        self.client.force_login(self.usuario_docente)
+
+        response = self.post_json(
+            f"/api/docente/asignaciones/{self.asignacion.id}/captura/P1/",
+            {
+                "valores": [
+                    {
+                        "inscripcion_id": self.inscripcion.id,
+                        "componente_id": self.componente_p1_tareas.id,
+                        "valor": "9.0",
+                    }
+                ]
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(acta.estado_acta, Acta.ESTADO_PUBLICADO_DISCENTE)
+
+    def test_api_docente_genera_publica_y_remite_acta(self):
+        self.capturar_p1_completo()
+        self.client.force_login(self.usuario_docente)
+
+        generar = self.post_json(
+            f"/api/docente/asignaciones/{self.asignacion.id}/actas/generar/",
+            {"corte_codigo": "P1"},
+        )
+        acta_id = generar.json()["item"]["acta_id"]
+        publicar = self.post_json(f"/api/docente/actas/{acta_id}/publicar/")
+        remitir = self.post_json(f"/api/docente/actas/{acta_id}/remitir/")
+
+        self.assertEqual(generar.status_code, 200)
+        self.assertEqual(publicar.status_code, 200)
+        self.assertEqual(remitir.status_code, 200)
+        self.assertEqual(remitir.json()["item"]["estado_acta"], Acta.ESTADO_REMITIDO_JEFATURA_CARRERA)
+
+    def test_api_discente_lista_solo_sus_actas_y_no_muestra_matricula(self):
+        acta = self.publicar_acta_p1()
+        self.client.force_login(self.usuario_discente)
+
+        response = self.client.get("/api/discente/actas/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["items"][0]["acta_id"], acta.id)
+        self.assertNotIn("CAP0001", response.content.decode())
+
+    def test_api_discente_inconformidad_sin_comentario_se_rechaza(self):
+        acta = self.publicar_acta_p1()
+        detalle = acta.detalles.get()
+        self.client.force_login(self.usuario_discente)
+
+        response = self.post_json(
+            f"/api/discente/actas/{detalle.id}/conformidad/",
+            {"tipo_conformidad": ConformidadDiscente.ESTADO_INCONFORME, "comentario": ""},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(detalle.conformidades.exists())
+
+    def test_api_jefatura_carrera_valida_acta_remitida_de_su_ambito(self):
+        acta = self.remitir_acta_p1()
+        self.client.force_login(self.usuario_jefe_carrera)
+
+        response = self.post_json(f"/api/jefatura-carrera/actas/{acta.id}/validar/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["item"]["estado_acta"], Acta.ESTADO_VALIDADO_JEFATURA_CARRERA)
+
+    def test_api_estadistica_consulta_pero_no_valida(self):
+        acta = self.remitir_acta_p1()
+        self.client.force_login(self.usuario_estadistica)
+
+        listado = self.client.get("/api/estadistica/actas/")
+        validar = self.post_json(f"/api/jefatura-carrera/actas/{acta.id}/validar/")
+
+        self.assertEqual(listado.status_code, 200)
+        self.assertEqual(validar.status_code, 403)
+
+    def test_api_jefatura_academica_formaliza_acta_final_y_actualiza_oficiales(self):
+        self.capturar_final_completo_sin_exencion()
+        acta = crear_o_regenerar_borrador_acta(
+            self.asignacion,
+            ComponenteEvaluacion.CORTE_FINAL,
+            self.usuario_docente,
+        )
+        publicar_acta(acta, self.usuario_docente)
+        remitir_acta(acta, self.usuario_docente)
+        validar_acta_jefatura_carrera(acta, self.usuario_jefe_carrera)
+        self.client.force_login(self.usuario_jefe_academico)
+
+        response = self.post_json(f"/api/jefatura-academica/actas/{acta.id}/formalizar/")
+
+        self.assertEqual(response.status_code, 200)
+        self.inscripcion.refresh_from_db()
+        self.assertEqual(self.inscripcion.calificacion_final, Decimal("8.6"))

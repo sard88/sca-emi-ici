@@ -489,3 +489,230 @@ export type AdminCatalogResourceConfig = {
   permiteInactivar: boolean;
   soloLectura?: boolean;
 };
+
+export type EstadoActa =
+  | "BORRADOR_DOCENTE"
+  | "PUBLICADO_DISCENTE"
+  | "REMITIDO_JEFATURA_CARRERA"
+  | "VALIDADO_JEFATURA_CARRERA"
+  | "FORMALIZADO_JEFATURA_ACADEMICA"
+  | "ARCHIVADO";
+
+export type CorteAcademico = "P1" | "P2" | "P3" | "FINAL";
+
+export type UsuarioMinimo = {
+  id: number;
+  username?: string;
+  nombre: string;
+  nombre_institucional?: string;
+  grado_empleo?: string;
+  label?: string;
+};
+
+export type CatalogoMinimo = {
+  id: number;
+  clave?: string;
+  nombre?: string;
+  label?: string;
+  [key: string]: unknown;
+};
+
+export type DiscenteMinimo = {
+  id: number;
+  usuario_id?: number;
+  nombre: string;
+  nombre_institucional?: string;
+  grado_empleo?: string;
+  situacion_actual?: string;
+  situacion_actual_label?: string;
+};
+
+export type DocenteAsignacion = {
+  id: number;
+  asignacion_id: number;
+  docente: UsuarioMinimo;
+  periodo: CatalogoMinimo;
+  carrera: CatalogoMinimo;
+  grupo: CatalogoMinimo;
+  semestre: number;
+  programa_asignatura: CatalogoMinimo;
+  materia: CatalogoMinimo;
+  num_discentes: number | null;
+  activo: boolean;
+  estado_operativo: string;
+  urls?: Record<string, string>;
+};
+
+export type ActaComponente = {
+  id: number;
+  componente_id?: number;
+  corte_codigo?: CorteAcademico | string;
+  corte_label?: string;
+  nombre: string;
+  porcentaje?: number | null;
+  es_examen?: boolean;
+  orden?: number;
+};
+
+export type CapturaPreliminarValor = {
+  componente_id: number;
+  valor: number | string | null;
+};
+
+export type CapturaPreliminarFila = {
+  inscripcion_id: number;
+  discente: DiscenteMinimo;
+  valores: CapturaPreliminarValor[];
+};
+
+export type CapturaPreliminarCorte = {
+  ok: boolean;
+  asignacion: DocenteAsignacion;
+  esquema: Record<string, unknown>;
+  corte: CorteAcademico | string;
+  componentes: ActaComponente[];
+  filas: CapturaPreliminarFila[];
+  resultados_corte: Array<Record<string, unknown>>;
+  captura_bloqueada: boolean;
+  acta_bloqueante: ActaResumen | null;
+  guardados?: number;
+  limpiados?: number;
+  errores_calculo?: string[];
+};
+
+export type CapturaPreliminarPayload = {
+  valores: Array<{ inscripcion_id: number; componente_id: number; valor: string | number | null }>;
+};
+
+export type ResumenCalculoAcademico = {
+  ok: boolean;
+  asignacion: DocenteAsignacion;
+  items: Array<Record<string, unknown> & { inscripcion_id: number; discente: DiscenteMinimo }>;
+  total: number;
+  errores_calculo?: string[];
+};
+
+export type ConformidadDiscenteDTO = {
+  id: number;
+  estado_conformidad: "ACUSE" | "CONFORME" | "INCONFORME" | string;
+  estado_conformidad_label: string;
+  comentario?: string;
+  vigente: boolean;
+  registrado_en: string | null;
+  invalidado_en: string | null;
+};
+
+export type ValidacionActaDTO = {
+  id: number;
+  etapa_validacion: string;
+  etapa_validacion_label: string;
+  accion: string;
+  accion_label: string;
+  usuario: UsuarioMinimo | null;
+  cargo?: string;
+  cargo_codigo?: string;
+  unidad_organizacional?: string;
+  carrera?: string;
+  fecha_hora: string | null;
+  ip_origen?: string | null;
+  comentario?: string;
+};
+
+export type AccionActaDisponible = {
+  puede_regenerar?: boolean;
+  puede_publicar?: boolean;
+  puede_remitir?: boolean;
+  puede_validar_carrera?: boolean;
+  puede_formalizar?: boolean;
+  solo_lectura?: boolean;
+};
+
+export type ActaResumen = {
+  id: number;
+  acta_id: number;
+  asignacion_docente_id: number;
+  periodo: CatalogoMinimo;
+  carrera: CatalogoMinimo;
+  grupo: CatalogoMinimo;
+  semestre?: number;
+  programa_asignatura: CatalogoMinimo;
+  materia: CatalogoMinimo;
+  docente: UsuarioMinimo;
+  corte_codigo: CorteAcademico | string;
+  corte_label: string;
+  estado_acta: EstadoActa | string;
+  estado_acta_label: string;
+  es_final: boolean;
+  solo_lectura: boolean;
+  es_documento_oficial: boolean;
+  publicada_en: string | null;
+  remitida_en: string | null;
+  formalizada_en: string | null;
+  creado_en: string | null;
+  actualizado_en: string | null;
+  total_discentes?: number | null;
+  url_pdf?: string;
+  url_xlsx?: string;
+  acciones?: AccionActaDisponible;
+};
+
+export type ActaFilaDetalle = {
+  id: number;
+  detalle_id: number;
+  discente?: DiscenteMinimo;
+  resultado_corte: number | null;
+  promedio_parciales: number | null;
+  resultado_final_preliminar: number | null;
+  resultado_preliminar: string;
+  exencion_aplica: boolean;
+  completo: boolean;
+  calificaciones: Array<Record<string, unknown> & { componente_id: number; nombre: string }>;
+  conformidad_vigente: ConformidadDiscenteDTO | null;
+};
+
+export type ActaDetalle = {
+  ok: boolean;
+  acta: ActaResumen;
+  componentes: ActaComponente[];
+  filas: ActaFilaDetalle[];
+  validaciones: ValidacionActaDTO[];
+  acciones: AccionActaDisponible;
+  exportaciones?: { pdf?: string; xlsx?: string };
+  avisos?: Record<string, unknown>;
+};
+
+export type DocenteAsignacionDetalle = {
+  ok: boolean;
+  item: DocenteAsignacion;
+  esquema: Record<string, unknown> | null;
+  componentes: ActaComponente[];
+  cortes: string[];
+  discentes: Array<{ inscripcion_id: number; discente: DiscenteMinimo }>;
+  actas: ActaResumen[];
+};
+
+export type ActasListResponse = {
+  ok: boolean;
+  total: number;
+  items: ActaResumen[];
+};
+
+export type AsignacionesListResponse = {
+  ok: boolean;
+  total: number;
+  items: DocenteAsignacion[];
+};
+
+export type DiscenteActasResponse = {
+  ok: boolean;
+  total: number;
+  items: Array<Record<string, unknown> & { acta_id: number; detalle_id: number }>;
+};
+
+export type DiscenteActaDetalle = {
+  ok: boolean;
+  acta: ActaResumen;
+  detalle: ActaFilaDetalle;
+  puede_registrar_conformidad: boolean;
+  historial_conformidad: ConformidadDiscenteDTO[];
+};
