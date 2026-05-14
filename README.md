@@ -1924,3 +1924,93 @@ No se implementa todavía:
 Resumen técnico:
 
 - `docs/resumen_bloque10c3a_reportes_operativos_portal.md`
+
+## Bloque 9G-H - Reportes de desempeño académico y cuadro de aprovechamiento
+
+Se implementan reportes institucionales de desempeño académico y cuadro de aprovechamiento en backend, usando resultados oficiales consolidados y actas FINAL formalizadas como fuente de verdad.
+
+### Reportes implementados
+
+- Aprobados y reprobados.
+- Promedios académicos.
+- Distribución de calificaciones.
+- Exentos por asignatura.
+- Desempeño por docente.
+- Desempeño por carrera, antigüedad y año de formación.
+- Reprobados nominal.
+- Cuadro de aprovechamiento académico.
+
+### Endpoints JSON
+
+- `GET /api/reportes/desempeno/aprobados-reprobados/`
+- `GET /api/reportes/desempeno/promedios/`
+- `GET /api/reportes/desempeno/distribucion/`
+- `GET /api/reportes/desempeno/exentos/`
+- `GET /api/reportes/desempeno/docentes/`
+- `GET /api/reportes/desempeno/cohorte/`
+- `GET /api/reportes/desempeno/reprobados-nominal/`
+- `GET /api/reportes/desempeno/cuadro-aprovechamiento/`
+
+### Endpoints XLSX
+
+- `GET /api/exportaciones/reportes/aprobados-reprobados/xlsx/`
+- `GET /api/exportaciones/reportes/promedios/xlsx/`
+- `GET /api/exportaciones/reportes/distribucion/xlsx/`
+- `GET /api/exportaciones/reportes/exentos/xlsx/`
+- `GET /api/exportaciones/reportes/desempeno-docente/xlsx/`
+- `GET /api/exportaciones/reportes/desempeno-cohorte/xlsx/`
+- `GET /api/exportaciones/reportes/reprobados-nominal/xlsx/`
+- `GET /api/exportaciones/reportes/cuadro-aprovechamiento/xlsx/`
+
+Cada descarga XLSX registra auditoría en `RegistroExportacion` y devuelve `X-Registro-Exportacion-Id`.
+
+### Métricas
+
+Los reportes calculan, según aplique:
+
+- total evaluados;
+- aprobados;
+- reprobados;
+- porcentajes;
+- promedio;
+- máxima;
+- mínima;
+- moda;
+- desviación estándar poblacional;
+- distribución por rangos;
+- exentos de examen final.
+
+### Filtros
+
+Se soportan filtros por periodo, carrera, grupo, asignatura/programa, docente, antigüedad/generación, año de formación, semestre, fechas y opciones específicas del cuadro de aprovechamiento.
+
+### Permisos y privacidad
+
+- Admin y Estadística pueden consultar/exportar todos los reportes.
+- Jefaturas autorizadas consultan/exportan según ámbito institucional.
+- Jefatura de carrera queda filtrada por su carrera/ámbito.
+- Docente no accede a reportes globales en este bloque.
+- Discente no accede.
+- No se muestra matrícula militar por defecto.
+- Los reportes nominales se restringen a perfiles autorizados.
+
+### Auditoría
+
+Toda exportación registra usuario, tipo documental, formato, filtros sanitizados, nombre de archivo seguro, IP, user agent, estado, tamaño y hash SHA-256.
+
+### Qué queda fuera
+
+No se implementa todavía:
+
+- PDF del cuadro de aprovechamiento;
+- integración visual completa en Next.js;
+- reportes de situación académica;
+- historial académico exportable;
+- kárdex Excel;
+- importación Excel;
+- gráficas;
+- edición de datos.
+
+Resumen técnico:
+
+- `docs/resumen_bloque9g_h_reportes_desempeno.md`
