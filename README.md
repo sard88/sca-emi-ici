@@ -2128,3 +2128,88 @@ No se implementa en este bloque:
 Resumen técnico:
 
 - `docs/resumen_bloque10c3b_reportes_desempeno_portal.md`
+
+## Bloque 9I-M-E - Reportes de situación académica, movimientos e historial interno
+
+Se implementan reportes institucionales XLSX derivados de trayectoria académica, extraordinarios, eventos de situación, movimientos académicos e historial interno.
+
+### Objetivo
+
+Permitir que perfiles institucionales autorizados consulten vistas previas JSON y exporten XLSX auditados para seguimiento operativo, sin modificar actas, calificaciones, inscripciones, kárdex, historial académico persistente ni movimientos.
+
+### Reportes implementados
+
+- Extraordinarios registrados.
+- Situación académica actual.
+- Bajas temporales.
+- Bajas definitivas.
+- Reingresos.
+- Egresables / egresados.
+- Agregado de situaciones académicas.
+- Movimientos académicos.
+- Cambios de grupo.
+- Historial académico interno institucional.
+- Historial académico interno por discente.
+
+### Endpoints JSON
+
+- `GET /api/reportes/situacion/extraordinarios/`
+- `GET /api/reportes/situacion/actual/`
+- `GET /api/reportes/situacion/bajas-temporales/`
+- `GET /api/reportes/situacion/bajas-definitivas/`
+- `GET /api/reportes/situacion/reingresos/`
+- `GET /api/reportes/situacion/egresables/`
+- `GET /api/reportes/situacion/agregado/`
+- `GET /api/reportes/movimientos/`
+- `GET /api/reportes/movimientos/cambios-grupo/`
+- `GET /api/reportes/historial-interno/`
+- `GET /api/reportes/historial-interno/<discente_id>/`
+
+### Endpoints XLSX
+
+- `GET /api/exportaciones/reportes/extraordinarios/xlsx/`
+- `GET /api/exportaciones/reportes/situacion-actual/xlsx/`
+- `GET /api/exportaciones/reportes/bajas-temporales/xlsx/`
+- `GET /api/exportaciones/reportes/bajas-definitivas/xlsx/`
+- `GET /api/exportaciones/reportes/reingresos/xlsx/`
+- `GET /api/exportaciones/reportes/egresables/xlsx/`
+- `GET /api/exportaciones/reportes/situacion-agregado/xlsx/`
+- `GET /api/exportaciones/reportes/movimientos-academicos/xlsx/`
+- `GET /api/exportaciones/reportes/cambios-grupo/xlsx/`
+- `GET /api/exportaciones/reportes/historial-interno/xlsx/`
+- `GET /api/exportaciones/reportes/historial-interno/<discente_id>/xlsx/`
+
+Cada descarga devuelve `Content-Disposition: attachment`, MIME XLSX y `X-Registro-Exportacion-Id`.
+
+### Permisos
+
+- Admin/superusuario y Estadística pueden consultar y exportar todos los reportes.
+- Jefatura académica y jefatura pedagógica pueden consultar reportes institucionales autorizados.
+- Jefatura de carrera queda filtrada a su ámbito cuando existe carrera asociada.
+- Docente no accede a reportes globales de situación, movimientos ni historial interno.
+- Discente no accede a reportes institucionales ni exporta historial interno XLSX.
+
+El backend sigue siendo la autoridad real de permisos.
+
+### Privacidad
+
+- No se muestra matrícula militar por defecto.
+- Los reportes agregados no muestran nombres.
+- Los reportes nominales e historiales internos quedan restringidos a perfiles institucionales autorizados.
+- `RegistroExportacion` guarda metadatos, filtros sanitizados, estado, tamaño y hash, pero no guarda payload completo ni listados de discentes.
+
+### Qué queda fuera
+
+No se implementa en este bloque:
+
+- integración visual completa en Next.js;
+- kárdex Excel;
+- PDF de historial o situación académica;
+- bitácora transversal completa;
+- importación Excel;
+- gráficas;
+- cambios en datos académicos.
+
+Resumen técnico:
+
+- `docs/resumen_bloque9i_m_e_reportes_situacion_historial.md`
