@@ -7,6 +7,8 @@ admin.site.site_url = "/dashboard/"
 
 urlpatterns = [
     path("api/auth/", include("usuarios.api_urls")),
+    path("api/admin/", include("usuarios.admin_api_urls")),
+    path("api/catalogos/", include("catalogos.api_urls")),
     path("api/", include("core.api_urls")),
     path("api/", include("reportes.api_urls")),
     path("", include("usuarios.urls")),

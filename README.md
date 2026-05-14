@@ -2360,3 +2360,138 @@ No se implementa en este bloque:
 Resumen técnico:
 
 - `docs/resumen_bloque10c3c_reportes_trayectoria_portal.md`
+
+## Bloque 10C-4 - Interfaces administrativas y catálogos académicos
+
+Se integra en el portal Next.js una primera interfaz operativa para administración institucional y catálogos académicos, manteniendo Django Admin como respaldo técnico.
+
+### Objetivo
+
+Permitir que Admin, Estadística y jefaturas autorizadas consulten y operen registros base desde el portal moderno, con backend Django como fuente de verdad para permisos y validaciones.
+
+El frontend no accede directamente a base de datos, no duplica reglas críticas, no elimina físicamente registros y no reemplaza Django Admin.
+
+### Rutas frontend nuevas
+
+Administración institucional:
+
+- `/administracion`
+- `/administracion/usuarios`
+- `/administracion/usuarios/[id]`
+- `/administracion/grados-empleos`
+- `/administracion/unidades`
+- `/administracion/cargos`
+- `/administracion/roles`
+
+Catálogos académicos:
+
+- `/catalogos`
+- `/catalogos/carreras`
+- `/catalogos/planes`
+- `/catalogos/antiguedades`
+- `/catalogos/periodos`
+- `/catalogos/grupos`
+- `/catalogos/materias`
+- `/catalogos/programas-asignatura`
+- `/catalogos/esquemas-evaluacion`
+- `/catalogos/esquemas-evaluacion/[id]`
+- `/catalogos/situaciones-academicas`
+- `/catalogos/resultados-academicos`
+
+Las pantallas usan configuración centralizada y componentes reutilizables para tablas, filtros, formularios, errores backend y acciones de activación/inactivación.
+
+### APIs backend creadas
+
+Administración:
+
+- `GET|POST /api/admin/usuarios/`
+- `GET|PATCH /api/admin/usuarios/<id>/`
+- `POST /api/admin/usuarios/<id>/activar/`
+- `POST /api/admin/usuarios/<id>/inactivar/`
+- `GET|POST /api/admin/grados-empleos/`
+- `GET|PATCH /api/admin/grados-empleos/<id>/`
+- `POST /api/admin/grados-empleos/<id>/activar/`
+- `POST /api/admin/grados-empleos/<id>/inactivar/`
+- `GET|POST /api/admin/unidades-organizacionales/`
+- `GET|PATCH /api/admin/unidades-organizacionales/<id>/`
+- `POST /api/admin/unidades-organizacionales/<id>/activar/`
+- `POST /api/admin/unidades-organizacionales/<id>/inactivar/`
+- `GET|POST /api/admin/asignaciones-cargo/`
+- `GET|PATCH /api/admin/asignaciones-cargo/<id>/`
+- `POST /api/admin/asignaciones-cargo/<id>/cerrar/`
+- `POST /api/admin/asignaciones-cargo/<id>/activar/`
+- `POST /api/admin/asignaciones-cargo/<id>/inactivar/`
+- `GET /api/admin/roles/`
+
+Catálogos:
+
+- `GET|POST /api/catalogos/carreras/`
+- `GET|PATCH /api/catalogos/carreras/<id>/`
+- `GET|POST /api/catalogos/planes/`
+- `GET|PATCH /api/catalogos/planes/<id>/`
+- `GET|POST /api/catalogos/antiguedades/`
+- `GET|PATCH /api/catalogos/antiguedades/<id>/`
+- `GET|POST /api/catalogos/periodos/`
+- `GET|PATCH /api/catalogos/periodos/<id>/`
+- `GET|POST /api/catalogos/grupos/`
+- `GET|PATCH /api/catalogos/grupos/<id>/`
+- `GET|POST /api/catalogos/materias/`
+- `GET|PATCH /api/catalogos/materias/<id>/`
+- `GET|POST /api/catalogos/programas-asignatura/`
+- `GET|PATCH /api/catalogos/programas-asignatura/<id>/`
+- `GET|POST /api/catalogos/esquemas-evaluacion/`
+- `GET|PATCH /api/catalogos/esquemas-evaluacion/<id>/`
+- `GET|POST /api/catalogos/esquemas-evaluacion/<id>/componentes/`
+- `GET|PATCH /api/catalogos/esquemas-evaluacion/<id>/componentes/<componente_id>/`
+- `GET|POST /api/catalogos/situaciones-academicas/`
+- `GET|PATCH /api/catalogos/situaciones-academicas/<id>/`
+- `GET|POST /api/catalogos/resultados-academicos/`
+- `GET|PATCH /api/catalogos/resultados-academicos/<id>/`
+
+Todos los recursos que soportan estado exponen acciones `activar/` e `inactivar/`.
+
+### Perfiles autorizados
+
+- Admin/superusuario: lectura y escritura completa en administración y catálogos.
+- Estadística: lectura de administración operativa y escritura de catálogos académicos.
+- Jefatura académica/pedagógica: consulta autorizada.
+- Jefatura de carrera: consulta filtrada por ámbito cuando puede inferirse carrera.
+- Docente y Discente: sin acceso visual ni backend a administración/catálogos en este bloque.
+
+### Seguridad
+
+- Mutaciones con sesión Django, cookies y CSRF.
+- No se usan JWT ni `localStorage` para tokens.
+- No se expone contraseña ni hash.
+- No se implementa eliminación física desde portal.
+- Las validaciones reales quedan en backend/modelos/servicios.
+- Los errores de validación se devuelven como JSON y se muestran por campo en el portal.
+
+### Qué queda fuera
+
+No se implementa en este bloque:
+
+- captura docente de calificaciones;
+- flujo de actas en React;
+- cierre/apertura de periodo en React;
+- importación Excel;
+- reportes nuevos;
+- bitácora transversal completa;
+- cambios en cálculo académico;
+- eliminación de Django Admin.
+
+### Validación
+
+Comandos ejecutados durante el cierre del bloque:
+
+- `docker compose exec -T backend python manage.py check`
+- `docker compose exec -T backend python manage.py makemigrations --check`
+- `docker compose exec -T backend python manage.py test catalogos usuarios`
+- `docker compose exec -T backend python manage.py test relaciones evaluacion trayectoria`
+- `docker compose exec -T backend python manage.py test`
+- `docker compose exec -T frontend npm run lint`
+- `docker compose exec -T frontend npm run build`
+
+Resumen técnico:
+
+- `docs/resumen_bloque10c4_admin_catalogos_portal.md`

@@ -1,0 +1,345 @@
+import type { AdminCatalogResourceConfig, AuthenticatedUser } from "./types";
+
+const catalogRoles = [
+  "ADMIN",
+  "ADMIN_SISTEMA",
+  "ENCARGADO_ESTADISTICA",
+  "ESTADISTICA",
+  "JEFE_ACADEMICO",
+  "JEFATURA_ACADEMICA",
+  "JEFE_PEDAGOGICA",
+  "JEFE_SUB_PLAN_EVAL",
+  "JEFE_CARRERA",
+  "JEFATURA_CARRERA",
+  "JEFE_SUB_EJEC_CTR",
+];
+
+const writeRoles = ["ADMIN", "ADMIN_SISTEMA", "ENCARGADO_ESTADISTICA", "ESTADISTICA"];
+
+const estadoOptions = [
+  { value: "", label: "Seleccionar estado" },
+  { value: "activo", label: "Activo" },
+  { value: "inactivo", label: "Inactivo" },
+];
+
+export const catalogosResources: AdminCatalogResourceConfig[] = [
+  {
+    slug: "carreras",
+    titulo: "Carreras",
+    descripcion: "Catálogo de carreras académicas activas e inactivas.",
+    ruta: "/catalogos/carreras",
+    endpoint: "/api/catalogos/carreras/",
+    categoria: "catalogos",
+    tableColumns: [
+      { key: "clave", label: "Clave" },
+      { key: "nombre", label: "Nombre" },
+      { key: "estado", label: "Estado", type: "status" },
+      { key: "activo", label: "Activo", type: "boolean" },
+    ],
+    formFields: [
+      { key: "clave", label: "Clave", required: true, help: "Letras, números, guion y guion bajo." },
+      { key: "nombre", label: "Nombre", required: true },
+      { key: "estado", label: "Estado", type: "select", options: estadoOptions },
+      { key: "vigente_desde", label: "Vigente desde", type: "date" },
+      { key: "vigente_hasta", label: "Vigente hasta", type: "date" },
+    ],
+    filters: [{ key: "q", label: "Buscar", placeholder: "Clave o nombre" }],
+    permiteCrear: true,
+    permiteEditar: true,
+    permiteInactivar: true,
+  },
+  {
+    slug: "planes",
+    titulo: "Planes de estudio",
+    descripcion: "Planes vigentes por carrera y versión institucional.",
+    ruta: "/catalogos/planes",
+    endpoint: "/api/catalogos/planes/",
+    categoria: "catalogos",
+    tableColumns: [
+      { key: "clave", label: "Clave" },
+      { key: "nombre", label: "Nombre" },
+      { key: "carrera", label: "Carrera", type: "relation" },
+      { key: "version", label: "Versión" },
+      { key: "activo", label: "Activo", type: "boolean" },
+    ],
+    formFields: [
+      { key: "clave", label: "Clave", required: true },
+      { key: "nombre", label: "Nombre", required: true },
+      { key: "carrera_id", label: "Carrera", type: "relation", relationEndpoint: "/api/catalogos/carreras/", required: true },
+      { key: "version", label: "Versión" },
+      { key: "estado", label: "Estado", type: "select", options: estadoOptions },
+      { key: "vigente_desde", label: "Vigente desde", type: "date" },
+      { key: "vigente_hasta", label: "Vigente hasta", type: "date" },
+    ],
+    filters: [{ key: "q", label: "Buscar", placeholder: "Plan, carrera o nombre" }],
+    permiteCrear: true,
+    permiteEditar: true,
+    permiteInactivar: true,
+  },
+  {
+    slug: "antiguedades",
+    titulo: "Antigüedades",
+    descripcion: "Antigüedades asociadas a planes de estudio.",
+    ruta: "/catalogos/antiguedades",
+    endpoint: "/api/catalogos/antiguedades/",
+    categoria: "catalogos",
+    tableColumns: [
+      { key: "clave", label: "Clave" },
+      { key: "nombre", label: "Nombre" },
+      { key: "plan_estudios", label: "Plan", type: "relation" },
+      { key: "anio_inicio", label: "Año inicio" },
+      { key: "activo", label: "Activo", type: "boolean" },
+    ],
+    formFields: [
+      { key: "clave", label: "Clave", required: true },
+      { key: "nombre", label: "Nombre", required: true },
+      { key: "plan_estudios_id", label: "Plan de estudios", type: "relation", relationEndpoint: "/api/catalogos/planes/", required: true },
+      { key: "anio_inicio", label: "Año inicio", type: "number" },
+      { key: "anio_fin", label: "Año fin", type: "number" },
+      { key: "estado", label: "Estado", type: "select", options: estadoOptions },
+      { key: "vigente_desde", label: "Vigente desde", type: "date" },
+      { key: "vigente_hasta", label: "Vigente hasta", type: "date" },
+    ],
+    filters: [{ key: "q", label: "Buscar", placeholder: "Clave, plan o carrera" }],
+    permiteCrear: true,
+    permiteEditar: true,
+    permiteInactivar: true,
+  },
+  {
+    slug: "periodos",
+    titulo: "Periodos escolares",
+    descripcion: "Periodos académicos con estado operativo del ciclo escolar.",
+    ruta: "/catalogos/periodos",
+    endpoint: "/api/catalogos/periodos/",
+    categoria: "catalogos",
+    tableColumns: [
+      { key: "clave", label: "Clave" },
+      { key: "anio_escolar", label: "Año escolar" },
+      { key: "periodo_academico_label", label: "Periodo" },
+      { key: "estado_label", label: "Estado", type: "status" },
+      { key: "fecha_inicio", label: "Inicio", type: "date" },
+      { key: "fecha_fin", label: "Fin", type: "date" },
+    ],
+    formFields: [
+      { key: "clave", label: "Clave", required: true },
+      { key: "anio_escolar", label: "Año escolar", required: true, placeholder: "2026-2027" },
+      {
+        key: "periodo_academico",
+        label: "Periodo académico",
+        type: "select",
+        required: true,
+        options: [
+          { value: "", label: "Seleccionar periodo" },
+          { value: "1", label: "Primer semestre" },
+          { value: "2", label: "Segundo semestre" },
+        ],
+      },
+      { key: "fecha_inicio", label: "Fecha inicio", type: "date", required: true },
+      { key: "fecha_fin", label: "Fecha fin", type: "date", required: true },
+      {
+        key: "estado",
+        label: "Estado",
+        type: "select",
+        options: [
+          { value: "", label: "Seleccionar estado" },
+          { value: "planificado", label: "Planificado" },
+          { value: "activo", label: "Abierto" },
+          { value: "cerrado", label: "Cerrado" },
+          { value: "inactivo", label: "Inactivo" },
+        ],
+      },
+    ],
+    filters: [{ key: "q", label: "Buscar", placeholder: "Clave o año escolar" }],
+    ayuda: "El backend valida ciclo agosto-julio, obligatoriedad y fechas.",
+    permiteCrear: true,
+    permiteEditar: true,
+    permiteInactivar: true,
+  },
+  {
+    slug: "grupos",
+    titulo: "Grupos académicos",
+    descripcion: "Grupos por antigüedad, periodo y semestre.",
+    ruta: "/catalogos/grupos",
+    endpoint: "/api/catalogos/grupos/",
+    categoria: "catalogos",
+    tableColumns: [
+      { key: "clave_grupo", label: "Grupo" },
+      { key: "antiguedad", label: "Antigüedad", type: "relation" },
+      { key: "periodo", label: "Periodo", type: "relation" },
+      { key: "semestre_numero", label: "Semestre" },
+      { key: "cupo_maximo", label: "Cupo" },
+      { key: "activo", label: "Activo", type: "boolean" },
+    ],
+    formFields: [
+      { key: "clave_grupo", label: "Clave de grupo", required: true },
+      { key: "antiguedad_id", label: "Antigüedad", type: "relation", relationEndpoint: "/api/catalogos/antiguedades/", required: true },
+      { key: "periodo_id", label: "Periodo", type: "relation", relationEndpoint: "/api/catalogos/periodos/", required: true },
+      { key: "semestre_numero", label: "Semestre", type: "number", required: true },
+      { key: "cupo_maximo", label: "Cupo máximo", type: "number" },
+      { key: "estado", label: "Estado", type: "select", options: estadoOptions },
+    ],
+    filters: [{ key: "q", label: "Buscar", placeholder: "Grupo, antigüedad o periodo" }],
+    permiteCrear: true,
+    permiteEditar: true,
+    permiteInactivar: true,
+  },
+  {
+    slug: "materias",
+    titulo: "Materias",
+    descripcion: "Unidades de aprendizaje con horas y créditos calculados.",
+    ruta: "/catalogos/materias",
+    endpoint: "/api/catalogos/materias/",
+    categoria: "catalogos",
+    tableColumns: [
+      { key: "clave", label: "Clave" },
+      { key: "nombre", label: "Nombre" },
+      { key: "horas_totales", label: "Horas" },
+      { key: "creditos", label: "Créditos" },
+      { key: "activo", label: "Activo", type: "boolean" },
+    ],
+    formFields: [
+      { key: "clave", label: "Clave", required: true },
+      { key: "nombre", label: "Nombre", required: true },
+      { key: "horas_totales", label: "Horas totales", type: "number", required: true },
+      { key: "creditos", label: "Créditos", readOnly: true, help: "Se calculan automáticamente como horas x 0.0625." },
+      { key: "estado", label: "Estado", type: "select", options: estadoOptions },
+      { key: "vigente_desde", label: "Vigente desde", type: "date" },
+      { key: "vigente_hasta", label: "Vigente hasta", type: "date" },
+    ],
+    filters: [{ key: "q", label: "Buscar", placeholder: "Clave o nombre" }],
+    permiteCrear: true,
+    permiteEditar: true,
+    permiteInactivar: true,
+  },
+  {
+    slug: "programas-asignatura",
+    titulo: "Programas de asignatura",
+    descripcion: "Relación entre plan de estudios, materia, semestre y año de formación.",
+    ruta: "/catalogos/programas-asignatura",
+    endpoint: "/api/catalogos/programas-asignatura/",
+    categoria: "catalogos",
+    tableColumns: [
+      { key: "plan_estudios", label: "Plan", type: "relation" },
+      { key: "materia", label: "Materia", type: "relation" },
+      { key: "semestre_numero", label: "Semestre" },
+      { key: "anio_formacion", label: "Año formación" },
+      { key: "obligatoria", label: "Obligatoria", type: "boolean" },
+    ],
+    formFields: [
+      { key: "plan_estudios_id", label: "Plan de estudios", type: "relation", relationEndpoint: "/api/catalogos/planes/", required: true },
+      { key: "materia_id", label: "Materia", type: "relation", relationEndpoint: "/api/catalogos/materias/", required: true },
+      { key: "semestre_numero", label: "Semestre", type: "number", required: true },
+      { key: "anio_formacion", label: "Año de formación", readOnly: true, help: "Calculado por backend a partir del semestre." },
+      { key: "obligatoria", label: "Obligatoria", type: "boolean", readOnly: true, help: "El backend conserva obligatoria activa por regla institucional." },
+      { key: "ubicacion_excepcional", label: "Usar ubicación excepcional", type: "boolean" },
+    ],
+    filters: [{ key: "q", label: "Buscar", placeholder: "Plan, materia o clave" }],
+    permiteCrear: true,
+    permiteEditar: true,
+    permiteInactivar: false,
+  },
+  {
+    slug: "esquemas-evaluacion",
+    titulo: "Esquemas de evaluación",
+    descripcion: "Versiones de evaluación y componentes asociados por corte.",
+    ruta: "/catalogos/esquemas-evaluacion",
+    endpoint: "/api/catalogos/esquemas-evaluacion/",
+    categoria: "catalogos",
+    tableColumns: [
+      { key: "programa_asignatura", label: "Programa", type: "relation" },
+      { key: "version", label: "Versión" },
+      { key: "num_parciales", label: "Parciales" },
+      { key: "permite_exencion", label: "Exención", type: "boolean" },
+      { key: "activo", label: "Activo", type: "boolean" },
+    ],
+    formFields: [
+      { key: "programa_asignatura_id", label: "Programa de asignatura", type: "relation", relationEndpoint: "/api/catalogos/programas-asignatura/", required: true },
+      { key: "version", label: "Versión", required: true },
+      {
+        key: "num_parciales",
+        label: "Número de parciales",
+        type: "select",
+        options: [
+          { value: "", label: "Seleccionar" },
+          { value: "1", label: "1 parcial" },
+          { value: "2", label: "2 parciales" },
+          { value: "3", label: "3 parciales" },
+        ],
+      },
+      { key: "permite_exencion", label: "Permite exención", type: "boolean" },
+      { key: "peso_parciales", label: "Peso parciales", type: "number" },
+      { key: "peso_final", label: "Peso final", type: "number" },
+      { key: "umbral_exencion", label: "Umbral exención", type: "number" },
+      { key: "activo", label: "Activo", type: "boolean" },
+    ],
+    filters: [{ key: "q", label: "Buscar", placeholder: "Versión, materia o programa" }],
+    ayuda: "Los componentes se administran en el detalle del esquema; el backend valida cortes y porcentajes.",
+    permiteCrear: true,
+    permiteEditar: true,
+    permiteInactivar: true,
+  },
+  {
+    slug: "situaciones-academicas",
+    titulo: "Situaciones académicas",
+    descripcion: "Catálogo base de estados de trayectoria académica.",
+    ruta: "/catalogos/situaciones-academicas",
+    endpoint: "/api/catalogos/situaciones-academicas/",
+    categoria: "catalogos",
+    tableColumns: [
+      { key: "clave", label: "Clave" },
+      { key: "nombre", label: "Nombre" },
+      { key: "activo", label: "Activo", type: "boolean" },
+    ],
+    formFields: [
+      { key: "clave", label: "Clave", required: true },
+      { key: "nombre", label: "Nombre", required: true },
+      { key: "activo", label: "Activo", type: "boolean" },
+    ],
+    filters: [{ key: "q", label: "Buscar", placeholder: "Clave o nombre" }],
+    permiteCrear: true,
+    permiteEditar: true,
+    permiteInactivar: true,
+  },
+  {
+    slug: "resultados-academicos",
+    titulo: "Resultados académicos",
+    descripcion: "Catálogo de resultados oficiales y marcas académicas.",
+    ruta: "/catalogos/resultados-academicos",
+    endpoint: "/api/catalogos/resultados-academicos/",
+    categoria: "catalogos",
+    tableColumns: [
+      { key: "clave", label: "Clave" },
+      { key: "nombre", label: "Nombre" },
+      { key: "activo", label: "Activo", type: "boolean" },
+    ],
+    formFields: [
+      { key: "clave", label: "Clave", required: true },
+      { key: "nombre", label: "Nombre", required: true },
+      { key: "activo", label: "Activo", type: "boolean" },
+    ],
+    filters: [{ key: "q", label: "Buscar", placeholder: "Clave o nombre" }],
+    permiteCrear: true,
+    permiteEditar: true,
+    permiteInactivar: true,
+  },
+];
+
+export function getCatalogoResource(slug: string) {
+  return catalogosResources.find((item) => item.slug === slug);
+}
+
+export function canAccessCatalogos(user: AuthenticatedUser) {
+  const values = roleValues(user);
+  if (values.some((role) => ["ADMIN", "ADMIN_SISTEMA"].includes(role))) return true;
+  if (values.some((role) => ["DISCENTE", "DOCENTE"].includes(role))) return false;
+  return values.some((role) => catalogRoles.includes(role));
+}
+
+export function canWriteCatalogos(user: AuthenticatedUser) {
+  const values = roleValues(user);
+  return values.some((role) => writeRoles.includes(role));
+}
+
+function roleValues(user: AuthenticatedUser) {
+  return [user.perfil_principal ?? "", ...user.roles, ...user.cargos_vigentes.map((cargo) => cargo.cargo_codigo)];
+}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import type { AuthenticatedUser } from "@/lib/types";
-import { canAccessKardexPdf, canAccessReportes, canAccessReportesDesempeno, canAccessReportesOperativos, canAccessReportesTrayectoria, getProfilesForUser } from "@/lib/dashboard";
+import { canAccessAdministracionPortal, canAccessCatalogosPortal, canAccessKardexPdf, canAccessReportes, canAccessReportesDesempeno, canAccessReportesOperativos, canAccessReportesTrayectoria, getProfilesForUser } from "@/lib/dashboard";
 
 const routeByProfile: Record<string, string> = {
   ADMIN: "/admin-soporte",
@@ -25,6 +25,8 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
   const showReportesOperativos = canAccessReportesOperativos(user);
   const showReportesDesempeno = canAccessReportesDesempeno(user);
   const showReportesTrayectoria = canAccessReportesTrayectoria(user);
+  const showAdministracion = canAccessAdministracionPortal(user);
+  const showCatalogos = canAccessCatalogosPortal(user);
 
   return (
     <aside className="hidden min-h-screen w-[292px] shrink-0 border-r border-[#eadfce] bg-[#fffaf1]/92 p-4 shadow-[18px_0_44px_rgba(87,70,45,0.08)] backdrop-blur-xl lg:sticky lg:top-0 lg:flex lg:flex-col">
@@ -157,6 +159,40 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
                 ) : null}
               </>
             ) : null}
+            {showAdministracion ? (
+              <Link
+                href="/administracion"
+                className={clsx(
+                  "group flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition",
+                  pathname.startsWith("/administracion")
+                    ? "bg-[#f6ead7] text-[#7a123d]"
+                    : "text-[#1f2f2a] hover:bg-[#f7efe2]",
+                )}
+              >
+                <span className="flex items-center gap-3">
+                  <ModuleIcon name="ADMINISTRACION" className="h-5 w-5 text-[#46534e] group-hover:text-[#7a123d]" />
+                  Administración
+                </span>
+                <span className="text-lg leading-none text-[#7b6b58]">›</span>
+              </Link>
+            ) : null}
+            {showCatalogos ? (
+              <Link
+                href="/catalogos"
+                className={clsx(
+                  "group flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition",
+                  pathname.startsWith("/catalogos")
+                    ? "bg-[#f6ead7] text-[#7a123d]"
+                    : "text-[#1f2f2a] hover:bg-[#f7efe2]",
+                )}
+              >
+                <span className="flex items-center gap-3">
+                  <ModuleIcon name="CATALOGOS" className="h-5 w-5 text-[#46534e] group-hover:text-[#7a123d]" />
+                  Catálogos académicos
+                </span>
+                <span className="text-lg leading-none text-[#7b6b58]">›</span>
+              </Link>
+            ) : null}
           </div>
         </div>
       </nav>
@@ -184,6 +220,8 @@ export function MobileModuleNav({ user }: { user: AuthenticatedUser }) {
   const showReportesOperativos = canAccessReportesOperativos(user);
   const showReportesDesempeno = canAccessReportesDesempeno(user);
   const showReportesTrayectoria = canAccessReportesTrayectoria(user);
+  const showAdministracion = canAccessAdministracionPortal(user);
+  const showCatalogos = canAccessCatalogosPortal(user);
 
   return (
     <div className="lg:hidden">
@@ -202,6 +240,8 @@ export function MobileModuleNav({ user }: { user: AuthenticatedUser }) {
         {showReportesDesempeno ? <MobilePill href="/reportes/desempeno" active={pathname.startsWith("/reportes/desempeno")} label="Desempeño" /> : null}
         {showReportesTrayectoria ? <MobilePill href="/reportes/trayectoria" active={pathname.startsWith("/reportes/trayectoria")} label="Trayectoria" /> : null}
         {showKardex ? <MobilePill href="/reportes/kardex" active={pathname === "/reportes/kardex"} label="Kárdex" /> : null}
+        {showAdministracion ? <MobilePill href="/administracion" active={pathname.startsWith("/administracion")} label="Admin" /> : null}
+        {showCatalogos ? <MobilePill href="/catalogos" active={pathname.startsWith("/catalogos")} label="Catálogos" /> : null}
       </div>
     </div>
   );

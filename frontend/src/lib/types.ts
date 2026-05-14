@@ -426,3 +426,66 @@ export type ReporteTrayectoriaConfig = {
   privacidad?: string;
   requiereDiscenteId?: boolean;
 };
+
+export type ResourceListResponse = {
+  ok: boolean;
+  total: number;
+  page: number;
+  page_size: number;
+  items: ResourceItem[];
+};
+
+export type ResourceDetailResponse = {
+  ok: boolean;
+  item: ResourceItem;
+};
+
+export type ResourceItem = Record<string, unknown> & {
+  id: number;
+  label?: string;
+  activo?: boolean;
+};
+
+export type ResourceFieldType = "text" | "textarea" | "number" | "date" | "select" | "relation" | "boolean" | "password";
+
+export type ResourceFieldOption = {
+  value: string;
+  label: string;
+};
+
+export type ResourceFormField = {
+  key: string;
+  label: string;
+  type?: ResourceFieldType;
+  required?: boolean;
+  readOnly?: boolean;
+  placeholder?: string;
+  help?: string;
+  options?: ResourceFieldOption[];
+  relationEndpoint?: string;
+  relationLabelKey?: string;
+  relationValueKey?: string;
+};
+
+export type ResourceTableColumn = {
+  key: string;
+  label: string;
+  type?: "text" | "boolean" | "status" | "date" | "relation";
+};
+
+export type AdminCatalogResourceConfig = {
+  slug: string;
+  titulo: string;
+  descripcion: string;
+  ruta: string;
+  endpoint: string;
+  categoria: "administracion" | "catalogos";
+  tableColumns: ResourceTableColumn[];
+  formFields: ResourceFormField[];
+  filters?: ResourceFormField[];
+  ayuda?: string;
+  permiteCrear: boolean;
+  permiteEditar: boolean;
+  permiteInactivar: boolean;
+  soloLectura?: boolean;
+};

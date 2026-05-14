@@ -20,6 +20,8 @@ import type {
   ReporteTrayectoriaCodigo,
   ReporteTrayectoriaRespuesta,
   ReporteCatalogoItem,
+  ResourceDetailResponse,
+  ResourceListResponse,
 } from "./types";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
@@ -32,10 +34,14 @@ function apiUrl(path: string) {
 async function parseJson<T>(response: Response): Promise<T> {
   const data = (await response.json()) as T;
   if (!response.ok) {
-    const message = typeof data === "object" && data && "error" in data
-      ? String((data as { error?: unknown }).error)
+    const message = typeof data === "object" && data
+      ? String((data as { error?: unknown; message?: unknown }).error ?? (data as { message?: unknown }).message ?? "No fue posible completar la solicitud.")
       : "No fue posible completar la solicitud.";
-    throw new Error(message);
+    const error = new Error(message) as Error & { errors?: Record<string, string[]> };
+    if (typeof data === "object" && data && "errors" in data) {
+      error.errors = (data as { errors?: Record<string, string[]> }).errors;
+    }
+    throw error;
   }
   return data;
 }
@@ -487,9 +493,41 @@ export async function descargarReporteHistorialInternoDiscenteXlsx(discenteId: s
   });
 }
 
+export async function listResource(endpoint: string, params: Record<string, string> = {}) {
+  return apiGet<ResourceListResponse>(`${ensureTrailingSlash(endpoint)}${queryString(params)}`);
+}
+
+export async function getResource(endpoint: string, id: number | string) {
+  return apiGet<ResourceDetailResponse>(`${ensureTrailingSlash(endpoint)}${encodeURIComponent(String(id))}/`);
+}
+
+export async function createResource(endpoint: string, payload: Record<string, unknown>) {
+  return apiMutate<ResourceDetailResponse>(ensureTrailingSlash(endpoint), "POST", payload);
+}
+
+export async function updateResource(endpoint: string, id: number | string, payload: Record<string, unknown>) {
+  return apiMutate<ResourceDetailResponse>(`${ensureTrailingSlash(endpoint)}${encodeURIComponent(String(id))}/`, "PATCH", payload);
+}
+
+export async function activateResource(endpoint: string, id: number | string) {
+  return apiMutate<ResourceDetailResponse>(`${ensureTrailingSlash(endpoint)}${encodeURIComponent(String(id))}/activar/`);
+}
+
+export async function deactivateResource(endpoint: string, id: number | string) {
+  return apiMutate<ResourceDetailResponse>(`${ensureTrailingSlash(endpoint)}${encodeURIComponent(String(id))}/inactivar/`);
+}
+
+export async function closeResource(endpoint: string, id: number | string, payload: Record<string, unknown> = {}) {
+  return apiMutate<ResourceDetailResponse>(`${ensureTrailingSlash(endpoint)}${encodeURIComponent(String(id))}/cerrar/`, "POST", payload);
+}
+
 export function backendUrl(path: string) {
   if (path.startsWith("http")) return path;
   return apiUrl(path.startsWith("/") ? path : `/${path}`);
+}
+
+function ensureTrailingSlash(path: string) {
+  return path.endsWith("/") ? path : `${path}/`;
 }
 
 function queryString(params: Record<string, string>) {
