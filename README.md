@@ -1819,3 +1819,108 @@ No se implementa todavía:
 Resumen técnico:
 
 - `docs/resumen_bloque9f_j_l_reportes_operativos.md`
+
+## Bloque 10C-3A - Integración visual de reportes operativos
+
+Se integra en el portal Next.js la consulta visual de los reportes operativos implementados en el Bloque 9F-J-L. El frontend no genera Excel ni recalcula reportes; consume APIs Django, muestra vistas previas autorizadas y dispara descargas XLSX auditadas.
+
+### Rutas frontend nuevas
+
+- `http://localhost:3000/reportes/operativos`
+- `http://localhost:3000/reportes/operativos/actas-estado`
+- `http://localhost:3000/reportes/operativos/actas-pendientes`
+- `http://localhost:3000/reportes/operativos/inconformidades`
+- `http://localhost:3000/reportes/operativos/sin-conformidad`
+- `http://localhost:3000/reportes/operativos/actas-formalizadas`
+- `http://localhost:3000/reportes/operativos/validaciones-acta`
+- `http://localhost:3000/reportes/operativos/exportaciones-realizadas`
+
+### Reportes incluidos
+
+- Actas por estado.
+- Actas pendientes de validación.
+- Actas con inconformidades.
+- Actas sin conformidad de discentes.
+- Actas formalizadas.
+- Historial de validaciones de acta.
+- Exportaciones realizadas.
+
+### APIs backend consumidas
+
+Vista previa JSON:
+
+- `GET /api/reportes/operativos/actas-estado/`
+- `GET /api/reportes/operativos/actas-pendientes/`
+- `GET /api/reportes/operativos/inconformidades/`
+- `GET /api/reportes/operativos/sin-conformidad/`
+- `GET /api/reportes/operativos/actas-formalizadas/`
+- `GET /api/reportes/operativos/validaciones-acta/`
+- `GET /api/reportes/operativos/exportaciones-realizadas/`
+
+Descarga XLSX:
+
+- `GET /api/exportaciones/reportes/actas-estado/xlsx/`
+- `GET /api/exportaciones/reportes/actas-pendientes/xlsx/`
+- `GET /api/exportaciones/reportes/inconformidades/xlsx/`
+- `GET /api/exportaciones/reportes/sin-conformidad/xlsx/`
+- `GET /api/exportaciones/reportes/actas-formalizadas/xlsx/`
+- `GET /api/exportaciones/reportes/validaciones-acta/xlsx/`
+- `GET /api/exportaciones/reportes/exportaciones-realizadas/xlsx/`
+
+La descarga lee `Content-Disposition` y `X-Registro-Exportacion-Id`, muestra el folio técnico y deja la exportación disponible en el historial.
+
+### Filtros disponibles
+
+Se agregan filtros visuales compatibles con backend:
+
+- periodo;
+- carrera;
+- grupo;
+- asignatura/programa;
+- docente;
+- corte;
+- estado del acta;
+- tipo de pendiente;
+- etapa de validación;
+- acción;
+- usuario;
+- cargo;
+- formato;
+- tipo documental;
+- estado de exportación;
+- fecha desde/hasta.
+
+Los filtros vacíos no se envían. La descarga XLSX usa los mismos filtros aplicados en pantalla.
+
+### Permisos visuales
+
+- Admin, Estadística, Jefatura de carrera, Jefatura académica y Jefatura pedagógica ven Reportes operativos.
+- Docente conserva actas propias en `/reportes/actas`, pero no ve reportes operativos globales.
+- Discente no ve reportes operativos.
+- El backend sigue siendo la autoridad real de permisos.
+
+### Integración con navegación
+
+Se agrega acceso a Reportes operativos en:
+
+- `/reportes`;
+- sidebar de Reportes y exportaciones;
+- dashboards de Admin, Estadística y Jefaturas autorizadas.
+
+### Qué queda fuera
+
+No se implementa todavía:
+
+- PDF de reportes operativos;
+- reportes de desempeño académico;
+- reportes de situación académica;
+- cuadro de aprovechamiento;
+- kárdex Excel;
+- importación Excel;
+- gráficas;
+- edición de datos desde React;
+- generación XLSX en frontend.
+
+Resumen técnico:
+
+- `docs/resumen_bloque10c3a_reportes_operativos_portal.md`

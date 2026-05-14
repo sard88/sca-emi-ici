@@ -10,9 +10,10 @@ import { LoadingState } from "@/components/states/LoadingState";
 import { ReportCatalogCard } from "@/components/reportes/ReportCatalogCard";
 import { ExportHistoryTable } from "@/components/reportes/ExportHistoryTable";
 import { getExportaciones, getReportesCatalogo } from "@/lib/api";
-import { canAccessAuditoriaExportaciones, canAccessKardexPdf, canAccessReportes } from "@/lib/dashboard";
+import { canAccessAuditoriaExportaciones, canAccessKardexPdf, canAccessReportes, canAccessReportesOperativos } from "@/lib/dashboard";
+import { canAccessReporteOperativo, reportesOperativos } from "@/lib/reportes-operativos";
 import { useAuth } from "@/lib/auth";
-import type { ExportacionRegistro, ReporteCatalogoItem } from "@/lib/types";
+import type { AuthenticatedUser, ExportacionRegistro, ReporteCatalogoItem } from "@/lib/types";
 
 export default function ReportesPage() {
   const { user } = useAuth();
@@ -56,6 +57,9 @@ export default function ReportesPage() {
 
           <section className="grid gap-4 md:grid-cols-3">
             <QuickLink title="Actas exportables" description="PDF/XLSX de actas de corte y calificación final." href="/reportes/actas" />
+            {canAccessReportesOperativos(user) ? (
+              <QuickLink title="Reportes operativos" description="Actas, validaciones y exportaciones realizadas en XLSX." href="/reportes/operativos" />
+            ) : null}
             {canAccessKardexPdf(user) ? (
               <QuickLink title="Kárdex oficial" description="PDF institucional desde ServicioKardex, con auditoría documental." href="/reportes/kardex" />
             ) : null}
@@ -85,8 +89,8 @@ export default function ReportesPage() {
                       <ReportCatalogCard
                         key={item.codigo}
                         item={item}
-                        actionHref={item.codigo === "KARDEX_OFICIAL" && canAccessKardexPdf(user) ? "/reportes/kardex" : undefined}
-                        actionLabel="Exportar kárdex PDF"
+                        actionHref={actionHrefForCatalogItem(item, user)}
+                        actionLabel={actionLabelForCatalogItem(item)}
                       />
                     ))}
                   </div>
@@ -115,6 +119,18 @@ export default function ReportesPage() {
       )}
     </AppShell>
   );
+}
+
+function actionHrefForCatalogItem(item: ReporteCatalogoItem, user: AuthenticatedUser) {
+  if (item.codigo === "KARDEX_OFICIAL" && canAccessKardexPdf(user)) return "/reportes/kardex";
+  if (!canAccessReportesOperativos(user)) return undefined;
+  return reportesOperativos.find((config) => config.tipoDocumento === item.codigo && canAccessReporteOperativo(user, config))?.ruta;
+}
+
+function actionLabelForCatalogItem(item: ReporteCatalogoItem) {
+  if (item.codigo === "KARDEX_OFICIAL") return "Exportar kárdex PDF";
+  if (reportesOperativos.some((config) => config.tipoDocumento === item.codigo)) return "Ver reporte operativo";
+  return "Abrir módulo";
 }
 
 function QuickLink({ title, description, href }: { title: string; description: string; href?: string }) {

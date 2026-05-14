@@ -13,6 +13,8 @@ import type {
   NotificacionesResponse,
   PerfilUsuario,
   PortalQuickAccess,
+  ReporteOperativoCodigo,
+  ReporteOperativoRespuesta,
   ReporteCatalogoItem,
 } from "./types";
 
@@ -180,6 +182,73 @@ export async function descargarKardexPdf(discenteId: number) {
     notFound: "No se encontró el discente o no existe información suficiente para generar el kárdex.",
     fallback: "No fue posible generar el kárdex. Intenta nuevamente o contacta soporte.",
   });
+}
+
+export async function getReporteOperativo(slug: ReporteOperativoCodigo, params: Record<string, string> = {}) {
+  return apiGet<ReporteOperativoRespuesta>(`/api/reportes/operativos/${slug}/${queryString(params)}`);
+}
+
+export async function getReporteOperativoActasEstado(params: Record<string, string> = {}) {
+  return getReporteOperativo("actas-estado", params);
+}
+
+export async function getReporteOperativoActasPendientes(params: Record<string, string> = {}) {
+  return getReporteOperativo("actas-pendientes", params);
+}
+
+export async function getReporteOperativoInconformidades(params: Record<string, string> = {}) {
+  return getReporteOperativo("inconformidades", params);
+}
+
+export async function getReporteOperativoSinConformidad(params: Record<string, string> = {}) {
+  return getReporteOperativo("sin-conformidad", params);
+}
+
+export async function getReporteOperativoActasFormalizadas(params: Record<string, string> = {}) {
+  return getReporteOperativo("actas-formalizadas", params);
+}
+
+export async function getReporteOperativoValidacionesActa(params: Record<string, string> = {}) {
+  return getReporteOperativo("validaciones-acta", params);
+}
+
+export async function getReporteOperativoExportacionesRealizadas(params: Record<string, string> = {}) {
+  return getReporteOperativo("exportaciones-realizadas", params);
+}
+
+export async function descargarReporteOperativoXlsx(slug: ReporteOperativoCodigo, params: Record<string, string> = {}) {
+  return downloadFile(`/api/exportaciones/reportes/${slug}/xlsx/${queryString(params)}`, {
+    forbidden: "No tienes permiso para exportar este reporte.",
+    fallback: "La descarga del reporte falló. Intenta nuevamente o contacta soporte.",
+  });
+}
+
+export async function descargarReporteActasEstadoXlsx(params: Record<string, string> = {}) {
+  return descargarReporteOperativoXlsx("actas-estado", params);
+}
+
+export async function descargarReporteActasPendientesXlsx(params: Record<string, string> = {}) {
+  return descargarReporteOperativoXlsx("actas-pendientes", params);
+}
+
+export async function descargarReporteInconformidadesXlsx(params: Record<string, string> = {}) {
+  return descargarReporteOperativoXlsx("inconformidades", params);
+}
+
+export async function descargarReporteSinConformidadXlsx(params: Record<string, string> = {}) {
+  return descargarReporteOperativoXlsx("sin-conformidad", params);
+}
+
+export async function descargarReporteActasFormalizadasXlsx(params: Record<string, string> = {}) {
+  return descargarReporteOperativoXlsx("actas-formalizadas", params);
+}
+
+export async function descargarReporteValidacionesActaXlsx(params: Record<string, string> = {}) {
+  return descargarReporteOperativoXlsx("validaciones-acta", params);
+}
+
+export async function descargarReporteExportacionesRealizadasXlsx(params: Record<string, string> = {}) {
+  return descargarReporteOperativoXlsx("exportaciones-realizadas", params);
 }
 
 export function backendUrl(path: string) {
