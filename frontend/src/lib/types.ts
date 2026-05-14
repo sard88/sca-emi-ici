@@ -716,3 +716,189 @@ export type DiscenteActaDetalle = {
   puede_registrar_conformidad: boolean;
   historial_conformidad: ConformidadDiscenteDTO[];
 };
+
+export type HistorialResultadoDTO = Record<string, unknown> & {
+  inscripcion_id?: number;
+  tipo_resultado?: string;
+  calificacion?: number | null;
+  codigo_resultado?: string;
+  codigo_marca?: string;
+};
+
+export type HistorialEventoDTO = Record<string, unknown> & {
+  id: number;
+  situacion?: CatalogoMinimo;
+  fecha_inicio?: string | null;
+  fecha_fin?: string | null;
+  motivo?: string;
+};
+
+export type HistorialMovimientoDTO = Record<string, unknown> & {
+  id: number;
+  tipo_movimiento?: string;
+  tipo_movimiento_label?: string;
+  fecha_movimiento?: string | null;
+};
+
+export type ExtraordinarioDTO = Record<string, unknown> & {
+  id: number;
+  discente?: DiscenteMinimo | Record<string, unknown>;
+  fecha_aplicacion?: string | null;
+  calificacion?: number | null;
+  aprobado?: boolean;
+  codigo_marca?: string;
+};
+
+export type ExtraordinarioPayload = {
+  inscripcion_materia_id: string | number;
+  fecha_aplicacion?: string;
+  calificacion: string | number;
+  observaciones?: string;
+};
+
+export type SituacionAcademicaDTO = Record<string, unknown> & {
+  id: number;
+  discente?: DiscenteMinimo | Record<string, unknown>;
+  situacion?: CatalogoMinimo | Record<string, unknown>;
+  periodo?: CatalogoMinimo | null;
+  fecha_inicio?: string | null;
+  fecha_fin?: string | null;
+  motivo?: string;
+};
+
+export type SituacionAcademicaPayload = {
+  discente_id: string | number;
+  situacion_codigo?: string;
+  situacion_id?: string | number;
+  periodo_id?: string | number;
+  fecha_inicio?: string;
+  fecha_fin?: string;
+  motivo?: string;
+  observaciones?: string;
+};
+
+export type MovimientoAcademicoDTO = Record<string, unknown> & {
+  id: number;
+  discente?: DiscenteMinimo | Record<string, unknown>;
+  periodo?: CatalogoMinimo | null;
+  tipo_movimiento?: string;
+  tipo_movimiento_label?: string;
+  grupo_origen?: CatalogoMinimo | null;
+  grupo_destino?: CatalogoMinimo | null;
+  fecha_movimiento?: string | null;
+  observaciones?: string;
+  impacto?: Record<string, unknown>;
+};
+
+export type MovimientoAcademicoPayload = {
+  discente_id: string | number;
+  periodo_id: string | number;
+  tipo_movimiento: string;
+  grupo_origen_id?: string | number;
+  grupo_destino_id?: string | number;
+  fecha_movimiento?: string;
+  observaciones?: string;
+};
+
+export type CambioGrupoPayload = Omit<MovimientoAcademicoPayload, "tipo_movimiento">;
+
+export type HistorialAcademicoDTO = {
+  ok: boolean;
+  discente: DiscenteMinimo | Record<string, unknown>;
+  resultados: HistorialResultadoDTO[];
+  extraordinarios: ExtraordinarioDTO[];
+  eventos: HistorialEventoDTO[];
+  movimientos: HistorialMovimientoDTO[];
+  vista_propia?: boolean;
+  es_kardex_oficial?: boolean;
+  aviso_privacidad?: string;
+};
+
+export type HistorialSearchResponse = {
+  ok: boolean;
+  total: number;
+  page: number;
+  page_size: number;
+  items: Array<DiscenteMinimo & { url_detalle?: string } & Record<string, unknown>>;
+};
+
+export type TrayectoriaListResponse<T> = {
+  ok: boolean;
+  total: number;
+  page?: number;
+  page_size?: number;
+  items: T[];
+};
+
+export type AccionPeriodoDisponible = {
+  puede_diagnosticar?: boolean;
+  puede_cerrar?: boolean;
+  puede_usarse_como_origen_apertura?: boolean;
+  puede_usarse_como_destino_apertura?: boolean;
+};
+
+export type PeriodoOperativoDTO = CatalogoMinimo & {
+  anio_escolar?: string;
+  periodo_academico?: number;
+  fecha_inicio?: string | null;
+  fecha_fin?: string | null;
+  estado?: string;
+  estado_label?: string;
+  acciones?: AccionPeriodoDisponible;
+};
+
+export type BloqueanteCierreDTO = string | Record<string, unknown>;
+
+export type DiagnosticoCierrePeriodoDTO = {
+  ok: boolean;
+  periodo: PeriodoOperativoDTO;
+  puede_cerrar: boolean;
+  bloqueantes: BloqueanteCierreDTO[];
+  advertencias: BloqueanteCierreDTO[];
+  resumen: Record<string, number>;
+  resumen_por_grupo?: Record<string, unknown>;
+  discentes_promovibles?: Array<Record<string, unknown>>;
+  discentes_pendientes_extraordinario?: Array<Record<string, unknown>>;
+  discentes_baja_temporal?: Array<Record<string, unknown>>;
+  discentes_baja_definitiva?: Array<Record<string, unknown>>;
+  discentes_egresables?: Array<Record<string, unknown>>;
+};
+
+export type DetalleCierreDiscenteDTO = Record<string, unknown> & {
+  id: number;
+  clasificacion?: string;
+  clasificacion_label?: string;
+  promovible?: boolean;
+  requiere_extraordinario?: boolean;
+};
+
+export type ProcesoCierrePeriodoDTO = Record<string, unknown> & {
+  id: number;
+  periodo?: PeriodoOperativoDTO;
+  estado?: string;
+  estado_label?: string;
+  ejecutado_en?: string | null;
+  resumen?: Record<string, unknown>;
+  detalles?: DetalleCierreDiscenteDTO[];
+};
+
+export type ProcesoAperturaPeriodoDTO = Record<string, unknown> & {
+  id: number;
+  periodo_origen?: PeriodoOperativoDTO;
+  periodo_destino?: PeriodoOperativoDTO;
+  estado?: string;
+  estado_label?: string;
+  ejecutado_en?: string | null;
+  resumen?: Record<string, unknown>;
+};
+
+export type PendienteAsignacionDocenteDTO = Record<string, unknown> & {
+  grupo?: CatalogoMinimo;
+  periodo?: PeriodoOperativoDTO;
+  carrera?: CatalogoMinimo;
+  plan?: CatalogoMinimo;
+  programa_asignatura?: CatalogoMinimo;
+  materia?: CatalogoMinimo;
+  estado?: string;
+  accion_sugerida?: string;
+};

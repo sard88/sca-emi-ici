@@ -2620,3 +2620,109 @@ Comandos ejecutados durante el cierre del bloque:
 Resumen técnico:
 
 - `docs/resumen_bloque10c5_calificaciones_actas_portal.md`
+
+## Bloque 10C-6 – Interfaces de trayectoria, movimientos y cierre/apertura
+
+### Objetivo
+
+Integrar en el portal Next.js la operación diaria de trayectoria académica, movimientos académicos y cierre/apertura de periodo, consumiendo APIs Django y reutilizando los servicios existentes del Bloque 7 y 8.5.
+
+### Rutas frontend
+
+Trayectoria:
+
+- `/trayectoria`
+- `/trayectoria/mi-historial`
+- `/trayectoria/historial`
+- `/trayectoria/historial/[discenteId]`
+- `/trayectoria/extraordinarios`
+- `/trayectoria/extraordinarios/nuevo`
+- `/trayectoria/extraordinarios/[id]`
+- `/trayectoria/situaciones`
+- `/trayectoria/situaciones/nuevo`
+- `/trayectoria/situaciones/[id]`
+
+Movimientos:
+
+- `/movimientos-academicos`
+- `/movimientos-academicos/nuevo`
+- `/movimientos-academicos/[id]`
+- `/movimientos-academicos/cambio-grupo`
+
+Periodos:
+
+- `/periodos`
+- `/periodos/[id]/diagnostico`
+- `/periodos/cierres`
+- `/periodos/cierres/[id]`
+- `/periodos/apertura`
+- `/periodos/aperturas`
+- `/periodos/aperturas/[id]`
+- `/periodos/pendientes-asignacion-docente`
+
+### APIs backend
+
+Trayectoria:
+
+- `GET /api/trayectoria/mi-historial/`
+- `GET /api/trayectoria/historial/`
+- `GET /api/trayectoria/historial/<discente_id>/`
+- `GET|POST /api/trayectoria/extraordinarios/`
+- `GET /api/trayectoria/extraordinarios/<id>/`
+- `GET|POST /api/trayectoria/situaciones/`
+- `GET /api/trayectoria/situaciones/<id>/`
+
+Movimientos:
+
+- `GET|POST /api/relaciones/movimientos/`
+- `GET /api/relaciones/movimientos/<id>/`
+- `POST /api/relaciones/movimientos/cambio-grupo/`
+
+Cierre/apertura:
+
+- `GET /api/periodos/`
+- `GET /api/periodos/<id>/diagnostico-cierre/`
+- `POST /api/periodos/<id>/cerrar/`
+- `GET /api/cierres/`
+- `GET /api/cierres/<id>/`
+- `POST /api/aperturas/crear/`
+- `GET /api/aperturas/`
+- `GET /api/aperturas/<id>/`
+- `GET /api/pendientes-asignacion-docente/`
+
+### Perfiles
+
+- Discente consulta solo `/trayectoria/mi-historial`.
+- Estadística/Admin consultan y operan trayectoria, extraordinarios, situaciones, movimientos, cierre y apertura.
+- Jefatura de carrera consulta historiales, movimientos y pendientes dentro de su ámbito cuando backend puede inferirlo.
+- Jefatura académica/pedagógica consulta trayectoria/procesos según permisos backend.
+- Docente no accede a módulos globales de trayectoria/cierre y conserva calificaciones/actas.
+
+### Restricciones
+
+- No se muestran matrículas por defecto en APIs nuevas.
+- No se genera PDF/XLSX nuevo en frontend.
+- No se implementa bitácora transversal completa.
+- No se modifican reglas de extraordinarios, situaciones, movimientos, cierre/apertura, kárdex ni actas formalizadas.
+- El cambio de grupo usa la lógica transaccional existente de `MovimientoAcademico`.
+- El diagnóstico de cierre no modifica datos.
+
+### Validación
+
+Comandos ejecutados durante el cierre del bloque:
+
+- `docker compose exec -T backend python manage.py check`
+- `docker compose exec -T backend python manage.py makemigrations`
+- `docker compose exec -T backend python manage.py migrate`
+- `docker compose exec -T backend python manage.py makemigrations --check`
+- `docker compose exec -T backend python manage.py test trayectoria`
+- `docker compose exec -T backend python manage.py test relaciones`
+- `docker compose exec -T backend python manage.py test evaluacion`
+- `docker compose exec -T backend python manage.py test usuarios`
+- `docker compose exec -T backend python manage.py test`
+- `docker compose exec -T frontend npm run lint`
+- `docker compose exec -T frontend npm run build`
+
+Resumen técnico:
+
+- `docs/resumen_bloque10c6_trayectoria_cierre_apertura_portal.md`

@@ -10,17 +10,29 @@ import type {
   CalendarioMes,
   CapturaPreliminarCorte,
   CapturaPreliminarPayload,
+  CambioGrupoPayload,
   DashboardResumen,
+  DiagnosticoCierrePeriodoDTO,
   DiscenteActaDetalle,
   DiscenteActasResponse,
   DownloadResult,
   DocenteAsignacionDetalle,
   EventoCalendario,
+  ExtraordinarioDTO,
+  ExtraordinarioPayload,
   ExportacionRegistro,
+  HistorialAcademicoDTO,
+  HistorialSearchResponse,
   KardexExportable,
+  MovimientoAcademicoDTO,
+  MovimientoAcademicoPayload,
   NotificacionesResponse,
   PerfilUsuario,
+  PendienteAsignacionDocenteDTO,
+  PeriodoOperativoDTO,
   PortalQuickAccess,
+  ProcesoAperturaPeriodoDTO,
+  ProcesoCierrePeriodoDTO,
   ResumenCalculoAcademico,
   ReporteDesempenoCodigo,
   ReporteDesempenoRespuesta,
@@ -31,6 +43,9 @@ import type {
   ReporteCatalogoItem,
   ResourceDetailResponse,
   ResourceListResponse,
+  SituacionAcademicaDTO,
+  SituacionAcademicaPayload,
+  TrayectoriaListResponse,
 } from "./types";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
@@ -616,6 +631,94 @@ export async function getEstadisticaActas(params: Record<string, string> = {}) {
 
 export async function getEstadisticaActaDetalle(actaId: number | string) {
   return apiGet<ActaDetalle>(`/api/estadistica/actas/${encodeURIComponent(String(actaId))}/`);
+}
+
+export async function getMiHistorial() {
+  return apiGet<HistorialAcademicoDTO>("/api/trayectoria/mi-historial/");
+}
+
+export async function buscarHistoriales(params: Record<string, string> = {}) {
+  return apiGet<HistorialSearchResponse>(`/api/trayectoria/historial/${queryString(params)}`);
+}
+
+export async function getHistorialDiscente(discenteId: number | string) {
+  return apiGet<HistorialAcademicoDTO>(`/api/trayectoria/historial/${encodeURIComponent(String(discenteId))}/`);
+}
+
+export async function getExtraordinarios(params: Record<string, string> = {}) {
+  return apiGet<TrayectoriaListResponse<ExtraordinarioDTO>>(`/api/trayectoria/extraordinarios/${queryString(params)}`);
+}
+
+export async function getExtraordinario(id: number | string) {
+  return apiGet<{ ok: true; item: ExtraordinarioDTO }>(`/api/trayectoria/extraordinarios/${encodeURIComponent(String(id))}/`);
+}
+
+export async function crearExtraordinario(payload: ExtraordinarioPayload) {
+  return apiMutate<{ ok: true; item: ExtraordinarioDTO }>("/api/trayectoria/extraordinarios/", "POST", payload);
+}
+
+export async function getSituaciones(params: Record<string, string> = {}) {
+  return apiGet<TrayectoriaListResponse<SituacionAcademicaDTO>>(`/api/trayectoria/situaciones/${queryString(params)}`);
+}
+
+export async function getSituacion(id: number | string) {
+  return apiGet<{ ok: true; item: SituacionAcademicaDTO }>(`/api/trayectoria/situaciones/${encodeURIComponent(String(id))}/`);
+}
+
+export async function crearSituacionAcademica(payload: SituacionAcademicaPayload) {
+  return apiMutate<{ ok: true; item: SituacionAcademicaDTO }>("/api/trayectoria/situaciones/", "POST", payload);
+}
+
+export async function getMovimientosAcademicos(params: Record<string, string> = {}) {
+  return apiGet<TrayectoriaListResponse<MovimientoAcademicoDTO>>(`/api/relaciones/movimientos/${queryString(params)}`);
+}
+
+export async function getMovimientoAcademico(id: number | string) {
+  return apiGet<{ ok: true; item: MovimientoAcademicoDTO }>(`/api/relaciones/movimientos/${encodeURIComponent(String(id))}/`);
+}
+
+export async function crearMovimientoAcademico(payload: MovimientoAcademicoPayload) {
+  return apiMutate<{ ok: true; item: MovimientoAcademicoDTO }>("/api/relaciones/movimientos/", "POST", payload);
+}
+
+export async function crearCambioGrupo(payload: CambioGrupoPayload) {
+  return apiMutate<{ ok: true; item: MovimientoAcademicoDTO }>("/api/relaciones/movimientos/cambio-grupo/", "POST", payload);
+}
+
+export async function getPeriodos(params: Record<string, string> = {}) {
+  return apiGet<TrayectoriaListResponse<PeriodoOperativoDTO>>(`/api/periodos/${queryString(params)}`);
+}
+
+export async function getDiagnosticoCierrePeriodo(periodoId: number | string) {
+  return apiGet<DiagnosticoCierrePeriodoDTO>(`/api/periodos/${encodeURIComponent(String(periodoId))}/diagnostico-cierre/`);
+}
+
+export async function cerrarPeriodo(periodoId: number | string, payload: { observaciones?: string } = {}) {
+  return apiMutate<{ ok: true; item: ProcesoCierrePeriodoDTO }>(`/api/periodos/${encodeURIComponent(String(periodoId))}/cerrar/`, "POST", payload);
+}
+
+export async function getCierres(params: Record<string, string> = {}) {
+  return apiGet<TrayectoriaListResponse<ProcesoCierrePeriodoDTO>>(`/api/cierres/${queryString(params)}`);
+}
+
+export async function getCierre(id: number | string) {
+  return apiGet<{ ok: true; item: ProcesoCierrePeriodoDTO }>(`/api/cierres/${encodeURIComponent(String(id))}/`);
+}
+
+export async function crearAperturaPeriodo(payload: { periodo_origen_id: string | number; periodo_destino_id: string | number; observaciones?: string }) {
+  return apiMutate<{ ok: true; item: ProcesoAperturaPeriodoDTO }>("/api/aperturas/crear/", "POST", payload);
+}
+
+export async function getAperturas(params: Record<string, string> = {}) {
+  return apiGet<TrayectoriaListResponse<ProcesoAperturaPeriodoDTO>>(`/api/aperturas/${queryString(params)}`);
+}
+
+export async function getApertura(id: number | string) {
+  return apiGet<{ ok: true; item: ProcesoAperturaPeriodoDTO }>(`/api/aperturas/${encodeURIComponent(String(id))}/`);
+}
+
+export async function getPendientesAsignacionDocente(params: Record<string, string> = {}) {
+  return apiGet<{ ok: true; total: number; periodo?: PeriodoOperativoDTO; items: PendienteAsignacionDocenteDTO[] }>(`/api/pendientes-asignacion-docente/${queryString(params)}`);
 }
 
 export function backendUrl(path: string) {

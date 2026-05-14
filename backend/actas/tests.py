@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 
 from django.contrib import admin
@@ -341,3 +342,58 @@ class Bloque85CierreAperturaTests(TestCase):
 
         self.assertFalse(detalle_admin.has_add_permission(None))
         self.assertFalse(detalle_admin.has_delete_permission(None))
+
+
+class CierreAperturaPortalApi10C6Tests(Bloque85CierreAperturaTests):
+    def test_api_diagnostico_no_modifica_periodo_ni_expone_matricula(self):
+        self.client.force_login(self.usuario_estadistica)
+
+        response = self.client.get(f"/api/periodos/{self.periodo.pk}/diagnostico-cierre/")
+
+        self.assertEqual(response.status_code, 200)
+        self.periodo.refresh_from_db()
+        self.assertEqual(self.periodo.estado, ESTADO_ACTIVO)
+        self.assertNotIn("A-850001", response.content.decode())
+
+    def test_api_cierre_valido_crea_proceso(self):
+        self.client.force_login(self.usuario_estadistica)
+
+        response = self.client.post(
+            f"/api/periodos/{self.periodo.pk}/cerrar/",
+            data=json.dumps({"observaciones": "Cierre API 10C-6"}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.periodo.refresh_from_db()
+        self.assertEqual(self.periodo.estado, ESTADO_CERRADO)
+        self.assertTrue(ProcesoCierrePeriodo.objects.filter(periodo=self.periodo).exists())
+
+    def test_api_apertura_requiere_origen_cerrado(self):
+        self.client.force_login(self.usuario_estadistica)
+
+        response = self.client.post(
+            "/api/aperturas/crear/",
+            data=json.dumps({
+                "periodo_origen_id": self.periodo.pk,
+                "periodo_destino_id": self.periodo_destino.pk,
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_api_jefatura_consulta_pendientes_de_asignacion(self):
+        self.client.force_login(self.usuario_jefe)
+
+        response = self.client.get(f"/api/pendientes-asignacion-docente/?periodo={self.periodo.pk}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+
+    def test_api_docente_no_consulta_periodos_operativos(self):
+        self.client.force_login(self.usuario_docente)
+
+        response = self.client.get("/api/periodos/")
+
+        self.assertEqual(response.status_code, 403)

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import type { AuthenticatedUser } from "@/lib/types";
-import { canAccessAdministracionPortal, canAccessCatalogosPortal, canAccessDiscenteActas, canAccessDocenteOperacion, canAccessEstadisticaActas, canAccessJefaturaAcademicaActas, canAccessJefaturaCarreraActas, canAccessKardexPdf, canAccessReportes, canAccessReportesDesempeno, canAccessReportesOperativos, canAccessReportesTrayectoria, getProfilesForUser } from "@/lib/dashboard";
+import { canAccessAdministracionPortal, canAccessCatalogosPortal, canAccessDiscenteActas, canAccessDocenteOperacion, canAccessEstadisticaActas, canAccessJefaturaAcademicaActas, canAccessJefaturaCarreraActas, canAccessKardexPdf, canAccessMiHistorialAcademico, canAccessPeriodosOperativos, canAccessReportes, canAccessReportesDesempeno, canAccessReportesOperativos, canAccessReportesTrayectoria, canAccessTrayectoriaOperativa, getProfilesForUser } from "@/lib/dashboard";
 
 const routeByProfile: Record<string, string> = {
   ADMIN: "/admin-soporte",
@@ -32,6 +32,9 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
   const showJefaturaCarreraActas = canAccessJefaturaCarreraActas(user);
   const showJefaturaAcademicaActas = canAccessJefaturaAcademicaActas(user);
   const showEstadisticaActas = canAccessEstadisticaActas(user);
+  const showTrayectoriaOperativa = canAccessTrayectoriaOperativa(user);
+  const showMiHistorial = canAccessMiHistorialAcademico(user);
+  const showPeriodosOperativos = canAccessPeriodosOperativos(user);
 
   return (
     <aside className="hidden min-h-screen w-[292px] shrink-0 border-r border-[#eadfce] bg-[#fffaf1]/92 p-4 shadow-[18px_0_44px_rgba(87,70,45,0.08)] backdrop-blur-xl lg:sticky lg:top-0 lg:flex lg:flex-col">
@@ -173,6 +176,15 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
             {showDiscenteActas ? (
               <SidebarLink href="/discente/actas" active={pathname.startsWith("/discente/actas")} icon="ACTAS" label="Mis actas publicadas" />
             ) : null}
+            {showMiHistorial ? (
+              <SidebarLink href="/trayectoria/mi-historial" active={pathname.startsWith("/trayectoria/mi-historial")} icon="TRAYECTORIA" label="Mi historial académico" />
+            ) : null}
+            {showTrayectoriaOperativa ? (
+              <SidebarLink href="/trayectoria" active={pathname === "/trayectoria" || pathname.startsWith("/trayectoria/")} icon="TRAYECTORIA" label="Trayectoria académica" />
+            ) : null}
+            {showPeriodosOperativos ? (
+              <SidebarLink href="/periodos" active={pathname.startsWith("/periodos")} icon="PERIODOS" label="Cierre y apertura" />
+            ) : null}
             {showJefaturaCarreraActas ? (
               <SidebarLink href="/jefatura-carrera/actas" active={pathname.startsWith("/jefatura-carrera/actas")} icon="ACTAS" label="Actas por validar" />
             ) : null}
@@ -250,6 +262,9 @@ export function MobileModuleNav({ user }: { user: AuthenticatedUser }) {
   const showJefaturaCarreraActas = canAccessJefaturaCarreraActas(user);
   const showJefaturaAcademicaActas = canAccessJefaturaAcademicaActas(user);
   const showEstadisticaActas = canAccessEstadisticaActas(user);
+  const showTrayectoriaOperativa = canAccessTrayectoriaOperativa(user);
+  const showMiHistorial = canAccessMiHistorialAcademico(user);
+  const showPeriodosOperativos = canAccessPeriodosOperativos(user);
 
   return (
     <div className="lg:hidden">
@@ -271,6 +286,9 @@ export function MobileModuleNav({ user }: { user: AuthenticatedUser }) {
         {showDocenteOperacion ? <MobilePill href="/docente/asignaciones" active={pathname.startsWith("/docente/asignaciones")} label="Asignaciones" /> : null}
         {showDocenteOperacion ? <MobilePill href="/docente/actas" active={pathname.startsWith("/docente/actas")} label="Mis actas" /> : null}
         {showDiscenteActas ? <MobilePill href="/discente/actas" active={pathname.startsWith("/discente/actas")} label="Mis actas" /> : null}
+        {showMiHistorial ? <MobilePill href="/trayectoria/mi-historial" active={pathname.startsWith("/trayectoria/mi-historial")} label="Historial" /> : null}
+        {showTrayectoriaOperativa ? <MobilePill href="/trayectoria" active={pathname === "/trayectoria" || pathname.startsWith("/trayectoria/")} label="Trayectoria" /> : null}
+        {showPeriodosOperativos ? <MobilePill href="/periodos" active={pathname.startsWith("/periodos")} label="Periodos" /> : null}
         {showJefaturaCarreraActas ? <MobilePill href="/jefatura-carrera/actas" active={pathname.startsWith("/jefatura-carrera/actas")} label="Validar actas" /> : null}
         {showJefaturaAcademicaActas ? <MobilePill href="/jefatura-academica/actas" active={pathname.startsWith("/jefatura-academica/actas")} label="Formalizar" /> : null}
         {showEstadisticaActas ? <MobilePill href="/estadistica/actas" active={pathname.startsWith("/estadistica/actas")} label="Actas" /> : null}
@@ -327,6 +345,7 @@ export function ModuleIcon({ name, className }: { name: string; className?: stri
   if (normalized.includes("ESTADISTICA")) return <ChartIcon className={className} />;
   if (normalized.includes("DOCENTE")) return <UsersIcon className={className} />;
   if (normalized.includes("DISCENTE")) return <IdIcon className={className} />;
+  if (normalized.includes("TRAYECTORIA") || normalized.includes("PERIODO")) return <AcademicIcon className={className} />;
   if (normalized.includes("JEFE") || normalized.includes("JEFATURA")) return <AcademicIcon className={className} />;
   if (normalized.includes("REPORTE") || normalized.includes("ACTA")) return <DocumentIcon className={className} />;
   if (normalized.includes("SEGURIDAD")) return <ShieldIcon className={className} />;
