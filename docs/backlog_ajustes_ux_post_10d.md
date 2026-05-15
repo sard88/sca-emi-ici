@@ -37,3 +37,7 @@ Este backlog registra observaciones pendientes que no forman parte de los Bloque
 - Definir si jefatura de carrera requiere acceso granular a eventos críticos por ámbito de carrera.
 - Validar si se necesita una consulta pedagógica específica más allá de reportes existentes.
 - Definir alcance futuro de asignación docente en portal; la apertura de periodo no asigna docentes automáticamente.
+
+## Referencia posterior a 10E
+
+QA 10E consolida los pendientes no bloqueantes en `docs/qa_10e/backlog_post_10e.md`. Este backlog 10D se conserva como antecedente historico y no debe usarse para reabrir mejoras dentro del cierre MVP salvo que se reclasifiquen como P0/P1.
