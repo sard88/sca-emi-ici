@@ -1,3 +1,4 @@
+import { ReportFilterField } from "@/components/reportes/ReportFilterField";
 import type { ReporteOperativoConfig } from "@/lib/types";
 
 export function OperativeReportFilters({
@@ -39,33 +40,9 @@ export function OperativeReportFilters({
       </div>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {config.filtros.map((filter) => {
-          const commonClass = "h-12 rounded-2xl border border-[#e4d6c2] bg-white px-4 text-sm font-medium outline-none focus:border-[#bc955c]";
-          return (
-            <label key={filter.key} className="space-y-1">
-              <span className="px-1 text-xs font-black uppercase tracking-[0.12em] text-[#7b6b58]">{filter.label}</span>
-              {filter.type === "select" ? (
-                <select
-                  value={values[filter.key] ?? ""}
-                  onChange={(event) => onChange(filter.key, event.target.value)}
-                  className={commonClass}
-                >
-                  {(filter.options ?? []).map((option) => (
-                    <option key={`${filter.key}-${option.value}`} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  value={values[filter.key] ?? ""}
-                  type={filter.type === "date" ? "date" : "text"}
-                  onChange={(event) => onChange(filter.key, event.target.value)}
-                  placeholder={filter.placeholder}
-                  className={commonClass}
-                />
-              )}
-            </label>
-          );
-        })}
+        {config.filtros.map((filter) => (
+          <ReportFilterField key={filter.key} filter={filter} value={values[filter.key] ?? ""} onChange={(value) => onChange(filter.key, value)} />
+        ))}
       </div>
     </section>
   );

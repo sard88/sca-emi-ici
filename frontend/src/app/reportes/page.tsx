@@ -53,31 +53,43 @@ export default function ReportesPage() {
         <div className="space-y-6">
           <PageHeader
             title="Reportes y exportaciones"
-            description="Consulta el catálogo documental disponible, descarga actas autorizadas y revisa la trazabilidad de tus exportaciones."
+            description="Consulta documentos oficiales, reportes institucionales, exportaciones y auditoría según tu perfil."
             user={user}
           />
 
-          <section className="grid gap-4 md:grid-cols-3">
-            <QuickLink title="Actas exportables" description="PDF/XLSX de actas de corte y calificación final." href="/reportes/actas" />
-            {canAccessReportesOperativos(user) ? (
-              <QuickLink title="Reportes operativos" description="Actas, validaciones y exportaciones realizadas en XLSX." href="/reportes/operativos" />
-            ) : null}
-            {canAccessReportesDesempeno(user) ? (
-              <QuickLink title="Reportes de desempeño académico" description="Resultados oficiales, promedios y cuadro de aprovechamiento en XLSX." href="/reportes/desempeno" />
-            ) : null}
-            {canAccessReportesTrayectoria(user) ? (
-              <QuickLink title="Reportes de trayectoria y situación académica" description="Extraordinarios, bajas, reingresos, movimientos e historial interno en XLSX." href="/reportes/trayectoria" />
-            ) : null}
-            {canAccessKardexPdf(user) ? (
-              <QuickLink title="Kárdex oficial" description="PDF institucional desde ServicioKardex, con auditoría documental." href="/reportes/kardex" />
-            ) : null}
-            <QuickLink title="Historial de exportaciones" description="Descargas recientes y folios técnicos." href="/reportes/exportaciones" />
-            {canAccessAuditoria(user) ? (
-              <QuickLink title="Auditoría institucional" description="Consulta ampliada de salidas documentales." href="/reportes/auditoria" />
-            ) : (
-              <QuickLink title="Reportes futuros" description="Reportes analíticos y kárdex Excel quedarán para subbloques posteriores." />
-            )}
-          </section>
+          <div className="space-y-5">
+            <QuickSection
+              title="Documentos oficiales y académicos"
+              intent="Consultar y exportar documentos autorizados."
+              links={[
+                { title: "Actas PDF/XLSX", description: "Consultar y exportar actas de corte y calificación final.", href: "/reportes/actas" },
+                canAccessKardexPdf(user) ? { title: "Kárdex oficial PDF", description: "Exportar kárdex institucional desde ServicioKardex.", href: "/reportes/kardex" } : null,
+              ]}
+            />
+            <QuickSection
+              title="Reportes institucionales"
+              intent="Analizar operación, desempeño y trayectoria."
+              links={[
+                canAccessReportesOperativos(user) ? { title: "Reportes operativos", description: "Consultar actas, validaciones, pendientes e inconformidades.", href: "/reportes/operativos" } : null,
+                canAccessReportesDesempeno(user) ? { title: "Desempeño académico", description: "Consultar resultados oficiales, promedios y aprovechamiento.", href: "/reportes/desempeno" } : null,
+                canAccessReportesTrayectoria(user) ? { title: "Reportes de trayectoria", description: "Consultar extraordinarios, bajas, reingresos, movimientos e historial interno.", href: "/reportes/trayectoria" } : null,
+              ]}
+            />
+            <QuickSection
+              title="Exportaciones"
+              intent="Revisar archivos generados y folios técnicos."
+              links={[
+                { title: canAccessAuditoriaExportaciones(user) ? "Exportaciones institucionales" : "Mis exportaciones", description: "Consulta descargas PDF/XLSX realizadas y su folio técnico.", href: "/reportes/exportaciones" },
+              ]}
+            />
+            <QuickSection
+              title="Auditoría"
+              intent="Trazabilidad de eventos críticos y salidas documentales."
+              links={[
+                canAccessAuditoria(user) ? { title: "Auditoría institucional", description: "Auditar eventos críticos y exportaciones según permisos separados.", href: "/reportes/auditoria" } : null,
+              ]}
+            />
+          </div>
 
           {loading ? <LoadingState label="Cargando catálogo documental..." /> : null}
           {error ? <ErrorMessage message={error} /> : null}
@@ -145,6 +157,24 @@ function actionLabelForCatalogItem(item: ReporteCatalogoItem) {
   if (reportesTrayectoria.some((config) => config.tipoDocumento === item.codigo)) return "Ver reporte de trayectoria";
   if (reportesOperativos.some((config) => config.tipoDocumento === item.codigo)) return "Ver reporte operativo";
   return "Abrir módulo";
+}
+
+type QuickLinkItem = { title: string; description: string; href?: string } | null;
+
+function QuickSection({ title, intent, links }: { title: string; intent: string; links: QuickLinkItem[] }) {
+  const visibleLinks = links.filter(Boolean) as Array<NonNullable<QuickLinkItem>>;
+  if (visibleLinks.length === 0) return null;
+  return (
+    <section>
+      <div className="mb-3">
+        <h3 className="text-lg font-black text-[#101b18]">{title}</h3>
+        <p className="mt-1 text-sm text-[#5f6764]">{intent}</p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        {visibleLinks.map((item) => <QuickLink key={item.title} {...item} />)}
+      </div>
+    </section>
+  );
 }
 
 function QuickLink({ title, description, href }: { title: string; description: string; href?: string }) {

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import type { AuthenticatedUser } from "@/lib/types";
-import { canAccessAdministracionPortal, canAccessCatalogosPortal, canAccessDiscenteActas, canAccessDocenteOperacion, canAccessEstadisticaActas, canAccessJefaturaAcademicaActas, canAccessJefaturaCarreraActas, canAccessKardexPdf, canAccessMiHistorialAcademico, canAccessPeriodosOperativos, canAccessReportes, canAccessReportesDesempeno, canAccessReportesOperativos, canAccessReportesTrayectoria, canAccessTrayectoriaOperativa, getProfilesForUser } from "@/lib/dashboard";
+import { canAccessAdministracionPortal, canAccessAuditoria, canAccessCatalogosPortal, canAccessDiscenteActas, canAccessDiscenteCargaAcademica, canAccessDocenteOperacion, canAccessEstadisticaActas, canAccessJefaturaAcademicaActas, canAccessJefaturaCarreraActas, canAccessKardexPdf, canAccessMiHistorialAcademico, canAccessPeriodosOperativos, canAccessReportes, canAccessReportesDesempeno, canAccessReportesOperativos, canAccessReportesTrayectoria, canAccessTrayectoriaInstitucional, getProfilesForUser } from "@/lib/dashboard";
+import { resolvePortalHref } from "@/lib/route-mapping";
 
 const routeByProfile: Record<string, string> = {
   ADMIN: "/admin-soporte",
@@ -19,22 +20,7 @@ const routeByProfile: Record<string, string> = {
 
 export function Sidebar({ user }: { user: AuthenticatedUser }) {
   const pathname = usePathname();
-  const profiles = getProfilesForUser(user);
-  const showReportes = canAccessReportes(user);
-  const showKardex = canAccessKardexPdf(user);
-  const showReportesOperativos = canAccessReportesOperativos(user);
-  const showReportesDesempeno = canAccessReportesDesempeno(user);
-  const showReportesTrayectoria = canAccessReportesTrayectoria(user);
-  const showAdministracion = canAccessAdministracionPortal(user);
-  const showCatalogos = canAccessCatalogosPortal(user);
-  const showDocenteOperacion = canAccessDocenteOperacion(user);
-  const showDiscenteActas = canAccessDiscenteActas(user);
-  const showJefaturaCarreraActas = canAccessJefaturaCarreraActas(user);
-  const showJefaturaAcademicaActas = canAccessJefaturaAcademicaActas(user);
-  const showEstadisticaActas = canAccessEstadisticaActas(user);
-  const showTrayectoriaOperativa = canAccessTrayectoriaOperativa(user);
-  const showMiHistorial = canAccessMiHistorialAcademico(user);
-  const showPeriodosOperativos = canAccessPeriodosOperativos(user);
+  const sections = buildNavigationSections(user, pathname);
 
   return (
     <aside className="hidden min-h-screen w-[292px] shrink-0 border-r border-[#eadfce] bg-[#fffaf1]/92 p-4 shadow-[18px_0_44px_rgba(87,70,45,0.08)] backdrop-blur-xl lg:sticky lg:top-0 lg:flex lg:flex-col">
@@ -64,172 +50,10 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
         </h1>
       </div>
 
-      <nav className="mt-4 flex-1 space-y-6 rounded-[1.75rem] border border-white bg-white/72 p-4 shadow-sm">
-        <Link
-          href="/dashboard"
-          className={clsx(
-            "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black transition",
-            pathname === "/dashboard"
-              ? "bg-gradient-to-r from-[#6b1238] to-[#8c1244] text-white shadow-lg shadow-[#7a123d]/20"
-              : "text-[#152b25] hover:bg-[#f7efe2]",
-          )}
-        >
-          <ModuleIcon name="PANEL" className="h-5 w-5" />
-          Panel general
-        </Link>
-
-        <div>
-          <p className="px-2 text-xs font-black uppercase tracking-[0.22em] text-[#b46c13]">Módulos</p>
-          <div className="mt-4 space-y-1">
-            {profiles.map((profile) => {
-              const href = routeByProfile[profile.key] ?? "/dashboard";
-              return (
-                <Link
-                  key={profile.key}
-                  href={href}
-                  className={clsx(
-                    "group flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition",
-                    pathname === href ? "bg-[#f6ead7] text-[#7a123d]" : "text-[#1f2f2a] hover:bg-[#f7efe2]",
-                  )}
-                >
-                  <span className="flex items-center gap-3">
-                    <ModuleIcon name={profile.key} className="h-5 w-5 text-[#46534e] group-hover:text-[#7a123d]" />
-                    {profile.title}
-                  </span>
-                  <span className="text-lg leading-none text-[#7b6b58]">›</span>
-                </Link>
-              );
-            })}
-            {showReportes ? (
-              <>
-                <Link
-                  href="/reportes"
-                  className={clsx(
-                    "group flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition",
-                    pathname.startsWith("/reportes")
-                      ? "bg-[#f6ead7] text-[#7a123d]"
-                      : "text-[#1f2f2a] hover:bg-[#f7efe2]",
-                  )}
-                >
-                  <span className="flex items-center gap-3">
-                    <ModuleIcon name="REPORTES" className="h-5 w-5 text-[#46534e] group-hover:text-[#7a123d]" />
-                    Reportes y exportaciones
-                  </span>
-                  <span className="text-lg leading-none text-[#7b6b58]">›</span>
-                </Link>
-                {showReportesOperativos ? (
-                  <Link
-                    href="/reportes/operativos"
-                    className={clsx(
-                      "ml-7 flex items-center justify-between rounded-2xl px-3 py-2 text-xs font-black transition",
-                      pathname.startsWith("/reportes/operativos") ? "bg-[#fff4df] text-[#7a4b0d]" : "text-[#46534e] hover:bg-[#f7efe2]",
-                    )}
-                  >
-                    Reportes operativos
-                    <span className="text-base leading-none text-[#7b6b58]">›</span>
-                  </Link>
-                ) : null}
-                {showReportesDesempeno ? (
-                  <Link
-                    href="/reportes/desempeno"
-                    className={clsx(
-                      "ml-7 flex items-center justify-between rounded-2xl px-3 py-2 text-xs font-black transition",
-                      pathname.startsWith("/reportes/desempeno") ? "bg-[#fff4df] text-[#7a4b0d]" : "text-[#46534e] hover:bg-[#f7efe2]",
-                    )}
-                  >
-                    Desempeño académico
-                    <span className="text-base leading-none text-[#7b6b58]">›</span>
-                  </Link>
-                ) : null}
-                {showReportesTrayectoria ? (
-                  <Link
-                    href="/reportes/trayectoria"
-                    className={clsx(
-                      "ml-7 flex items-center justify-between rounded-2xl px-3 py-2 text-xs font-black transition",
-                      pathname.startsWith("/reportes/trayectoria") ? "bg-[#fff4df] text-[#7a4b0d]" : "text-[#46534e] hover:bg-[#f7efe2]",
-                    )}
-                  >
-                    Reportes de trayectoria
-                    <span className="text-base leading-none text-[#7b6b58]">›</span>
-                  </Link>
-                ) : null}
-                {showKardex ? (
-                  <Link
-                    href="/reportes/kardex"
-                    className={clsx(
-                      "ml-7 flex items-center justify-between rounded-2xl px-3 py-2 text-xs font-black transition",
-                      pathname === "/reportes/kardex" ? "bg-[#eef7f2] text-[#0b4a3d]" : "text-[#46534e] hover:bg-[#f7efe2]",
-                    )}
-                  >
-                    Kárdex oficial
-                    <span className="text-base leading-none text-[#7b6b58]">›</span>
-                  </Link>
-                ) : null}
-              </>
-            ) : null}
-            {showDocenteOperacion ? (
-              <>
-                <SidebarLink href="/docente/asignaciones" active={pathname.startsWith("/docente/asignaciones")} icon="DOCENTE" label="Mis asignaciones" />
-                <SidebarLink href="/docente/actas" active={pathname.startsWith("/docente/actas")} icon="ACTAS" label="Mis actas" />
-              </>
-            ) : null}
-            {showDiscenteActas ? (
-              <SidebarLink href="/discente/actas" active={pathname.startsWith("/discente/actas")} icon="ACTAS" label="Mis actas publicadas" />
-            ) : null}
-            {showMiHistorial ? (
-              <SidebarLink href="/trayectoria/mi-historial" active={pathname.startsWith("/trayectoria/mi-historial")} icon="TRAYECTORIA" label="Mi historial académico" />
-            ) : null}
-            {showTrayectoriaOperativa ? (
-              <SidebarLink href="/trayectoria" active={pathname === "/trayectoria" || pathname.startsWith("/trayectoria/")} icon="TRAYECTORIA" label="Trayectoria académica" />
-            ) : null}
-            {showPeriodosOperativos ? (
-              <SidebarLink href="/periodos" active={pathname.startsWith("/periodos")} icon="PERIODOS" label="Cierre y apertura" />
-            ) : null}
-            {showJefaturaCarreraActas ? (
-              <SidebarLink href="/jefatura-carrera/actas" active={pathname.startsWith("/jefatura-carrera/actas")} icon="ACTAS" label="Actas por validar" />
-            ) : null}
-            {showJefaturaAcademicaActas ? (
-              <SidebarLink href="/jefatura-academica/actas" active={pathname.startsWith("/jefatura-academica/actas")} icon="ACTAS" label="Actas por formalizar" />
-            ) : null}
-            {showEstadisticaActas ? (
-              <SidebarLink href="/estadistica/actas" active={pathname.startsWith("/estadistica/actas")} icon="ACTAS" label="Consulta de actas" />
-            ) : null}
-            {showAdministracion ? (
-              <Link
-                href="/administracion"
-                className={clsx(
-                  "group flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition",
-                  pathname.startsWith("/administracion")
-                    ? "bg-[#f6ead7] text-[#7a123d]"
-                    : "text-[#1f2f2a] hover:bg-[#f7efe2]",
-                )}
-              >
-                <span className="flex items-center gap-3">
-                  <ModuleIcon name="ADMINISTRACION" className="h-5 w-5 text-[#46534e] group-hover:text-[#7a123d]" />
-                  Administración
-                </span>
-                <span className="text-lg leading-none text-[#7b6b58]">›</span>
-              </Link>
-            ) : null}
-            {showCatalogos ? (
-              <Link
-                href="/catalogos"
-                className={clsx(
-                  "group flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition",
-                  pathname.startsWith("/catalogos")
-                    ? "bg-[#f6ead7] text-[#7a123d]"
-                    : "text-[#1f2f2a] hover:bg-[#f7efe2]",
-                )}
-              >
-                <span className="flex items-center gap-3">
-                  <ModuleIcon name="CATALOGOS" className="h-5 w-5 text-[#46534e] group-hover:text-[#7a123d]" />
-                  Catálogos académicos
-                </span>
-                <span className="text-lg leading-none text-[#7b6b58]">›</span>
-              </Link>
-            ) : null}
-          </div>
-        </div>
+      <nav className="mt-4 flex-1 space-y-5 overflow-y-auto rounded-[1.75rem] border border-white bg-white/72 p-4 shadow-sm">
+        {sections.map((section) => (
+          <SidebarSection key={section.title} title={section.title} items={section.items} />
+        ))}
       </nav>
 
       <div className="mt-4 rounded-[1.5rem] border border-[#eadbc4] bg-white/76 p-5 shadow-sm">
@@ -249,53 +73,113 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
 
 export function MobileModuleNav({ user }: { user: AuthenticatedUser }) {
   const pathname = usePathname();
-  const profiles = getProfilesForUser(user);
-  const showReportes = canAccessReportes(user);
-  const showKardex = canAccessKardexPdf(user);
-  const showReportesOperativos = canAccessReportesOperativos(user);
-  const showReportesDesempeno = canAccessReportesDesempeno(user);
-  const showReportesTrayectoria = canAccessReportesTrayectoria(user);
-  const showAdministracion = canAccessAdministracionPortal(user);
-  const showCatalogos = canAccessCatalogosPortal(user);
-  const showDocenteOperacion = canAccessDocenteOperacion(user);
-  const showDiscenteActas = canAccessDiscenteActas(user);
-  const showJefaturaCarreraActas = canAccessJefaturaCarreraActas(user);
-  const showJefaturaAcademicaActas = canAccessJefaturaAcademicaActas(user);
-  const showEstadisticaActas = canAccessEstadisticaActas(user);
-  const showTrayectoriaOperativa = canAccessTrayectoriaOperativa(user);
-  const showMiHistorial = canAccessMiHistorialAcademico(user);
-  const showPeriodosOperativos = canAccessPeriodosOperativos(user);
+  const links = buildNavigationSections(user, pathname).flatMap((section) => section.items);
 
   return (
     <div className="lg:hidden">
       <div className="flex gap-2 overflow-x-auto px-4 pb-2 pt-3">
-        <MobilePill href="/dashboard" active={pathname === "/dashboard"} label="Panel" />
-        {profiles.map((profile) => (
-          <MobilePill
-            key={profile.key}
-            href={routeByProfile[profile.key] ?? "/dashboard"}
-            active={pathname === (routeByProfile[profile.key] ?? "/dashboard")}
-            label={profile.title}
-          />
-        ))}
-        {showReportes ? <MobilePill href="/reportes" active={pathname.startsWith("/reportes")} label="Reportes" /> : null}
-        {showReportesOperativos ? <MobilePill href="/reportes/operativos" active={pathname.startsWith("/reportes/operativos")} label="Operativos" /> : null}
-        {showReportesDesempeno ? <MobilePill href="/reportes/desempeno" active={pathname.startsWith("/reportes/desempeno")} label="Desempeño" /> : null}
-        {showReportesTrayectoria ? <MobilePill href="/reportes/trayectoria" active={pathname.startsWith("/reportes/trayectoria")} label="Trayectoria" /> : null}
-        {showKardex ? <MobilePill href="/reportes/kardex" active={pathname === "/reportes/kardex"} label="Kárdex" /> : null}
-        {showDocenteOperacion ? <MobilePill href="/docente/asignaciones" active={pathname.startsWith("/docente/asignaciones")} label="Asignaciones" /> : null}
-        {showDocenteOperacion ? <MobilePill href="/docente/actas" active={pathname.startsWith("/docente/actas")} label="Mis actas" /> : null}
-        {showDiscenteActas ? <MobilePill href="/discente/actas" active={pathname.startsWith("/discente/actas")} label="Mis actas" /> : null}
-        {showMiHistorial ? <MobilePill href="/trayectoria/mi-historial" active={pathname.startsWith("/trayectoria/mi-historial")} label="Historial" /> : null}
-        {showTrayectoriaOperativa ? <MobilePill href="/trayectoria" active={pathname === "/trayectoria" || pathname.startsWith("/trayectoria/")} label="Trayectoria" /> : null}
-        {showPeriodosOperativos ? <MobilePill href="/periodos" active={pathname.startsWith("/periodos")} label="Periodos" /> : null}
-        {showJefaturaCarreraActas ? <MobilePill href="/jefatura-carrera/actas" active={pathname.startsWith("/jefatura-carrera/actas")} label="Validar actas" /> : null}
-        {showJefaturaAcademicaActas ? <MobilePill href="/jefatura-academica/actas" active={pathname.startsWith("/jefatura-academica/actas")} label="Formalizar" /> : null}
-        {showEstadisticaActas ? <MobilePill href="/estadistica/actas" active={pathname.startsWith("/estadistica/actas")} label="Actas" /> : null}
-        {showAdministracion ? <MobilePill href="/administracion" active={pathname.startsWith("/administracion")} label="Admin" /> : null}
-        {showCatalogos ? <MobilePill href="/catalogos" active={pathname.startsWith("/catalogos")} label="Catálogos" /> : null}
+        {links.map((item) => <MobilePill key={`${item.href}-${item.label}`} href={item.href} active={item.active} label={item.shortLabel ?? item.label} backend={item.backend} />)}
       </div>
     </div>
+  );
+}
+
+type NavigationItem = {
+  href: string;
+  label: string;
+  shortLabel?: string;
+  icon: string;
+  active: boolean;
+  backend?: boolean;
+};
+
+type NavigationSection = {
+  title: string;
+  items: NavigationItem[];
+};
+
+function buildNavigationSections(user: AuthenticatedUser, pathname: string): NavigationSection[] {
+  const profileLinks = getProfilesForUser(user).map((profile) => {
+    const href = routeByProfile[profile.key] ?? "/dashboard";
+    return navItem(href, profile.title, profile.key, pathname, profile.title);
+  });
+  const sections: NavigationSection[] = [
+    { title: "Inicio", items: [navItem("/dashboard", "Panel general", "PANEL", pathname, "Panel"), ...profileLinks] },
+    {
+      title: "Mi espacio",
+      items: [
+        hasRole(user, "DOCENTE") && canAccessDocenteOperacion(user) ? navItem("/docente/asignaciones", "Mis asignaciones y captura", "DOCENTE", pathname, "Asignaciones") : null,
+        hasRole(user, "DOCENTE") && canAccessDocenteOperacion(user) ? navItem("/docente/actas", "Mis actas", "ACTAS", pathname) : null,
+        canAccessDiscenteCargaAcademica(user) ? navItem("/discente/carga-academica", "Mi carga académica", "DISCENTE", pathname, "Carga") : null,
+        canAccessDiscenteActas(user) ? navItem("/discente/actas", "Mis actas", "ACTAS", pathname) : null,
+        canAccessMiHistorialAcademico(user) ? navItem("/trayectoria/mi-historial", "Mi historial académico", "TRAYECTORIA", pathname, "Historial") : null,
+      ].filter(Boolean) as NavigationItem[],
+    },
+    {
+      title: "Operación académica",
+      items: [
+        canAccessEstadisticaActas(user) ? navItem("/estadistica/actas", "Consulta de actas", "ACTAS", pathname, "Actas") : null,
+        canAccessJefaturaCarreraActas(user) ? navItem("/jefatura-carrera/actas", "Actas por validar", "ACTAS", pathname, "Validar") : null,
+        canAccessJefaturaAcademicaActas(user) ? navItem("/jefatura-academica/actas", "Actas por formalizar", "ACTAS", pathname, "Formalizar") : null,
+        canAccessTrayectoriaInstitucional(user) ? navItem("/trayectoria", "Trayectoria", "TRAYECTORIA", pathname) : null,
+        canAccessTrayectoriaInstitucional(user) ? navItem("/movimientos-academicos", "Movimientos académicos", "TRAYECTORIA", pathname, "Movimientos") : null,
+        canAccessPeriodosOperativos(user) ? navItem("/periodos", "Periodos", "PERIODOS", pathname) : null,
+        canAccessPeriodosOperativos(user) ? navItem("/periodos/pendientes-asignacion-docente", "Pendientes de asignación docente", "PERIODOS", pathname, "Pendientes") : null,
+      ].filter(Boolean) as NavigationItem[],
+    },
+    {
+      title: "Gestión institucional",
+      items: [
+        canAccessAdministracionPortal(user) ? navItem("/administracion", "Administración", "ADMINISTRACION", pathname, "Admin") : null,
+        canAccessCatalogosPortal(user) ? navItem("/catalogos", "Catálogos académicos", "CATALOGOS", pathname, "Catálogos") : null,
+      ].filter(Boolean) as NavigationItem[],
+    },
+    {
+      title: "Reportes y auditoría",
+      items: [
+        canAccessReportes(user) ? navItem("/reportes", "Reportes", "REPORTES", pathname) : null,
+        canAccessKardexPdf(user) ? navItem("/reportes/kardex", "Kárdex oficial", "REPORTES", pathname, "Kárdex") : null,
+        canAccessReportesOperativos(user) ? navItem("/reportes/operativos", "Reportes operativos", "REPORTES", pathname, "Operativos") : null,
+        canAccessReportesDesempeno(user) ? navItem("/reportes/desempeno", "Desempeño académico", "REPORTES", pathname, "Desempeño") : null,
+        canAccessReportesTrayectoria(user) ? navItem("/reportes/trayectoria", "Reportes de trayectoria", "REPORTES", pathname, "Reportes trayectoria") : null,
+        canAccessReportes(user) ? navItem("/reportes/exportaciones", "Historial de exportaciones", "REPORTES", pathname, "Exportaciones") : null,
+        canAccessAuditoria(user) ? navItem("/reportes/auditoria", "Auditoría institucional", "SEGURIDAD", pathname, "Auditoría") : null,
+      ].filter(Boolean) as NavigationItem[],
+    },
+    {
+      title: "Soporte técnico",
+      items: isAdmin(user)
+        ? [
+            navItem("/admin/", "Django Admin", "ADMINISTRACION", pathname, "Django Admin", true),
+            navItem("/health/", "Estado técnico", "SEGURIDAD", pathname, "Health", true),
+          ]
+        : [],
+    },
+  ];
+  return sections.filter((section) => section.items.length > 0);
+}
+
+function navItem(href: string, label: string, icon: string, pathname: string, shortLabel?: string, backend = false): NavigationItem {
+  const active = href === "/dashboard" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+  return { href, label, shortLabel, icon, active, backend };
+}
+
+function isAdmin(user: AuthenticatedUser) {
+  return user.perfil_principal === "ADMIN" || user.roles.includes("ADMIN") || user.roles.includes("ADMIN_SISTEMA");
+}
+
+function hasRole(user: AuthenticatedUser, role: string) {
+  return user.perfil_principal === role || user.roles.includes(role) || user.cargos_vigentes.some((cargo) => cargo.cargo_codigo === role);
+}
+
+function SidebarSection({ title, items }: NavigationSection) {
+  return (
+    <section>
+      <p className="px-2 text-xs font-black uppercase tracking-[0.22em] text-[#b46c13]">{title}</p>
+      <div className="mt-3 space-y-1">
+        {items.map((item) => <SidebarLink key={`${item.href}-${item.label}`} {...item} />)}
+      </div>
+    </section>
   );
 }
 
@@ -307,34 +191,49 @@ function BrandChip({ label }: { label: string }) {
   );
 }
 
-function MobilePill({ href, active, label }: { href: string; active: boolean; label: string }) {
+function MobilePill({ href, active, label, backend = false }: { href: string; active: boolean; label: string; backend?: boolean }) {
+  const resolved = resolvePortalHref(href, backend);
+  if (!resolved) return null;
+  const className = clsx(
+    "whitespace-nowrap rounded-full border px-4 py-2 text-xs font-black shadow-sm",
+    active ? "border-[#7a123d] bg-[#7a123d] text-white" : "border-[#eadbc4] bg-white/80 text-[#1f2f2a]",
+  );
+  if (resolved.backend) {
+    return (
+      <a href={resolved.href} target="_blank" rel="noreferrer" className={className}>
+        {label}
+      </a>
+    );
+  }
   return (
-    <Link
-      href={href}
-      className={clsx(
-        "whitespace-nowrap rounded-full border px-4 py-2 text-xs font-black shadow-sm",
-        active ? "border-[#7a123d] bg-[#7a123d] text-white" : "border-[#eadbc4] bg-white/80 text-[#1f2f2a]",
-      )}
-    >
+    <Link href={resolved.href} className={className}>
       {label}
     </Link>
   );
 }
 
-function SidebarLink({ href, active, icon, label }: { href: string; active: boolean; icon: string; label: string }) {
-  return (
-    <Link
-      href={href}
-      className={clsx(
-        "group flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition",
-        active ? "bg-[#f6ead7] text-[#7a123d]" : "text-[#1f2f2a] hover:bg-[#f7efe2]",
-      )}
-    >
+function SidebarLink({ href, active, icon, label, backend = false }: NavigationItem) {
+  const resolved = resolvePortalHref(href, backend);
+  const className = clsx(
+    "group flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition",
+    active ? "bg-[#f6ead7] text-[#7a123d]" : "text-[#1f2f2a] hover:bg-[#f7efe2]",
+  );
+  const content = (
+    <>
       <span className="flex items-center gap-3">
         <ModuleIcon name={icon} className="h-5 w-5 text-[#46534e] group-hover:text-[#7a123d]" />
         {label}
       </span>
       <span className="text-lg leading-none text-[#7b6b58]">›</span>
+    </>
+  );
+  if (!resolved) return null;
+  if (resolved.backend) {
+    return <a href={resolved.href} target="_blank" rel="noreferrer" className={className}>{content}</a>;
+  }
+  return (
+    <Link href={resolved.href} className={className}>
+      {content}
     </Link>
   );
 }

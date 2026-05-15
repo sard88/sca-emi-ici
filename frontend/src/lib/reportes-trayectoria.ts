@@ -1,11 +1,20 @@
 import type { AuthenticatedUser, ReporteTrayectoriaCodigo, ReporteTrayectoriaConfig, ReporteTrayectoriaFiltro } from "./types";
 
+const filtroPeriodo: ReporteTrayectoriaFiltro = { key: "periodo", label: "Periodo", type: "relation", relation: { endpoint: "/api/catalogos/periodos/", valueKey: "id", labelKey: "label", search: true } };
+const filtroCarrera: ReporteTrayectoriaFiltro = { key: "carrera", label: "Carrera", type: "relation", relation: { endpoint: "/api/catalogos/carreras/", valueKey: "id", labelKey: "label", activeOnly: true, search: true } };
+const filtroGrupo: ReporteTrayectoriaFiltro = { key: "grupo", label: "Grupo", type: "relation", relation: { endpoint: "/api/catalogos/grupos/", valueKey: "id", labelKey: "label", activeOnly: true, search: true } };
+const filtroPlan: ReporteTrayectoriaFiltro = { key: "plan", label: "Plan", type: "relation", relation: { endpoint: "/api/catalogos/planes/", valueKey: "id", labelKey: "label", activeOnly: true, search: true } };
+const filtroAntiguedad: ReporteTrayectoriaFiltro = { key: "antiguedad", label: "Antigüedad", type: "relation", relation: { endpoint: "/api/catalogos/antiguedades/", valueKey: "id", labelKey: "label", activeOnly: true, search: true } };
+const filtroAsignatura: ReporteTrayectoriaFiltro = { key: "asignatura", label: "Asignatura", type: "relation", relation: { endpoint: "/api/catalogos/materias/", valueKey: "clave", labelKey: "label", activeOnly: true, search: true } };
+const filtroDocente: ReporteTrayectoriaFiltro = { key: "docente", label: "Docente", type: "relation", relation: { endpoint: "/api/admin/usuarios/", valueKey: "username", labelKey: "label", search: true, queryParams: { activo: true } } };
+const filtroSituacion: ReporteTrayectoriaFiltro = { key: "situacion", label: "Situación", type: "relation", relation: { endpoint: "/api/catalogos/situaciones-academicas/", valueKey: "clave", labelKey: "label", activeOnly: true, search: true } };
+
 const filtrosBase: ReporteTrayectoriaFiltro[] = [
-  { key: "periodo", label: "Periodo", placeholder: "Ej. 2025-2026" },
-  { key: "carrera", label: "Carrera", placeholder: "Ej. ICI" },
-  { key: "grupo", label: "Grupo", placeholder: "Ej. ICI-4A" },
-  { key: "plan", label: "Plan", placeholder: "Clave o nombre del plan" },
-  { key: "antiguedad", label: "Antigüedad", placeholder: "Ej. 2025" },
+  filtroPeriodo,
+  filtroCarrera,
+  filtroGrupo,
+  filtroPlan,
+  filtroAntiguedad,
   { key: "anio_formacion", label: "Año de formación", type: "select", options: numericOptions("Todos", 1, 6) },
   { key: "semestre", label: "Semestre", type: "select", options: numericOptions("Todos", 1, 12) },
   { key: "fecha_desde", label: "Desde", type: "date" },
@@ -14,13 +23,13 @@ const filtrosBase: ReporteTrayectoriaFiltro[] = [
 
 const filtrosAcademicos: ReporteTrayectoriaFiltro[] = [
   ...filtrosBase,
-  { key: "asignatura", label: "Asignatura", placeholder: "Unidad de aprendizaje" },
-  { key: "docente", label: "Docente", placeholder: "Nombre o usuario" },
+  filtroAsignatura,
+  filtroDocente,
 ];
 
 const filtrosSituacion: ReporteTrayectoriaFiltro[] = [
   ...filtrosBase,
-  { key: "situacion", label: "Situación", placeholder: "Ej. ACTIVO, BAJA_TEMPORAL" },
+  filtroSituacion,
   { key: "discente", label: "Discente", placeholder: "ID o nombre" },
 ];
 
@@ -47,13 +56,23 @@ const filtrosExtraordinarios: ReporteTrayectoriaFiltro[] = [
 ];
 
 const filtrosMovimientos: ReporteTrayectoriaFiltro[] = [
-  { key: "periodo", label: "Periodo", placeholder: "Ej. 2025-2026" },
-  { key: "carrera", label: "Carrera", placeholder: "Ej. ICI" },
-  { key: "antiguedad", label: "Antigüedad", placeholder: "Ej. 2025" },
+  filtroPeriodo,
+  filtroCarrera,
+  filtroAntiguedad,
   { key: "discente", label: "Discente", placeholder: "ID o nombre" },
-  { key: "grupo_origen", label: "Grupo origen", placeholder: "Ej. ICI-4A" },
-  { key: "grupo_destino", label: "Grupo destino", placeholder: "Ej. ICI-5A" },
-  { key: "tipo_movimiento", label: "Tipo de movimiento", placeholder: "Ej. CAMBIO_GRUPO" },
+  { key: "grupo_origen", label: "Grupo origen", type: "relation", relation: { endpoint: "/api/catalogos/grupos/", valueKey: "id", labelKey: "label", activeOnly: true, search: true } },
+  { key: "grupo_destino", label: "Grupo destino", type: "relation", relation: { endpoint: "/api/catalogos/grupos/", valueKey: "id", labelKey: "label", activeOnly: true, search: true } },
+  {
+    key: "tipo_movimiento",
+    label: "Tipo de movimiento",
+    type: "select",
+    options: [
+      { value: "", label: "Todos" },
+      { value: "cambio_grupo", label: "Cambio de grupo" },
+      { value: "alta_extemporanea", label: "Alta extemporánea" },
+      { value: "baja_extemporanea", label: "Baja extemporánea" },
+    ],
+  },
   { key: "fecha_desde", label: "Desde", type: "date" },
   { key: "fecha_hasta", label: "Hasta", type: "date" },
 ];

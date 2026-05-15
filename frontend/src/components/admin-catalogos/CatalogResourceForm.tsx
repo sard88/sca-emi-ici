@@ -74,7 +74,7 @@ export function CatalogResourceForm({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {config.formFields.map((field) => (
+        {config.formFields.filter((field) => !(item && field.createOnly)).map((field) => (
           <label key={field.key} className={field.type === "textarea" ? "space-y-1 md:col-span-2 xl:col-span-3" : "space-y-1"}>
             <span className="px-1 text-xs font-black uppercase tracking-[0.12em] text-[#7b6b58]">
               {field.label}{field.required ? " *" : ""}
@@ -90,6 +90,11 @@ export function CatalogResourceForm({
           </label>
         ))}
       </div>
+      {item && config.slug === "usuarios" ? (
+        <p className="mt-4 rounded-2xl border border-[#d4af37]/35 bg-[#fff8e6] px-4 py-3 text-sm font-bold text-[#72530d]">
+          El cambio de contraseña se realizará mediante un flujo específico de restablecimiento. La contraseña temporal solo aparece al crear una cuenta.
+        </p>
+      ) : null}
 
       <div className="mt-5 space-y-3">
         {message ? <p className="rounded-2xl border border-[#b7d9c9] bg-[#edf8f2] p-3 text-sm font-black text-[#0b4a3d]">{message}</p> : null}
@@ -130,7 +135,7 @@ function buildInitialValues(config: AdminCatalogResourceConfig, item?: ResourceI
 function buildPayload(config: AdminCatalogResourceConfig, values: Record<string, string | boolean>, editing: boolean) {
   const payload: Record<string, unknown> = {};
   config.formFields.forEach((field) => {
-    if (field.readOnly) return;
+    if (field.readOnly || (editing && field.createOnly)) return;
     const value = values[field.key];
     if (editing && field.type === "password" && !value) return;
     if (field.type === "number") {

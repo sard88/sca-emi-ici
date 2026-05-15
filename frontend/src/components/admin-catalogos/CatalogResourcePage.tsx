@@ -94,6 +94,11 @@ export function CatalogResourcePage({
               </div>
             </div>
           </section>
+          {!writable ? (
+            <p className="rounded-2xl border border-[#d4af37]/35 bg-[#fff8e6] px-4 py-3 text-sm font-bold text-[#72530d]">
+              Tu perfil permite consulta de este módulo. Las modificaciones requieren perfil autorizado.
+            </p>
+          ) : null}
 
           {!resourceId ? (
             <CatalogResourceFilters

@@ -945,6 +945,87 @@ def discente_actas_view(request):
 
 @require_GET
 @api_login_required
+def discente_carga_academica_view(request):
+    if not request.user.groups.filter(name="DISCENTE").exists():
+        return _deny("No tienes permiso para consultar carga académica personal.")
+    discente = Discente.objects.filter(usuario=request.user, activo=True).first()
+    if not discente:
+        return JsonResponse({"ok": True, "total": 0, "periodo_actual": None, "items": []})
+    inscripciones = (
+        InscripcionMateria.objects.select_related(
+            "asignacion_docente",
+            "asignacion_docente__usuario_docente",
+            "asignacion_docente__usuario_docente__grado_empleo",
+            "asignacion_docente__grupo_academico",
+            "asignacion_docente__grupo_academico__periodo",
+            "asignacion_docente__programa_asignatura",
+            "asignacion_docente__programa_asignatura__materia",
+            "asignacion_docente__programa_asignatura__plan_estudios",
+            "asignacion_docente__programa_asignatura__plan_estudios__carrera",
+        )
+        .filter(discente=discente)
+        .order_by(
+            "-asignacion_docente__grupo_academico__periodo__fecha_inicio",
+            "asignacion_docente__programa_asignatura__materia__clave",
+        )
+    )
+    asignacion_ids = [item.asignacion_docente_id for item in inscripciones[: _limit(request)]]
+    actas_por_asignacion = {}
+    if asignacion_ids:
+        actas = (
+            Acta.objects.filter(asignacion_docente_id__in=asignacion_ids)
+            .exclude(estado_acta=Acta.ESTADO_ARCHIVADO)
+            .order_by("asignacion_docente_id", "corte_codigo")
+        )
+        for acta in actas:
+            actas_por_asignacion.setdefault(acta.asignacion_docente_id, []).append(
+                {
+                    "acta_id": acta.id,
+                    "corte_codigo": acta.corte_codigo,
+                    "corte_label": _choice_label(ComponenteEvaluacion.CORTE_CHOICES, acta.corte_codigo),
+                    "estado_acta": acta.estado_acta,
+                    "estado_acta_label": acta.get_estado_acta_display(),
+                    "fecha_publicacion": _datetime(acta.publicada_en),
+                }
+            )
+    items = []
+    periodo_actual = None
+    for inscripcion in inscripciones[: _limit(request)]:
+        asignacion = inscripcion.asignacion_docente
+        grupo = asignacion.grupo_academico
+        programa = asignacion.programa_asignatura
+        periodo = _periodo_min(grupo.periodo)
+        if periodo_actual is None and inscripcion.estado_inscripcion == InscripcionMateria.ESTADO_INSCRITA:
+            periodo_actual = periodo
+        items.append(
+            {
+                "inscripcion_id": inscripcion.id,
+                "asignacion_docente_id": asignacion.id,
+                "asignatura": {
+                    "id": programa.materia_id,
+                    "clave": programa.materia.clave,
+                    "nombre": programa.materia.nombre,
+                    "label": str(programa.materia),
+                },
+                "programa_asignatura": _programa_min(programa),
+                "docente": _usuario_min(asignacion.usuario_docente),
+                "grupo": _grupo_min(grupo),
+                "periodo": periodo,
+                "carrera": _carrera_min(programa.plan_estudios.carrera),
+                "estado_inscripcion": inscripcion.estado_inscripcion,
+                "estado_inscripcion_label": inscripcion.get_estado_inscripcion_display(),
+                "intento_numero": inscripcion.intento_numero,
+                "calificacion_final": _decimal(inscripcion.calificacion_final),
+                "resultado_oficial": inscripcion.codigo_resultado_oficial or "",
+                "marca": inscripcion.codigo_marca or "",
+                "actas": actas_por_asignacion.get(asignacion.id, []),
+            }
+        )
+    return JsonResponse({"ok": True, "total": inscripciones.count(), "periodo_actual": periodo_actual, "items": items})
+
+
+@require_GET
+@api_login_required
 def discente_acta_detalle_view(request, detalle_id):
     try:
         detalle = (

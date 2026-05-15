@@ -318,9 +318,10 @@ export type ReporteOperativoRespuesta = {
 export type ReporteOperativoFiltro = {
   key: string;
   label: string;
-  type?: "text" | "select" | "date";
+  type?: "text" | "select" | "date" | "relation";
   placeholder?: string;
   options?: Array<{ value: string; label: string }>;
+  relation?: ReportFilterRelation;
 };
 
 export type ReporteOperativoConfig = {
@@ -375,9 +376,10 @@ export type ReporteDesempenoRespuesta = {
 export type ReporteDesempenoFiltro = {
   key: string;
   label: string;
-  type?: "text" | "select" | "date";
+  type?: "text" | "select" | "date" | "relation";
   placeholder?: string;
   options?: Array<{ value: string; label: string }>;
+  relation?: ReportFilterRelation;
 };
 
 export type ReporteDesempenoConfig = {
@@ -440,9 +442,19 @@ export type ReporteTrayectoriaRespuesta = {
 export type ReporteTrayectoriaFiltro = {
   key: string;
   label: string;
-  type?: "text" | "select" | "date";
+  type?: "text" | "select" | "date" | "relation";
   placeholder?: string;
   options?: Array<{ value: string; label: string }>;
+  relation?: ReportFilterRelation;
+};
+
+export type ReportFilterRelation = {
+  endpoint: string;
+  valueKey?: string;
+  labelKey?: string;
+  search?: boolean;
+  activeOnly?: boolean;
+  queryParams?: Record<string, string | number | boolean | undefined>;
 };
 
 export type ReporteTrayectoriaConfig = {
@@ -498,6 +510,7 @@ export type ResourceFormField = {
   type?: ResourceFieldType;
   required?: boolean;
   readOnly?: boolean;
+  createOnly?: boolean;
   placeholder?: string;
   help?: string;
   options?: ResourceFieldOption[];
@@ -511,6 +524,43 @@ export type ResourceFormField = {
   relationDependsOn?: string[];
   relationParamMap?: Record<string, string>;
   relationDisabledReason?: string;
+};
+
+export type DiscenteCargaAcademicaItem = {
+  inscripcion_id: number;
+  asignacion_docente_id: number;
+  asignatura: {
+    id: number;
+    clave: string;
+    nombre: string;
+    label?: string;
+  };
+  programa_asignatura: Record<string, unknown>;
+  docente: Record<string, unknown> | null;
+  grupo: Record<string, unknown> | null;
+  periodo: Record<string, unknown> | null;
+  carrera: Record<string, unknown> | null;
+  estado_inscripcion: string;
+  estado_inscripcion_label: string;
+  intento_numero: number;
+  calificacion_final: number | null;
+  resultado_oficial: string;
+  marca: string;
+  actas: Array<{
+    acta_id: number;
+    corte_codigo: string;
+    corte_label: string;
+    estado_acta: string;
+    estado_acta_label: string;
+    fecha_publicacion: string | null;
+  }>;
+};
+
+export type DiscenteCargaAcademicaResponse = {
+  ok: boolean;
+  total: number;
+  periodo_actual: Record<string, unknown> | null;
+  items: DiscenteCargaAcademicaItem[];
 };
 
 export type ResourceTableColumn = {

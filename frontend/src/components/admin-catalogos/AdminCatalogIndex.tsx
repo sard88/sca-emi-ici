@@ -35,10 +35,15 @@ export function AdminCatalogIndex({
         <div className="space-y-6">
           <PageHeader title={title} description={description} user={user} />
           <section className="rounded-[1.75rem] border border-[#d8c5a7] bg-[#073f34] p-6 text-white shadow-institutional">
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-[#d4af37]">Bloque 10C-4</p>
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-[#d4af37]">{writable ? "Bloque 10C-4" : "Consulta institucional · Solo lectura"}</p>
             <h2 className="mt-3 text-3xl font-black">{heroTitle}</h2>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-white/84">{heroDescription}</p>
           </section>
+          {!writable ? (
+            <p className="rounded-2xl border border-[#d4af37]/35 bg-[#fff8e6] px-4 py-3 text-sm font-bold text-[#72530d]">
+              Tu perfil permite consulta de este módulo. Las modificaciones requieren perfil autorizado.
+            </p>
+          ) : null}
           <section className="grid gap-4 xl:grid-cols-2">
             {resources.map((config) => <AdminCatalogCard key={config.slug} config={config} canWrite={writable} />)}
           </section>

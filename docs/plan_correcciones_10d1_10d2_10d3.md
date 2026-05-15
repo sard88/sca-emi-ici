@@ -62,6 +62,22 @@ Detalle tecnico: `docs/resumen_bloque10d1_estabilizacion_ux_funcional.md`.
 5. Definir pantalla de consulta académica para Jefatura pedagógica.
 6. Ajustar privacidad de comentarios sensibles.
 
+## Estado posterior al Bloque 10D-2
+
+| ID | Estado | Evidencia de atención |
+|---|---|---|
+| 10D0-P2-001 | Atendido | Se implementaron `/discente/carga-academica` y `GET /api/discente/carga-academica/`. |
+| 10D0-P2-002 | Atendido | Dashboard docente consolida asignaciones y captura en una sola tarjeta. |
+| 10D0-P2-003 | Atendido | Jefatura de carrera diferencia trayectoria operativa y reportes de trayectoria. |
+| 10D0-P2-004 | Atendido | Jefatura académica separa formalización, seguimiento, reportes y procesos de cierre. |
+| 10D0-P2-005 | Atendido | `/reportes` queda agrupado por documentos, reportes, exportaciones y auditoría. |
+| 10D0-P2-006 | Atendido parcial | Se agregaron selectores graduales para filtros comunes; quedan filtros nominales libres sin endpoint seguro. |
+| 10D0-P2-007 | Atendido | Comentarios de inconformidad se truncan en vista previa web. |
+| 10D0-P2-008 | Atendido | Contraseña temporal es `createOnly` y se oculta en edición ordinaria. |
+| 10D0-P2-009 | Atendido | Discente ve experiencia personal en `/trayectoria` y sidebar. |
+
+Detalle tecnico: `docs/resumen_bloque10d2_navegacion_dashboards_reportes.md`.
+
 ## Alcance recomendado para 10D-3
 
 1. Pulido visual, densidad, estados vacíos y microcopy.

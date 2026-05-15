@@ -15,6 +15,7 @@ urlpatterns = [
     path("docente/actas/<int:acta_id>/publicar/", api_views.docente_publicar_acta_view, name="api-docente-publicar-acta"),
     path("docente/actas/<int:acta_id>/remitir/", api_views.docente_remitir_acta_view, name="api-docente-remitir-acta"),
     path("discente/actas/", api_views.discente_actas_view, name="api-discente-actas"),
+    path("discente/carga-academica/", api_views.discente_carga_academica_view, name="api-discente-carga-academica"),
     path("discente/actas/<int:detalle_id>/", api_views.discente_acta_detalle_view, name="api-discente-acta-detalle"),
     path("discente/actas/<int:detalle_id>/conformidad/", api_views.discente_conformidad_view, name="api-discente-conformidad"),
     path("jefatura-carrera/actas/pendientes/", api_views.jefatura_carrera_actas_pendientes_view, name="api-jefatura-carrera-actas"),

@@ -121,13 +121,13 @@ export default function AuditoriaExportacionesPage() {
         <div className="space-y-5">
           <PageHeader
             title="Auditoría institucional"
-            description="Consulta de exportaciones documentales y eventos críticos transversales."
+            description="Consulta eventos críticos transversales y exportaciones auditadas según permisos separados."
             user={user}
           />
 
           {showTabs ? (
             <div className="flex flex-wrap gap-2 border-b border-[#eadfce]">
-              <button type="button" onClick={() => setTab("exportaciones")} className={tabClass(tab === "exportaciones")}>Exportaciones</button>
+              <button type="button" onClick={() => setTab("exportaciones")} className={tabClass(tab === "exportaciones")}>Exportaciones auditadas</button>
               <button type="button" onClick={() => setTab("eventos")} className={tabClass(tab === "eventos")}>Eventos críticos</button>
             </div>
           ) : null}

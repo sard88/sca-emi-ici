@@ -34,7 +34,7 @@ export function OperativeReportTable({ columns, items }: { columns: ReporteOpera
               <tr key={rowIndex} className="border-b border-[#f0e5d6] odd:bg-white even:bg-[#fffaf1]/70">
                 {columns.map((column) => (
                   <td key={`${rowIndex}-${column.key}`} className="max-w-[320px] px-4 py-3 align-top text-[#263b34]">
-                    {formatValue(item[column.key])}
+                    {formatValue(item[column.key], column.key)}
                   </td>
                 ))}
               </tr>
@@ -46,11 +46,16 @@ export function OperativeReportTable({ columns, items }: { columns: ReporteOpera
   );
 }
 
-function formatValue(value: unknown) {
+function formatValue(value: unknown, key: string) {
   if (value === null || value === undefined || value === "") return "N/A";
   if (typeof value === "boolean") return value ? "Sí" : "No";
   if (typeof value === "number") return String(value);
-  if (typeof value === "string") return value;
+  if (typeof value === "string") {
+    if (key.toLowerCase().includes("comentario")) {
+      return value.length > 120 ? `${value.slice(0, 120)}... (comentario registrado)` : value || "Comentario registrado";
+    }
+    return value;
+  }
   return JSON.stringify(value);
 }
 
