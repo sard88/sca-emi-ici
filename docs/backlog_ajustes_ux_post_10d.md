@@ -1,6 +1,6 @@
 # Backlog de ajustes UX post 10D
 
-Este backlog registra observaciones pendientes que no forman parte del Bloque 10D-4. No deben mezclarse con trazabilidad visual ni con cambios de reglas académicas.
+Este backlog registra observaciones pendientes que no forman parte de los Bloques 10D-3 ni 10D-4. No deben mezclarse con terminologia, microcopy, trazabilidad visual ni con cambios de reglas academicas.
 
 ## Navegación
 
@@ -22,13 +22,13 @@ Este backlog registra observaciones pendientes que no forman parte del Bloque 10
 
 ## Terminología y microcopy
 
-- Normalizar términos de Materia, Asignatura y Unidad de aprendizaje en 10D-3.
-- Revisar nombres de estados vacíos, ayudas contextuales y textos de botones para consistencia institucional.
-- Ajustar copy de reportes y auditoría sin cambiar permisos ni datos expuestos.
+- Mantener revision editorial posterior para textos largos que requieran validacion institucional.
+- Validar con usuarios si algun documento oficial debe conservar "Unidad de aprendizaje" en lugar de "Asignatura".
+- Revisar microcopy de confirmaciones criticas durante QA de 10E, sin alterar reglas academicas.
 
 ## Ajustes visuales menores
 
-- Evaluar migración de iconografía manual a una librería común si se adopta en 10D-3.
+- Evaluar migracion futura a una libreria comun de iconos si el proyecto decide agregar dependencia.
 - Normalizar densidad de tablas largas en reportes e historial interno.
 - Afinar comportamiento responsive de filtros y tablas densas durante QA integral 10E.
 

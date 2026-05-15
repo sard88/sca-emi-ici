@@ -1,4 +1,4 @@
-import { EmptyState } from "@/components/states/EmptyState";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export function KardexExportEmptyState({
   filtered = false,
@@ -13,6 +13,7 @@ export function KardexExportEmptyState({
           ? "Ajusta el nombre, carrera, situación académica o ID interno e intenta nuevamente."
           : "El backend no devolvió discentes autorizados para exportar kárdex oficial."
       }
+      variant={filtered ? "search" : "restricted"}
     />
   );
 }

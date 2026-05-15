@@ -213,8 +213,8 @@ export const reportesOperativos: ReporteOperativoConfig[] = [
   },
   {
     slug: "exportaciones-realizadas",
-    titulo: "Exportaciones realizadas",
-    descripcion: "Reporte XLSX de salidas documentales registradas en auditoría.",
+    titulo: "Historial de exportaciones",
+    descripcion: "Reporte XLSX de registros de exportación y salidas documentales auditadas.",
     ruta: "/reportes/operativos/exportaciones-realizadas",
     tipoDocumento: "REPORTE_EXPORTACIONES",
     endpointVistaPrevia: "/api/reportes/operativos/exportaciones-realizadas/",
@@ -222,7 +222,7 @@ export const reportesOperativos: ReporteOperativoConfig[] = [
     filtros: filtrosExportaciones,
     columnasDestacadas: ["registro_id", "creado_en", "usuario", "tipo_documento", "formato", "estado", "nombre_archivo"],
     rolesSugeridos: ["ADMIN", "ENCARGADO_ESTADISTICA", "JEFE_ACADEMICO"],
-    ayuda: "Muestra metadatos de auditoría; no expone payloads completos de documentos.",
+    ayuda: "Muestra folios técnicos y metadatos seguros; no expone payloads completos de documentos.",
   },
 ];
 

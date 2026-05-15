@@ -5,14 +5,16 @@ import { formalizarActaJefaturaAcademica, publicarActaDocente, regenerarActaDoce
 import type { ActaDetalle, ActaResumen } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { ErrorMessage } from "@/components/states/ErrorMessage";
+import { microcopy } from "@/lib/microcopy";
+import { uiLabels } from "@/lib/glosario";
 
 export function TeacherActaActionButtons({ acta, onChanged }: { acta: ActaResumen; onChanged: () => void }) {
   return (
     <ActaActionsPanel
       actions={[
-        { label: "Regenerar acta", visible: Boolean(acta.acciones?.puede_regenerar), confirm: "Solo se puede regenerar en borrador docente. ¿Continuamos?", run: () => regenerarActaDocente(acta.acta_id) },
-        { label: "Publicar a discentes", visible: Boolean(acta.acciones?.puede_publicar), confirm: "El acta será visible para los discentes. ¿Publicar?", run: () => publicarActaDocente(acta.acta_id) },
-        { label: "Remitir a jefatura", visible: Boolean(acta.acciones?.puede_remitir), confirm: "Después de remitir, la conformidad quedará en solo lectura. ¿Remitir?", run: () => remitirActaDocente(acta.acta_id) },
+        { label: uiLabels.actas.regenerarBorrador, visible: Boolean(acta.acciones?.puede_regenerar), confirm: "Solo se puede regenerar en borrador docente. ¿Continuamos?", run: () => regenerarActaDocente(acta.acta_id) },
+        { label: uiLabels.actas.publicar, visible: Boolean(acta.acciones?.puede_publicar), confirm: "El acta será visible para los discentes. ¿Publicar acta?", run: () => publicarActaDocente(acta.acta_id) },
+        { label: uiLabels.actas.remitir, visible: Boolean(acta.acciones?.puede_remitir), confirm: `${microcopy.actas.soloLectura} ¿Remitir acta?`, run: () => remitirActaDocente(acta.acta_id) },
       ]}
       onChanged={onChanged}
     />
@@ -33,7 +35,7 @@ export function HeadValidationActionPanel({ acta, onChanged }: { acta: ActaResum
 export function FormalizationActionPanel({ acta, onChanged }: { acta: ActaResumen; onChanged: () => void }) {
   return (
     <ActaActionsPanel
-      warning="La formalización convierte el acta en información oficial. Si es acta FINAL, actualizará resultados oficiales mediante el servicio backend existente."
+      warning="La formalización convierte el acta en información oficial. Si es acta de evaluación final, actualizará resultados oficiales mediante el servicio backend existente."
       actions={[
         { label: "Formalizar acta", visible: Boolean(acta.acciones?.puede_formalizar), confirm: "Esta acción formaliza el acta. ¿Confirmas?", run: () => formalizarActaJefaturaAcademica(acta.acta_id) },
       ]}

@@ -2895,3 +2895,36 @@ Comandos ejecutados durante el bloque:
 Resumen técnico:
 
 - `docs/resumen_bloque10d4_trazabilidad_visual.md`
+
+## Bloque 10D-3 - Terminología, microcopy, estados vacíos e iconografía
+
+### Objetivo
+
+Se normaliza el lenguaje visible del portal Next.js para que botones, ayudas, estados vacíos, errores, badges, avisos sensibles e iconografía mantengan tono institucional sin cambiar reglas académicas, flujos, permisos, modelos ni APIs.
+
+### Cambios principales
+
+- Se agrega `frontend/src/lib/glosario.ts` con términos institucionales para UI: Discente, Docente, Asignatura, Antigüedad, Periodo académico, Año de formación, Kárdex oficial, Historial académico interno, Bitácora, Registro de exportación y Auditoría institucional.
+- Se agrega `frontend/src/lib/microcopy.ts` para mensajes reutilizables de acceso restringido, estados vacíos, actas, carga académica, historial, kárdex, auditoría, reportes, catálogos, periodos y privacidad.
+- Se crean componentes comunes `EmptyState`, `ErrorState`, `SensitiveInfoNotice` e iconos SVG centralizados en `frontend/src/components/ui/icons.tsx`.
+- Sidebar y dashboards usan iconografía consistente sin agregar dependencias nuevas.
+- Reportes, catálogos, trayectoria, actas y exportaciones ajustan textos visibles para diferenciar asignatura, materia base, historial interno, kárdex oficial, auditoría institucional e historial de exportaciones.
+- Los errores de permisos se presentan como acceso restringido y los vacíos distinguen sin datos, sin resultados por filtros, pendiente de configuración y solo lectura.
+
+### Privacidad
+
+El bloque mantiene las restricciones de privacidad: no expone matrícula militar por defecto, payloads sensibles, JSON técnico, comentarios completos de inconformidad en resúmenes ni datos de otros discentes.
+
+### Validación
+
+Comandos ejecutados durante el bloque:
+
+- `docker compose exec -T frontend npm run lint`
+- `docker compose exec -T frontend npm run build`
+- `docker compose exec -T backend python manage.py check`
+- `docker compose exec -T backend python manage.py makemigrations --check`
+- `docker compose exec -T backend python manage.py test`
+
+Resumen técnico:
+
+- `docs/resumen_bloque10d3_terminologia_microcopy_ui.md`

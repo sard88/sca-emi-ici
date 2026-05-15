@@ -91,6 +91,16 @@ Detalle tecnico: `docs/resumen_bloque10d2_navegacion_dashboards_reportes.md`.
 
 Los pendientes residuales quedan separados en `docs/backlog_ajustes_ux_post_10d.md` para evitar mezclarlos con el alcance de trazabilidad.
 
+## Estado posterior al Bloque 10D-3
+
+| ID | Estado | Evidencia de atención |
+|---|---|---|
+| 10D0-P3-001 | Atendido | Se agrego `frontend/src/lib/glosario.ts` y se normalizaron labels visibles de asignatura, antiguedad, periodo academico, ano de formacion, kardex, historial interno y auditoria institucional. |
+| 10D0-P3-002 | Atendido | Sidebar y dashboard consumen iconografia centralizada en `frontend/src/components/ui/icons.tsx` sin agregar dependencias nuevas. |
+| 10D0-P3-003 | Atendido | `EmptyState`, `ErrorState`, `SensitiveInfoNotice` y microcopy comun reemplazan textos dispersos en reportes, catalogos, trayectoria y errores de permisos. |
+
+Detalle tecnico: `docs/resumen_bloque10d3_terminologia_microcopy_ui.md`.
+
 ## Fuera de 10D
 
 | Tema | Bloque sugerido |

@@ -7,6 +7,7 @@ import { clsx } from "clsx";
 import type { AuthenticatedUser } from "@/lib/types";
 import { canAccessAdministracionPortal, canAccessAuditoria, canAccessCatalogosPortal, canAccessDiscenteActas, canAccessDiscenteCargaAcademica, canAccessDocenteOperacion, canAccessEstadisticaActas, canAccessJefaturaAcademicaActas, canAccessJefaturaCarreraActas, canAccessKardexPdf, canAccessMiHistorialAcademico, canAccessPeriodosOperativos, canAccessReportes, canAccessReportesDesempeno, canAccessReportesOperativos, canAccessReportesTrayectoria, canAccessTrayectoriaInstitucional, getProfilesForUser } from "@/lib/dashboard";
 import { resolvePortalHref } from "@/lib/route-mapping";
+import { ModuleIcon } from "@/components/ui/icons";
 
 const routeByProfile: Record<string, string> = {
   ADMIN: "/admin-soporte",
@@ -118,7 +119,7 @@ function buildNavigationSections(user: AuthenticatedUser, pathname: string): Nav
     {
       title: "Operación académica",
       items: [
-        canAccessEstadisticaActas(user) ? navItem("/estadistica/actas", "Consulta de actas", "ACTAS", pathname, "Actas") : null,
+        canAccessEstadisticaActas(user) ? navItem("/estadistica/actas", "Seguimiento de actas", "ACTAS", pathname, "Actas") : null,
         canAccessJefaturaCarreraActas(user) ? navItem("/jefatura-carrera/actas", "Actas por validar", "ACTAS", pathname, "Validar") : null,
         canAccessJefaturaAcademicaActas(user) ? navItem("/jefatura-academica/actas", "Actas por formalizar", "ACTAS", pathname, "Formalizar") : null,
         canAccessTrayectoriaInstitucional(user) ? navItem("/trayectoria", "Trayectoria", "TRAYECTORIA", pathname) : null,
@@ -235,90 +236,5 @@ function SidebarLink({ href, active, icon, label, backend = false }: NavigationI
     <Link href={resolved.href} className={className}>
       {content}
     </Link>
-  );
-}
-
-export function ModuleIcon({ name, className }: { name: string; className?: string }) {
-  const normalized = name.toUpperCase();
-
-  if (normalized.includes("ESTADISTICA")) return <ChartIcon className={className} />;
-  if (normalized.includes("DOCENTE")) return <UsersIcon className={className} />;
-  if (normalized.includes("DISCENTE")) return <IdIcon className={className} />;
-  if (normalized.includes("TRAYECTORIA") || normalized.includes("PERIODO")) return <AcademicIcon className={className} />;
-  if (normalized.includes("JEFE") || normalized.includes("JEFATURA")) return <AcademicIcon className={className} />;
-  if (normalized.includes("REPORTE") || normalized.includes("ACTA")) return <DocumentIcon className={className} />;
-  if (normalized.includes("SEGURIDAD")) return <ShieldIcon className={className} />;
-  if (normalized.includes("PANEL")) return <HomeIcon className={className} />;
-  return <SettingsIcon className={className} />;
-}
-
-function HomeIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M3.5 11.2 12 4l8.5 7.2V20h-5.2v-5.4H8.7V20H3.5v-8.8Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function SettingsIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M19 13.6v-3.2l-2.1-.7a5.6 5.6 0 0 0-.7-1.6l1-2-2.3-2.3-2 .9a6 6 0 0 0-1.8-.4L10.4 2H7.2l-.7 2.2a5.6 5.6 0 0 0-1.6.7l-2-.9L.6 6.3l.9 2a6 6 0 0 0-.4 1.8L-1 10.8V14l2.1.7c.2.6.4 1.1.7 1.6l-1 2 2.3 2.3 2-.9c.5.3 1.1.5 1.8.7l.7 2.1h3.2l.7-2.1c.6-.2 1.1-.4 1.6-.7l2 .9 2.3-2.3-.9-2c.3-.5.5-1.1.7-1.8l1.8-.9Z" transform="translate(2.5 .3)" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function ChartIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M4 19V5M4 19h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M8 16v-5M12 16V8M16 16v-3M20 16V6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function UsersIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM3.5 20a5.5 5.5 0 0 1 11 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M16 11.5a3 3 0 1 0-.8-5.9M16.5 14.5A5 5 0 0 1 21 20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IdIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M5 4h14v16H5V4Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M9 9h6M9 13h6M9 17h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function AcademicIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="m3 8.5 9-4 9 4-9 4-9-4Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M7 10.5v4.2c0 1.1 2.2 2.8 5 2.8s5-1.7 5-2.8v-4.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function ShieldIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 3.5 19 6v5.5c0 4.5-3 7.8-7 9-4-1.2-7-4.5-7-9V6l7-2.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="m8.8 12.2 2.1 2.1 4.4-4.9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function DocumentIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M7 3.5h6.5L18 8v12.5H7V3.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M13.5 3.8V8H18M9.8 12h5.4M9.8 15h5.4M9.8 18h3.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }

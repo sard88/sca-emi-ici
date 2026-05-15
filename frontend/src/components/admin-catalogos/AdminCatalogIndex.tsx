@@ -35,7 +35,7 @@ export function AdminCatalogIndex({
         <div className="space-y-6">
           <PageHeader title={title} description={description} user={user} />
           <section className="rounded-[1.75rem] border border-[#d8c5a7] bg-[#073f34] p-6 text-white shadow-institutional">
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-[#d4af37]">{writable ? "Bloque 10C-4" : "Consulta institucional · Solo lectura"}</p>
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-[#d4af37]">{writable ? "Gestión institucional" : "Solo lectura institucional"}</p>
             <h2 className="mt-3 text-3xl font-black">{heroTitle}</h2>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-white/84">{heroDescription}</p>
           </section>

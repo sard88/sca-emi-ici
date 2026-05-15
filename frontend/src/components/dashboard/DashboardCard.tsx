@@ -1,5 +1,6 @@
 import type { DashboardCardItem } from "@/lib/dashboard";
 import { resolvePortalHref } from "@/lib/route-mapping";
+import { ModuleIcon } from "@/components/ui/icons";
 import { StatusBadge } from "./StatusBadge";
 
 const cardStyles = [
@@ -26,7 +27,7 @@ export function DashboardCard({ item, index = 0 }: { item: DashboardCardItem; in
       <div>
         <div className="mb-5 flex items-start justify-between gap-3">
           <span className={`flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${style.bg} text-white shadow-lg shadow-black/10`}>
-            <CardIcon title={item.title} className="h-7 w-7" />
+            <ModuleIcon name={item.title} className="h-7 w-7" />
           </span>
           {item.badge ? <StatusBadge tone="warning">{item.badge}</StatusBadge> : null}
         </div>
@@ -47,78 +48,5 @@ export function DashboardCard({ item, index = 0 }: { item: DashboardCardItem; in
     <a href={href} target={backend ? "_blank" : undefined} rel={backend ? "noreferrer" : undefined} className="block h-full">
       {content}
     </a>
-  );
-}
-
-function CardIcon({ title, className }: { title: string; className?: string }) {
-  const normalized = title.toUpperCase();
-  if (normalized.includes("USUARIO")) return <UsersIcon className={className} />;
-  if (normalized.includes("ROL") || normalized.includes("CARGO")) return <ShieldIcon className={className} />;
-  if (normalized.includes("UNIDAD") || normalized.includes("DJANGO")) return <BuildingIcon className={className} />;
-  if (normalized.includes("ESTADO") || normalized.includes("HEALTH")) return <PulseIcon className={className} />;
-  if (normalized.includes("HISTORIAL") || normalized.includes("TRAYECTORIA") || normalized.includes("ACTA")) return <DocumentIcon className={className} />;
-  if (normalized.includes("REPORTE") || normalized.includes("ESTAD")) return <ChartIcon className={className} />;
-  return <AcademicIcon className={className} />;
-}
-
-function UsersIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM3.5 20a5.5 5.5 0 0 1 11 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M16 11.5a3 3 0 1 0-.8-5.9M16.5 14.5A5 5 0 0 1 21 20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function ShieldIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 3.5 19 6v5.5c0 4.5-3 7.8-7 9-4-1.2-7-4.5-7-9V6l7-2.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="m8.8 12.2 2.1 2.1 4.4-4.9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function BuildingIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M4 20h16M6 20V9l6-4 6 4v11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M9 20v-6h6v6M9 10h.01M12 10h.01M15 10h.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function PulseIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M3 12h4l2-5 4 11 2-6h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function DocumentIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M7 3.5h7l4 4V20H7V3.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M14 3.5V8h4M10 12h5M10 16h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function ChartIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M5 18V11M12 18V7M19 18V4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M4 18h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function AcademicIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="m3 8.5 9-4 9 4-9 4-9-4Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M7 10.5v4.2c0 1.1 2.2 2.8 5 2.8s5-1.7 5-2.8v-4.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
   );
 }

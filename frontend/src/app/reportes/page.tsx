@@ -63,7 +63,7 @@ export default function ReportesPage() {
               intent="Consultar y exportar documentos autorizados."
               links={[
                 { title: "Actas PDF/XLSX", description: "Consultar y exportar actas de corte y calificación final.", href: "/reportes/actas" },
-                canAccessKardexPdf(user) ? { title: "Kárdex oficial PDF", description: "Exportar kárdex institucional desde ServicioKardex.", href: "/reportes/kardex" } : null,
+                canAccessKardexPdf(user) ? { title: "Kárdex oficial PDF", description: "Exportar kárdex institucional autorizado.", href: "/reportes/kardex" } : null,
               ]}
             />
             <QuickSection
@@ -115,7 +115,7 @@ export default function ReportesPage() {
                     ))}
                   </div>
                 ) : (
-                  <EmptyState title="Sin catálogo disponible" description="El backend no devolvió reportes para tu perfil." />
+                  <EmptyState title="Sin catálogo disponible" description="No hay reportes disponibles para tu perfil en este momento." variant="noData" />
                 )}
               </section>
 
@@ -123,14 +123,14 @@ export default function ReportesPage() {
                 <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <h3 className="text-lg font-black text-[#101b18]">Últimas exportaciones</h3>
-                    <p className="mt-1 text-sm text-[#5f6764]">Trazabilidad reciente registrada por el núcleo de auditoría del Bloque 9A.</p>
+                    <p className="mt-1 text-sm text-[#5f6764]">Trazabilidad reciente de descargas documentales autorizadas.</p>
                   </div>
                   <Link href="/reportes/exportaciones" className="text-sm font-black text-[#7a123d]">Ver historial completo</Link>
                 </div>
                 {exportaciones.length > 0 ? (
                   <ExportHistoryTable items={exportaciones} showUser={canAccessAuditoriaExportaciones(user)} />
                 ) : (
-                  <EmptyState title="No hay exportaciones registradas." description="Cuando generes documentos autorizados, aparecerán en esta sección." />
+                  <EmptyState title="Aún no hay exportaciones" description="Cuando se generen documentos autorizados, aparecerán en esta sección." variant="noData" />
                 )}
               </section>
             </>

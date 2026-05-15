@@ -1,6 +1,6 @@
 import type { AuthenticatedUser, ReporteTrayectoriaCodigo, ReporteTrayectoriaConfig, ReporteTrayectoriaFiltro } from "./types";
 
-const filtroPeriodo: ReporteTrayectoriaFiltro = { key: "periodo", label: "Periodo", type: "relation", relation: { endpoint: "/api/catalogos/periodos/", valueKey: "id", labelKey: "label", search: true } };
+const filtroPeriodo: ReporteTrayectoriaFiltro = { key: "periodo", label: "Periodo académico", type: "relation", relation: { endpoint: "/api/catalogos/periodos/", valueKey: "id", labelKey: "label", search: true } };
 const filtroCarrera: ReporteTrayectoriaFiltro = { key: "carrera", label: "Carrera", type: "relation", relation: { endpoint: "/api/catalogos/carreras/", valueKey: "id", labelKey: "label", activeOnly: true, search: true } };
 const filtroGrupo: ReporteTrayectoriaFiltro = { key: "grupo", label: "Grupo", type: "relation", relation: { endpoint: "/api/catalogos/grupos/", valueKey: "id", labelKey: "label", activeOnly: true, search: true } };
 const filtroPlan: ReporteTrayectoriaFiltro = { key: "plan", label: "Plan", type: "relation", relation: { endpoint: "/api/catalogos/planes/", valueKey: "id", labelKey: "label", activeOnly: true, search: true } };
@@ -101,7 +101,7 @@ const filtrosHistorial: ReporteTrayectoriaFiltro[] = [
 ];
 
 const filtrosHistorialDiscente: ReporteTrayectoriaFiltro[] = [
-  { key: "discente_id", label: "ID de discente", placeholder: "Ej. 123" },
+  { key: "discente_id", label: "Discente", placeholder: "Selecciona o captura ID interno autorizado" },
   ...filtrosHistorial.filter((filtro) => filtro.key !== "discente"),
 ];
 
@@ -298,7 +298,7 @@ export const reportesTrayectoria: ReporteTrayectoriaConfig[] = [
   {
     slug: "historial-interno-discente",
     titulo: "Historial interno por discente",
-    descripcion: "Exportación institucional del historial interno de un discente específico mediante ID interno.",
+    descripcion: "Exportación institucional del historial académico interno de un discente específico.",
     ruta: "/reportes/trayectoria/historial-interno-discente",
     tipoDocumento: "HISTORIAL_ACADEMICO",
     endpointVistaPrevia: "/api/reportes/historial-interno/<discente_id>/",
@@ -308,7 +308,7 @@ export const reportesTrayectoria: ReporteTrayectoriaConfig[] = [
     filtros: filtrosHistorialDiscente,
     columnasDestacadas: ["discente_id", "nombre", "periodo", "asignatura", "resultado_oficial", "marca"],
     rolesSugeridos: rolesInstitucionales(),
-    ayuda: "Requiere ID interno de discente. No acepta matrícula militar y no es kárdex oficial.",
+    ayuda: "Requiere identificador interno autorizado. No acepta matrícula militar y no es kárdex oficial.",
     nominal: true,
     agregado: false,
     datosSensibles: true,

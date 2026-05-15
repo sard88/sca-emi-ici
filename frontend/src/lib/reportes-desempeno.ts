@@ -1,6 +1,6 @@
 import type { AuthenticatedUser, ReporteDesempenoCodigo, ReporteDesempenoConfig, ReporteDesempenoFiltro } from "./types";
 
-const filtroPeriodo: ReporteDesempenoFiltro = { key: "periodo", label: "Periodo", type: "relation", relation: { endpoint: "/api/catalogos/periodos/", valueKey: "id", labelKey: "label", search: true } };
+const filtroPeriodo: ReporteDesempenoFiltro = { key: "periodo", label: "Periodo académico", type: "relation", relation: { endpoint: "/api/catalogos/periodos/", valueKey: "id", labelKey: "label", search: true } };
 const filtroCarrera: ReporteDesempenoFiltro = { key: "carrera", label: "Carrera", type: "relation", relation: { endpoint: "/api/catalogos/carreras/", valueKey: "id", labelKey: "label", activeOnly: true, search: true } };
 const filtroGrupo: ReporteDesempenoFiltro = { key: "grupo", label: "Grupo", type: "relation", relation: { endpoint: "/api/catalogos/grupos/", valueKey: "id", labelKey: "label", activeOnly: true, search: true } };
 const filtroAsignatura: ReporteDesempenoFiltro = { key: "asignatura", label: "Asignatura", type: "relation", relation: { endpoint: "/api/catalogos/materias/", valueKey: "clave", labelKey: "label", activeOnly: true, search: true } };
@@ -155,7 +155,7 @@ export const reportesDesempeno: ReporteDesempenoConfig[] = [
   },
   {
     slug: "cohorte",
-    titulo: "Desempeño por cohorte",
+    titulo: "Desempeño por antigüedad",
     descripcion: "Indicadores por carrera, antigüedad, año de formación y semestre.",
     ruta: "/reportes/desempeno/cohorte",
     tipoDocumento: "REPORTE_DESEMPENO_COHORTE",
@@ -166,7 +166,7 @@ export const reportesDesempeno: ReporteDesempenoConfig[] = [
     filtros: filtrosBase,
     columnasDestacadas: ["periodo", "carrera", "antiguedad", "anio_formacion", "promedio", "aprobados", "reprobados"],
     rolesSugeridos: rolesInstitucionales(),
-    ayuda: "Permite observar tendencias agregadas por generación y año académico.",
+    ayuda: "Permite observar tendencias agregadas por antigüedad y año de formación.",
     nominal: false,
     datosSensibles: false,
   },

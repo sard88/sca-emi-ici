@@ -117,7 +117,7 @@ export function TrajectoryHomeCards() {
         return (
           <div className="grid gap-4 xl:grid-cols-2">
             {canAccessMiHistorialAcademico(user) ? <ModuleCard title="Mi historial académico" href="/trayectoria/mi-historial" description="Consulta personal de resultados, eventos y movimientos visibles. No es kárdex oficial." tone="verde" /> : null}
-            {institutional ? <ModuleCard title="Buscar historial académico" href="/trayectoria/historial" description="Consulta institucional filtrada por ámbito autorizado." /> : null}
+            {institutional ? <ModuleCard title="Buscar historial académico" href="/trayectoria/historial" description="Seguimiento filtrado por ámbito autorizado." /> : null}
             {institutional ? <ModuleCard title="Extraordinarios" href="/trayectoria/extraordinarios" description="Seguimiento de extraordinarios registrados y marca EE cuando aplique." /> : null}
             {operator ? <ModuleCard title="Registrar extraordinario" href="/trayectoria/extraordinarios/nuevo" description="Registro operativo con validación real en backend." tone="dorado" /> : null}
             {institutional ? <ModuleCard title="Situaciones académicas" href="/trayectoria/situaciones" description="Bajas temporales, bajas definitivas, reingresos y eventos de trayectoria." /> : null}
@@ -182,7 +182,7 @@ export function InstitutionalHistorySearch() {
         <div className="space-y-5">
           <SensitiveInfoNotice text="El historial interno contiene información académica sensible y no es kárdex oficial." />
           <FiltersBar filters={filters} setFilters={setFilters} fields={["q", "carrera", "grupo", "plan", "antiguedad", "situacion"]} onSearch={load} />
-          <StateBlock state={state} loadingLabel="Buscando historiales..." emptyTitle="No hay discentes para los filtros." />
+          <StateBlock state={state} loadingLabel="Buscando historiales..." emptyTitle="Sin resultados" />
           {state.data ? <DataTable items={state.data} detailBase="/trayectoria/historial" detailKey="id" /> : null}
         </div>
       )}
@@ -209,7 +209,7 @@ export function InstitutionalHistoryDetail({ discenteId }: { discenteId: string 
 function HistoryContent({ state, own = false }: { state: LoadState<HistorialAcademicoDTO>; own?: boolean }) {
   return (
     <div className="space-y-5">
-      <StateBlock state={state} loadingLabel="Cargando historial..." emptyTitle="No se encontró historial." />
+      <StateBlock state={state} loadingLabel="Cargando historial..." emptyTitle="Registro no encontrado" />
       {state.data ? (
         <>
           <SensitiveInfoNotice text={own ? "Esta vista es informativa y no corresponde al kárdex oficial." : "Historial interno sensible. Consulta exclusiva para perfiles autorizados."} />
@@ -388,7 +388,7 @@ export function PeriodsOperationalList() {
             <LinkButton href="/periodos/aperturas">Procesos de apertura</LinkButton>
             <LinkButton href="/periodos/pendientes-asignacion-docente">Pendientes de asignación docente</LinkButton>
           </div>
-          <StateBlock state={state} loadingLabel="Cargando periodos..." emptyTitle="No hay periodos registrados." />
+          <StateBlock state={state} loadingLabel="Cargando periodos..." emptyTitle="Aún no hay periodos registrados." />
           <div className="grid gap-4 xl:grid-cols-2">
             {(state.data || []).map((periodo) => <PeriodCard key={periodo.id} periodo={periodo} canOperate={canOperateTrayectoria(user)} />)}
           </div>
@@ -452,7 +452,7 @@ export function ClosureDiagnosticPanel({ periodoId }: { periodoId: string }) {
     <AccessPage title="Diagnóstico de cierre" description="El diagnóstico no modifica datos; solo evalúa bloqueantes y advertencias." allowed={canAccessPeriodosOperativos}>
       {(user) => (
         <div className="space-y-5">
-          <StateBlock state={state} loadingLabel="Diagnosticando periodo..." emptyTitle="No hay diagnóstico." />
+          <StateBlock state={state} loadingLabel="Diagnosticando periodo..." emptyTitle="Diagnóstico no disponible." />
           {state.data ? (
             <>
               <PeriodProcessStepper activeStep="diagnostico" periodo={state.data.periodo} />
@@ -582,12 +582,12 @@ export function PendingTeacherAssignmentsTable() {
   }, [filters]);
   useEffect(() => { void load(); }, [load]);
   return (
-    <AccessPage title="Pendientes de asignación docente" description="Materias sin docente asignado para el periodo seleccionado." allowed={canAccessPeriodosOperativos}>
+    <AccessPage title="Pendientes de asignación docente" description="Asignaturas sin docente asignado para el periodo seleccionado." allowed={canAccessPeriodosOperativos}>
       {() => (
         <div className="space-y-5">
           <PeriodProcessStepper activeStep="pendientes" />
           <FiltersBar filters={filters} setFilters={setFilters} fields={["periodo", "carrera", "grupo", "semestre"]} onSearch={load} />
-          <StateBlock state={state} loadingLabel="Cargando pendientes..." emptyTitle="No hay pendientes con los filtros seleccionados." />
+          <StateBlock state={state} loadingLabel="Cargando pendientes..." emptyTitle="Sin resultados" />
           {state.data ? <DataTable items={state.data as Array<RecordValue>} columns={["periodo", "carrera", "grupo", "materia", "programa_asignatura", "estado", "accion_sugerida"]} /> : null}
         </div>
       )}
@@ -607,7 +607,7 @@ function ProcessList<T extends { id: number }>({ title, description, allowed, lo
     <AccessPage title={title} description={description} allowed={allowed}>
       {() => (
         <div className="space-y-5">
-          <StateBlock state={state} loadingLabel="Cargando procesos..." emptyTitle="No hay procesos registrados." />
+          <StateBlock state={state} loadingLabel="Cargando procesos..." emptyTitle="Aún no hay procesos registrados." />
           {state.data ? <DataTable items={state.data as Array<RecordValue>} detailBase={detailBase} detailKey="id" /> : null}
         </div>
       )}
@@ -624,7 +624,7 @@ function ListPage<T extends { id: number }>({ title, description, allowed, filte
             {createHref && canOperateTrayectoria(user) ? <LinkButton href={createHref}>{createLabel || "Nuevo"}</LinkButton> : null}
           </div>
           <FiltersBar filters={filters} setFilters={setFilters} fields={fields} onSearch={onSearch} />
-          <StateBlock state={state} loadingLabel="Cargando registros..." emptyTitle="No hay registros para los filtros seleccionados." />
+          <StateBlock state={state} loadingLabel="Cargando registros..." emptyTitle="Sin resultados" />
           {state.data ? <DataTable items={state.data as Array<RecordValue>} detailBase={detailBase} detailKey="id" /> : null}
         </div>
       )}
@@ -824,7 +824,7 @@ function DetailPage<T extends RecordValue>({ title, description, allowed, load, 
     <AccessPage title={title} description={description} allowed={allowed}>
       {(user) => (
         <div className="space-y-5">
-          <StateBlock state={state} loadingLabel="Cargando detalle..." emptyTitle="No se encontró el registro." />
+          <StateBlock state={state} loadingLabel="Cargando detalle..." emptyTitle="Registro no encontrado" />
           {state.data ? <DataSection title="Detalle" items={[state.data]} /> : null}
           {state.data && extra ? extra(state.data, user) : null}
         </div>
@@ -849,7 +849,7 @@ function DataSection({ title, items, columns }: { title: string; items: Array<Re
 
 function DataTable({ items, columns, detailBase, detailKey }: { items: Array<RecordValue>; columns?: string[]; detailBase?: string; detailKey?: string }) {
   const keys = useMemo(() => columns || Array.from(new Set(items.flatMap((item) => Object.keys(item)))).filter((key) => !["url_detalle"].includes(key)).slice(0, 8), [columns, items]);
-  if (!items.length) return <EmptyState title="Sin registros." description="No hay datos para mostrar." />;
+  if (!items.length) return <EmptyState title="Aún no hay registros" description="Cuando se capture información autorizada, aparecerá en esta sección." variant="noData" />;
   return (
     <div className="overflow-x-auto rounded-[1.25rem] border border-[#eadfce]">
       <table className="min-w-full divide-y divide-[#eadfce] text-sm">
@@ -906,7 +906,7 @@ function StateBlock<T>({ state, loadingLabel, emptyTitle }: { state: LoadState<T
   if (state.loading) return <LoadingState label={loadingLabel} />;
   if (state.error) return <ErrorMessage message={state.error} />;
   if (!state.data) return null;
-  if (Array.isArray(state.data) && state.data.length === 0) return <EmptyState title={emptyTitle} description="Ajusta filtros o intenta nuevamente más tarde." />;
+  if (Array.isArray(state.data) && state.data.length === 0) return <EmptyState title={emptyTitle} description="No encontramos registros con los filtros seleccionados. Ajusta los criterios e intenta nuevamente." variant="search" />;
   return null;
 }
 
@@ -954,33 +954,33 @@ function LinkButton({ href, children }: { href: string; children: ReactNode }) {
 function labelFor(key: string) {
   const labels: Record<string, string> = {
     q: "Búsqueda",
-    carrera: "Carrera ID",
-    grupo: "Grupo ID",
-    plan: "Plan ID",
-    antiguedad: "Antigüedad ID",
-    situacion: "Situación",
-    situacion_codigo: "Código de situación",
-    periodo: "Periodo ID",
-    periodo_id: "Periodo ID",
-    periodo_origen_id: "Periodo origen ID",
-    periodo_destino_id: "Periodo destino ID",
-    discente: "Discente ID",
-    discente_id: "Discente ID",
-    asignatura: "Asignatura ID",
-    aprobado: "Aprobado true/false",
+    carrera: "Carrera",
+    grupo: "Grupo",
+    plan: "Plan de estudios",
+    antiguedad: "Antigüedad",
+    situacion: "Situación académica",
+    situacion_codigo: "Situación académica",
+    periodo: "Periodo académico",
+    periodo_id: "Periodo académico",
+    periodo_origen_id: "Periodo origen",
+    periodo_destino_id: "Periodo destino",
+    discente: "Discente",
+    discente_id: "Discente",
+    asignatura: "Asignatura",
+    aprobado: "Aprobado",
     fecha_desde: "Fecha desde",
     fecha_hasta: "Fecha hasta",
     fecha_aplicacion: "Fecha aplicación",
     fecha_inicio: "Fecha inicio",
     fecha_fin: "Fecha fin",
     calificacion: "Calificación",
-    inscripcion_materia_id: "Inscripción materia ID",
-    tipo_movimiento: "Tipo movimiento",
-    tipo_movimiento_label: "Tipo movimiento",
-    grupo_origen: "Grupo origen ID",
-    grupo_origen_id: "Grupo origen ID",
-    grupo_destino: "Grupo destino ID",
-    grupo_destino_id: "Grupo destino ID",
+    inscripcion_materia_id: "Inscripción a asignatura",
+    tipo_movimiento: "Tipo de movimiento",
+    tipo_movimiento_label: "Tipo de movimiento",
+    grupo_origen: "Grupo origen",
+    grupo_origen_id: "Grupo origen",
+    grupo_destino: "Grupo destino",
+    grupo_destino_id: "Grupo destino",
     fecha_movimiento: "Fecha movimiento",
     observaciones: "Observaciones",
     motivo: "Motivo",
