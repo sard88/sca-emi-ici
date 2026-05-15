@@ -223,12 +223,105 @@ export type BitacoraEventoCritico = {
   correlacion_id: string;
 };
 
+export type AuditEventDTO = {
+  id: number | string;
+  creado_en?: string | null;
+  usuario?: BitacoraEventoCritico["usuario"] | string | null;
+  username_snapshot?: string;
+  rol_contexto?: string;
+  cargo_contexto?: string;
+  modulo?: string;
+  modulo_label?: string;
+  evento_codigo?: string;
+  evento_nombre?: string;
+  severidad?: string;
+  severidad_label?: string;
+  resultado?: string;
+  resultado_label?: string;
+  objeto_tipo?: string;
+  objeto_id?: string;
+  objeto_repr?: string;
+  estado_anterior?: string;
+  estado_nuevo?: string;
+  resumen?: string;
+  ip_origen?: string | null;
+  ruta?: string;
+  metodo_http?: string;
+  request_id?: string;
+  correlacion_id?: string;
+};
+
+export type AuditEventSummaryDTO = {
+  ok?: boolean;
+  total?: number;
+  eventos_recientes?: number;
+  eventos_criticos?: number;
+  eventos_bloqueados?: number;
+  eventos_fallidos?: number;
+  modulos_mas_activos?: Array<Record<string, unknown>>;
+  por_modulo?: Array<Record<string, unknown>> | Record<string, unknown>;
+  por_resultado?: Record<string, number>;
+  por_severidad?: Record<string, number>;
+  [key: string]: unknown;
+};
+
 export type BitacoraEventosResponse = {
   ok: boolean;
   total: number;
   page: number;
   page_size: number;
-  items: BitacoraEventoCritico[];
+  items: AuditEventDTO[];
+};
+
+export type TimelineStepDTO = {
+  id: string;
+  label: string;
+  description?: string;
+  status?: "completed" | "current" | "pending" | "blocked" | "not_applicable";
+  date?: string | null;
+  actor?: string | null;
+  meta?: string | null;
+  tone?: "neutral" | "success" | "warning" | "danger" | "info";
+};
+
+export type ProcessTimelineStepDTO = TimelineStepDTO;
+
+export type ValidationTimelineDTO = {
+  steps: TimelineStepDTO[];
+};
+
+export type ConformityTimelineDTO = {
+  steps: TimelineStepDTO[];
+  estado_actual?: string;
+};
+
+export type MovementImpactDTO = {
+  steps?: TimelineStepDTO[];
+  grupo_origen?: unknown;
+  grupo_destino?: unknown;
+  adscripcion_origen?: unknown;
+  adscripcion_destino?: unknown;
+  inscripciones_origen?: unknown;
+  inscripciones_destino?: unknown;
+  aplicado?: boolean;
+  bloqueado?: boolean;
+  motivo_bloqueo?: string;
+  [key: string]: unknown;
+};
+
+export type PeriodProcessStepDTO = TimelineStepDTO;
+
+export type ExportTraceDTO = Partial<ExportacionRegistro> & {
+  id?: number | string;
+  folio_tecnico?: string | number;
+  tipo_documental?: string;
+  formato?: string;
+  estado?: string;
+  usuario?: ExportacionRegistro["usuario"] | string;
+  fecha?: string | null;
+  objeto?: string;
+  hash?: string;
+  tamano_bytes?: number | null;
 };
 
 export type ActaExportable = {

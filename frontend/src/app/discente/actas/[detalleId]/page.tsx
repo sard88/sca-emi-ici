@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { StudentConformityForm } from "@/components/operacion-actas/StudentConformityForm";
 import { ActaDetailTable } from "@/components/operacion-actas/ActaTables";
 import { ActaReadonlyNotice, ActaStatusBadge } from "@/components/operacion-actas/ActaStatusBadge";
+import { ConformityTimeline, OfficialStatusNotice, ProcessTimeline, SensitiveTraceNotice, buildActaProcessSteps } from "@/components/trazabilidad";
 import { ErrorMessage } from "@/components/states/ErrorMessage";
 import { LoadingState } from "@/components/states/LoadingState";
 import { getDiscenteActaDetalle } from "@/lib/api";
@@ -39,7 +40,7 @@ export default function DiscenteActaDetallePage() {
   }, [user, load]);
 
   return (
-    <AppShell>
+    <AppShell showRightPanel={false}>
       {!user ? null : !canAccessDiscenteActas(user) ? (
         <ErrorMessage message="No tienes permiso para consultar este detalle." />
       ) : (
@@ -62,6 +63,10 @@ export default function DiscenteActaDetallePage() {
                   <ActaStatusBadge estado={data.acta.estado_acta} label={data.acta.estado_acta_label} />
                 </div>
               </section>
+              <SensitiveTraceNotice text="La conformidad es informativa y no bloquea el flujo académico." tone="info" />
+              <OfficialStatusNotice acta={data.acta} />
+              <ProcessTimeline title="Línea de tiempo del acta" description="Estados visibles para tu detalle personal." steps={buildActaProcessSteps(data.acta)} />
+              <ConformityTimeline acta={data.acta} historial={data.historial_conformidad} />
               <ActaReadonlyNotice visible={!data.puede_registrar_conformidad} message="La conformidad está en solo lectura para el estado actual del acta." />
               <ActaDetailTable filas={[data.detalle]} />
               <StudentConformityForm detalleId={data.detalle.detalle_id} disabled={!data.puede_registrar_conformidad} onDone={() => void load()} />

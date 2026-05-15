@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { ActaComponente, ActaFilaDetalle, ValidacionActaDTO } from "@/lib/types";
+import { ValidationTimeline } from "@/components/trazabilidad";
 
 export function ActaDetailTable({ filas }: { filas: ActaFilaDetalle[] }) {
   return (
@@ -77,24 +78,7 @@ export function ActaComponentsTable({ componentes }: { componentes: ActaComponen
 }
 
 export function ActaValidationTimeline({ validaciones }: { validaciones: ValidacionActaDTO[] }) {
-  return (
-    <section className="rounded-[1.5rem] border border-[#eadfce] bg-white/90 p-4 shadow-sm">
-      <h3 className="text-base font-black text-[#101b18]">Trazabilidad</h3>
-      {validaciones.length === 0 ? (
-        <p className="mt-2 text-sm text-[#5f6764]">Aún no hay validaciones registradas.</p>
-      ) : (
-        <div className="mt-4 space-y-3">
-          {validaciones.map((validacion) => (
-            <div key={validacion.id} className="rounded-2xl border border-[#eadfce] bg-[#fffaf1] p-4">
-              <p className="text-sm font-black text-[#152b25]">{validacion.accion_label} · {validacion.etapa_validacion_label}</p>
-              <p className="mt-1 text-xs text-[#5f6764]">{validacion.usuario?.nombre_institucional || validacion.usuario?.nombre || "Usuario"} · {formatValue(validacion.fecha_hora)}</p>
-              {validacion.cargo ? <p className="mt-1 text-xs font-bold text-[#7a123d]">{validacion.cargo}</p> : null}
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
-  );
+  return <ValidationTimeline validaciones={validaciones} />;
 }
 
 function Header({ children }: { children: ReactNode }) {

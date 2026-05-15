@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/states/EmptyState";
 import { ErrorMessage } from "@/components/states/ErrorMessage";
 import { LoadingState } from "@/components/states/LoadingState";
+import { ProcessStateBadge, SensitiveTraceNotice } from "@/components/trazabilidad";
 import { getDiscenteCargaAcademica } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { DiscenteCargaAcademicaItem, DiscenteCargaAcademicaResponse } from "@/lib/types";
@@ -39,6 +40,7 @@ export default function DiscenteCargaAcademicaPage() {
           <p className="rounded-2xl border border-[#d4af37]/35 bg-[#fff8e6] px-4 py-3 text-sm font-bold text-[#72530d]">
             Esta vista muestra solo tus inscripciones. No sustituye al kárdex oficial ni expone matrícula militar.
           </p>
+          <SensitiveTraceNotice text="Las actas publicadas se muestran como hitos de seguimiento; la fuente de verdad sigue siendo el backend académico." tone="info" />
           {state.loading ? <LoadingState label="Cargando carga académica..." /> : null}
           {state.error ? <ErrorMessage message={state.error} /> : null}
           {!state.loading && !state.error && state.data?.items.length === 0 ? (
@@ -111,7 +113,8 @@ function ActasSummary({ item }: { item: DiscenteCargaAcademicaItem }) {
       {item.actas.map((acta) => (
         <div key={acta.acta_id} className="rounded-xl border border-[#eadfce] px-3 py-2">
           <p className="text-xs font-black text-[#101b18]">{acta.corte_label}</p>
-          <p className="text-xs text-[#5f6764]">{acta.estado_acta_label}</p>
+          <div className="mt-1"><ProcessStateBadge state={acta.estado_acta} label={acta.estado_acta_label} /></div>
+          {acta.fecha_publicacion ? <p className="mt-1 text-xs text-[#5f6764]">Publicada: {acta.fecha_publicacion}</p> : null}
           <Link className="mt-1 inline-block text-xs font-black text-[#7a123d]" href="/discente/actas">
             Ver mis actas
           </Link>

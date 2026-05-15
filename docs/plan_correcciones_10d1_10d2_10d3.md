@@ -85,6 +85,12 @@ Detalle tecnico: `docs/resumen_bloque10d2_navegacion_dashboards_reportes.md`.
 3. Iconografía y consistencia de botones/controles.
 4. Mejoras responsive posteriores al ajuste funcional.
 
+## Referencia posterior al Bloque 10D-4
+
+10D-4 complementa la experiencia con trazabilidad visual, timelines, badges de proceso y paneles contextuales de auditoría. No cierra los P3 de terminología, microcopy, iconografía ni normalización completa de estados vacíos definidos para 10D-3.
+
+Los pendientes residuales quedan separados en `docs/backlog_ajustes_ux_post_10d.md` para evitar mezclarlos con el alcance de trazabilidad.
+
 ## Fuera de 10D
 
 | Tema | Bloque sugerido |

@@ -2855,3 +2855,43 @@ Comandos ejecutados durante el bloque:
 Resumen técnico:
 
 - `docs/resumen_bloque10d2_navegacion_dashboards_reportes.md`
+
+## Bloque 10D-4 - Trazabilidad visual y estados de proceso
+
+### Objetivo
+
+Se agregan líneas de tiempo, badges y paneles contextuales para hacer visibles procesos críticos existentes sin modificar reglas académicas, estados de acta, cálculos, historial, kárdex, modelos ni migraciones.
+
+### Cambios principales
+
+- Nuevo paquete de componentes `frontend/src/components/trazabilidad/` para timelines, badges, auditoría contextual, conformidad, exportaciones, movimientos, historial y periodos.
+- Detalles de acta muestran timeline de estado, timeline de validación, resumen de conformidades, aviso de oficialidad/solo lectura y auditoría contextual sólo para perfiles autorizados.
+- Discente ve línea personal de acta/conformidad sin auditoría global ni datos de otros discentes.
+- Historial académico interno muestra timeline cronológico y aviso de que no sustituye al kárdex oficial.
+- Movimientos académicos muestran impacto visual origen/destino sólo con evidencia entregada por backend.
+- Periodos muestran stepper de cierre/apertura y agrupación visual de bloqueantes/advertencias.
+- Exportaciones muestran folio técnico y trazabilidad documental segura.
+- Auditoría institucional agrega resumen visual y drawer de detalle sin exponer payloads completos.
+
+### Privacidad
+
+No se muestra matrícula militar por defecto, comentarios completos de inconformidad en resúmenes, `metadatos_json`, `cambios_json`, filtros completos ni payloads sensibles. Docente y discente no solicitan bitácora contextual.
+
+### Validación
+
+Comandos ejecutados durante el bloque:
+
+- `docker compose exec -T frontend npm run lint`
+- `docker compose exec -T frontend npm run build`
+- `docker compose exec -T backend python manage.py check`
+- `docker compose exec -T backend python manage.py makemigrations --check`
+- `docker compose exec -T backend python manage.py test auditoria`
+- `docker compose exec -T backend python manage.py test evaluacion`
+- `docker compose exec -T backend python manage.py test trayectoria`
+- `docker compose exec -T backend python manage.py test relaciones`
+- `docker compose exec -T backend python manage.py test actas`
+- `docker compose exec -T backend python manage.py test`
+
+Resumen técnico:
+
+- `docs/resumen_bloque10d4_trazabilidad_visual.md`

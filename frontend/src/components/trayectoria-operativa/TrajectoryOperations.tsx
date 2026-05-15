@@ -11,6 +11,14 @@ import { EmptyState } from "@/components/states/EmptyState";
 import { ErrorMessage } from "@/components/states/ErrorMessage";
 import { LoadingState } from "@/components/states/LoadingState";
 import {
+  AcademicHistoryTimeline,
+  AuditTrailPanel,
+  MovementImpactTimeline,
+  PeriodBlockersPanel,
+  PeriodProcessStepper,
+  SensitiveTraceNotice,
+} from "@/components/trazabilidad";
+import {
   buscarHistoriales,
   cerrarPeriodo,
   crearAperturaPeriodo,
@@ -37,7 +45,7 @@ import {
   listResource,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { canAccessMiHistorialAcademico, canAccessPeriodosOperativos, canAccessTrayectoriaInstitucional, canAccessTrayectoriaOperativa, canOperateTrayectoria } from "@/lib/dashboard";
+import { canAccessAuditoriaEventos, canAccessMiHistorialAcademico, canAccessPeriodosOperativos, canAccessTrayectoriaInstitucional, canAccessTrayectoriaOperativa, canOperateTrayectoria } from "@/lib/dashboard";
 import type {
   AuthenticatedUser,
   DiagnosticoCierrePeriodoDTO,
@@ -205,11 +213,13 @@ function HistoryContent({ state, own = false }: { state: LoadState<HistorialAcad
       {state.data ? (
         <>
           <SensitiveInfoNotice text={own ? "Esta vista es informativa y no corresponde al kárdex oficial." : "Historial interno sensible. Consulta exclusiva para perfiles autorizados."} />
+          <SensitiveTraceNotice text="El historial académico interno conserva evidencia completa. No sustituye al kárdex oficial." tone="warning" />
           <Card className="p-5">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b46c13]">Discente</p>
             <h2 className="mt-2 text-2xl font-black text-[#101b18]">{formatValue(state.data.discente)}</h2>
             <p className="mt-2 text-sm text-[#5f6764]">{state.data.aviso_privacidad || "Historial académico interno."}</p>
           </Card>
+          <AcademicHistoryTimeline historial={state.data} />
           <HistoryResultsTable items={state.data.resultados as Array<RecordValue>} />
           <HistoryEventsTable items={state.data.eventos as Array<RecordValue>} />
           <DataSection title="Extraordinarios" items={state.data.extraordinarios as Array<RecordValue>} />
@@ -343,7 +353,20 @@ export function ChangeGroupForm() {
 }
 
 export function AcademicMovementDetail({ id }: { id: string }) {
-  return <DetailPage title="Detalle de movimiento académico" description="Efecto operativo sobre adscripción e inscripciones cuando el backend lo reporta." allowed={canAccessTrayectoriaInstitucional} load={() => getMovimientoAcademico(id).then((r) => r.item)} />;
+  return (
+    <DetailPage
+      title="Detalle de movimiento académico"
+      description="Efecto operativo sobre adscripción e inscripciones cuando el backend lo reporta."
+      allowed={canAccessTrayectoriaInstitucional}
+      load={() => getMovimientoAcademico(id).then((r) => r.item)}
+      extra={(item, user) => (
+        <>
+          <MovementImpactTimeline movimiento={item as MovimientoAcademicoDTO} />
+          {canAccessAuditoriaEventos(user) ? <AuditTrailPanel objetoTipo="MOVIMIENTO_ACADEMICO" objetoId={String(item.id)} /> : null}
+        </>
+      )}
+    />
+  );
 }
 
 export function PeriodsOperationalList() {
@@ -358,6 +381,7 @@ export function PeriodsOperationalList() {
     <AccessPage title="Periodos operativos" description="Diagnóstico, cierre, apertura y pendientes de asignación docente." allowed={canAccessPeriodosOperativos}>
       {(user) => (
         <div className="space-y-5">
+          <PeriodProcessStepper activeStep="activo" />
           <div className="flex flex-wrap gap-2">
             <LinkButton href="/periodos/cierres">Procesos de cierre</LinkButton>
             {canOperateTrayectoria(user) ? <LinkButton href="/periodos/apertura">Abrir periodo</LinkButton> : null}
@@ -431,11 +455,12 @@ export function ClosureDiagnosticPanel({ periodoId }: { periodoId: string }) {
           <StateBlock state={state} loadingLabel="Diagnosticando periodo..." emptyTitle="No hay diagnóstico." />
           {state.data ? (
             <>
+              <PeriodProcessStepper activeStep="diagnostico" periodo={state.data.periodo} />
               <MetricGrid resumen={state.data.resumen} />
-              <ClosureBlockersList title="Bloqueantes" items={state.data.bloqueantes} tone="danger" />
-              <ClosureBlockersList title="Advertencias" items={state.data.advertencias} tone="warning" />
+              <PeriodBlockersPanel bloqueantes={state.data.bloqueantes} advertencias={state.data.advertencias} />
               <ClosureStudentClassificationTable diagnostico={state.data} />
               <ClosePeriodActionPanel canOperate={canOperateTrayectoria(user)} canClose={state.data.puede_cerrar} observaciones={observaciones} setObservaciones={setObservaciones} saving={saving} onClose={closePeriod} />
+              {canAccessAuditoriaEventos(user) ? <AuditTrailPanel objetoTipo="PERIODO" objetoId={state.data.periodo.id} /> : null}
             </>
           ) : null}
         </div>
@@ -485,7 +510,22 @@ export function ClosePeriodActionPanel({ canOperate, canClose, observaciones, se
 }
 
 export function ClosureProcessDetail({ id }: { id: string }) {
-  return <DetailPage title="Proceso de cierre" description="Evidencia generada por el cierre de periodo." allowed={canAccessPeriodosOperativos} load={() => getCierre(id).then((r) => r.item)} extra={(item) => item.detalles ? <DataSection title="Detalles por discente" items={item.detalles as Array<RecordValue>} /> : null} />;
+  return (
+    <DetailPage
+      title="Proceso de cierre"
+      description="Evidencia generada por el cierre de periodo."
+      allowed={canAccessPeriodosOperativos}
+      load={() => getCierre(id).then((r) => r.item)}
+      extra={(item, user) => (
+        <>
+          <PeriodProcessStepper activeStep="cierre" periodo={item.periodo as PeriodoOperativoDTO | undefined} />
+          <SensitiveTraceNotice text="El cierre no modifica actas formalizadas; preserva evidencia y clasificación calculada por backend." tone="info" />
+          {item.detalles ? <DataSection title="Detalles por discente" items={item.detalles as Array<RecordValue>} /> : null}
+          {canAccessAuditoriaEventos(user) ? <AuditTrailPanel objetoTipo="PROCESO_CIERRE_PERIODO" objetoId={String(item.id)} /> : null}
+        </>
+      )}
+    />
+  );
 }
 
 export function OpeningPeriodForm() {
@@ -502,7 +542,7 @@ export function OpeningPeriodForm() {
       setState({ saving: false, error: error instanceof Error ? error.message : "No fue posible ejecutar la apertura.", ok: null });
     }
   }
-  return <FormPage title="Apertura de periodo" description="Promueve solo discentes promovibles desde un origen cerrado. No asigna docentes automáticamente." allowed={canOperateTrayectoria} payload={payload} setPayload={setPayload} fields={["periodo_origen_id", "periodo_destino_id", "observaciones"]} state={state} onSubmit={submit} submitLabel="Ejecutar apertura" />;
+  return <FormPage title="Apertura de periodo" description="Promueve solo discentes promovibles desde un origen cerrado. No asigna docentes automáticamente." allowed={canOperateTrayectoria} payload={payload} setPayload={setPayload} fields={["periodo_origen_id", "periodo_destino_id", "observaciones"]} state={state} onSubmit={submit} submitLabel="Ejecutar apertura" leading={<PeriodProcessStepper activeStep="apertura" />} />;
 }
 
 export function ClosureProcessesList() {
@@ -514,7 +554,21 @@ export function OpeningProcessesList() {
 }
 
 export function OpeningProcessDetail({ id }: { id: string }) {
-  return <DetailPage title="Proceso de apertura" description="Resultado de promoción y creación/reuso de grupos destino." allowed={canAccessPeriodosOperativos} load={() => getApertura(id).then((r) => r.item)} />;
+  return (
+    <DetailPage
+      title="Proceso de apertura"
+      description="Resultado de promoción y creación/reuso de grupos destino."
+      allowed={canAccessPeriodosOperativos}
+      load={() => getApertura(id).then((r) => r.item)}
+      extra={(item, user) => (
+        <>
+          <PeriodProcessStepper activeStep="apertura" periodo={item.periodo_destino as PeriodoOperativoDTO | undefined} />
+          <SensitiveTraceNotice text="La apertura no asigna docentes automáticamente." tone="warning" />
+          {canAccessAuditoriaEventos(user) ? <AuditTrailPanel objetoTipo="PROCESO_APERTURA_PERIODO" objetoId={String(item.id)} /> : null}
+        </>
+      )}
+    />
+  );
 }
 
 export function PendingTeacherAssignmentsTable() {
@@ -531,6 +585,7 @@ export function PendingTeacherAssignmentsTable() {
     <AccessPage title="Pendientes de asignación docente" description="Materias sin docente asignado para el periodo seleccionado." allowed={canAccessPeriodosOperativos}>
       {() => (
         <div className="space-y-5">
+          <PeriodProcessStepper activeStep="pendientes" />
           <FiltersBar filters={filters} setFilters={setFilters} fields={["periodo", "carrera", "grupo", "semestre"]} onSearch={load} />
           <StateBlock state={state} loadingLabel="Cargando pendientes..." emptyTitle="No hay pendientes con los filtros seleccionados." />
           {state.data ? <DataTable items={state.data as Array<RecordValue>} columns={["periodo", "carrera", "grupo", "materia", "programa_asignatura", "estado", "accion_sugerida"]} /> : null}
@@ -577,26 +632,29 @@ function ListPage<T extends { id: number }>({ title, description, allowed, filte
   );
 }
 
-function FormPage({ title, description, allowed, payload, setPayload, fields, state, onSubmit, submitLabel }: { title: string; description: string; allowed: (user: AuthenticatedUser) => boolean; payload: FilterState; setPayload: (value: FilterState) => void; fields: string[]; state: { saving: boolean; error: string | null; ok: string | null }; onSubmit: () => void; submitLabel: string }) {
+function FormPage({ title, description, allowed, payload, setPayload, fields, state, onSubmit, submitLabel, leading }: { title: string; description: string; allowed: (user: AuthenticatedUser) => boolean; payload: FilterState; setPayload: (value: FilterState) => void; fields: string[]; state: { saving: boolean; error: string | null; ok: string | null }; onSubmit: () => void; submitLabel: string; leading?: ReactNode }) {
   return (
     <AccessPage title={title} description={description} allowed={allowed}>
       {() => (
-        <Card className="p-5">
-          <SensitiveInfoNotice text="Captura únicamente IDs internos autorizados. No uses matrícula militar." />
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            {fields.map((field) => (
-              <SmartFormField
-                key={field}
-                field={field}
-                payload={payload}
-                onChange={(value) => setPayload({ ...payload, [field]: value })}
-              />
-            ))}
-          </div>
-          {state.error ? <div className="mt-4"><ErrorMessage message={state.error} /></div> : null}
-          {state.ok ? <OperationSuccessNotice text={state.ok} /> : null}
-          <Button className="mt-4" disabled={state.saving} onClick={onSubmit}>{state.saving ? "Guardando..." : submitLabel}</Button>
-        </Card>
+        <div className="space-y-5">
+          {leading}
+          <Card className="p-5">
+            <SensitiveInfoNotice text="Captura únicamente IDs internos autorizados. No uses matrícula militar." />
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              {fields.map((field) => (
+                <SmartFormField
+                  key={field}
+                  field={field}
+                  payload={payload}
+                  onChange={(value) => setPayload({ ...payload, [field]: value })}
+                />
+              ))}
+            </div>
+            {state.error ? <div className="mt-4"><ErrorMessage message={state.error} /></div> : null}
+            {state.ok ? <OperationSuccessNotice text={state.ok} /> : null}
+            <Button className="mt-4" disabled={state.saving} onClick={onSubmit}>{state.saving ? "Guardando..." : submitLabel}</Button>
+          </Card>
+        </div>
       )}
     </AccessPage>
   );
@@ -754,7 +812,7 @@ function StaticSelectField({ label, value, onChange, options }: { label: string;
   );
 }
 
-function DetailPage<T extends RecordValue>({ title, description, allowed, load, extra }: { title: string; description: string; allowed: (user: AuthenticatedUser) => boolean; load: () => Promise<T>; extra?: (item: T) => ReactNode }) {
+function DetailPage<T extends RecordValue>({ title, description, allowed, load, extra }: { title: string; description: string; allowed: (user: AuthenticatedUser) => boolean; load: () => Promise<T>; extra?: (item: T, user: AuthenticatedUser) => ReactNode }) {
   const [state, setState] = useState<LoadState<T>>(emptyState);
   useEffect(() => {
     setState({ data: null, loading: true, error: null });
@@ -764,11 +822,11 @@ function DetailPage<T extends RecordValue>({ title, description, allowed, load, 
   }, [load]);
   return (
     <AccessPage title={title} description={description} allowed={allowed}>
-      {() => (
+      {(user) => (
         <div className="space-y-5">
           <StateBlock state={state} loadingLabel="Cargando detalle..." emptyTitle="No se encontró el registro." />
           {state.data ? <DataSection title="Detalle" items={[state.data]} /> : null}
-          {state.data && extra ? extra(state.data) : null}
+          {state.data && extra ? extra(state.data, user) : null}
         </div>
       )}
     </AccessPage>

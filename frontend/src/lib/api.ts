@@ -6,6 +6,8 @@ import type {
   AsignacionesListResponse,
   AuthMe,
   AuthenticatedUser,
+  AuditEventDTO,
+  AuditEventSummaryDTO,
   BitacoraEventosResponse,
   BusquedaResponse,
   CalendarioMes,
@@ -64,7 +66,8 @@ async function parseJson<T>(response: Response): Promise<T> {
     const message = typeof data === "object" && data
       ? String((data as { error?: unknown; message?: unknown }).error ?? (data as { message?: unknown }).message ?? "No fue posible completar la solicitud.")
       : "No fue posible completar la solicitud.";
-    const error = new Error(message) as Error & { errors?: Record<string, string[]> };
+    const error = new Error(message) as Error & { errors?: Record<string, string[]>; status?: number };
+    error.status = response.status;
     if (typeof data === "object" && data && "errors" in data) {
       error.errors = (data as { errors?: Record<string, string[]> }).errors;
     }
@@ -191,6 +194,22 @@ export async function getAuditoriaExportaciones(params: Record<string, string> =
 
 export async function getAuditoriaEventos(params: Record<string, string> = {}) {
   return apiGet<BitacoraEventosResponse>(`/api/auditoria/eventos/${queryString(params)}`);
+}
+
+export async function getAuditoriaEventoDetalle(id: number | string) {
+  return apiGet<{ ok: boolean; item: AuditEventDTO }>(`/api/auditoria/eventos/${encodeURIComponent(String(id))}/`).then((data) => data.item);
+}
+
+export async function getAuditoriaResumen(params: Record<string, string> = {}) {
+  return apiGet<AuditEventSummaryDTO & { resumen?: AuditEventSummaryDTO }>(`/api/auditoria/eventos/resumen/${queryString(params)}`).then((data) => data.resumen || data);
+}
+
+export async function getEventosCriticosPorObjeto(objetoTipo: string, objetoId: number | string, params: Record<string, string> = {}) {
+  return getAuditoriaEventos({
+    ...params,
+    objeto_tipo: objetoTipo,
+    objeto_id: String(objetoId),
+  });
 }
 
 export async function descargarAuditoriaEventosXlsx(params: Record<string, string> = {}) {
