@@ -25,7 +25,7 @@ export function DashboardSidePanel({ user }: { user: AuthenticatedUser }) {
           getCalendarioMes(today.getFullYear(), today.getMonth() + 1),
           getEventosProximos(),
         ]);
-        setActividad(compactRecentActivity(actividadResponse.items));
+        setActividad(compactRecentActivity(filterRecentActivityForUser(actividadResponse.items, user), user));
         setCalendario(calendarioResponse);
         setEventos(eventosResponse.items.slice(0, MAX_EVENTS));
       } finally {
@@ -69,7 +69,11 @@ function Timeline({ items, user }: { items: ActividadRecienteItem[]; user: Authe
   if (items.length === 0) {
     return (
       <div className="relative space-y-3 pl-6 before:absolute before:left-2 before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-[#eadbc4]">
-        <TimelinePlaceholder color="#0b4a3d" title="Sin actividad reciente" description={`Las acciones de ${user.nombre_visible || user.username} aparecerán aquí cuando existan nuevos registros.`} />
+        <TimelinePlaceholder
+          color="#0b4a3d"
+          title={isDiscenteUser(user) ? "Sin actividad reciente relevante" : "Sin actividad reciente"}
+          description={isDiscenteUser(user) ? "Aún no hay novedades para mostrar." : `Las acciones de ${user.nombre_visible || user.username} aparecerán aquí cuando existan nuevos registros.`}
+        />
       </div>
     );
   }
@@ -249,11 +253,12 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium" }).format(new Date(value));
 }
 
-function compactRecentActivity(items: ActividadRecienteItem[]) {
+function compactRecentActivity(items: ActividadRecienteItem[], user: AuthenticatedUser) {
   const result: ActividadRecienteItem[] = [];
   const seen = new Set<string>();
 
   for (const item of items) {
+    if (isDiscenteUser(user) && isLowRelevanceForDiscente(item)) continue;
     const signature = `${item.tipo}|${normalize(item.titulo)}|${normalize(item.descripcion)}`;
     if (seen.has(signature)) continue;
     seen.add(signature);
@@ -266,4 +271,18 @@ function compactRecentActivity(items: ActividadRecienteItem[]) {
 
 function normalize(value: string | null | undefined) {
   return (value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function filterRecentActivityForUser(items: ActividadRecienteItem[], user: AuthenticatedUser) {
+  if (!isDiscenteUser(user)) return items;
+  return items.filter((item) => !isLowRelevanceForDiscente(item));
+}
+
+function isLowRelevanceForDiscente(item: ActividadRecienteItem) {
+  const raw = `${item.tipo || ""} ${item.titulo || ""} ${item.descripcion || ""}`.toLowerCase();
+  return raw.includes("captura preliminar") || raw.includes("actualizada");
+}
+
+function isDiscenteUser(user: AuthenticatedUser) {
+  return user.perfil_principal === "DISCENTE" || user.roles.includes("DISCENTE");
 }

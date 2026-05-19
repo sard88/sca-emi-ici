@@ -44,12 +44,13 @@ export function GeneralDashboard() {
 
   const profiles = getProfilesForUser(user);
   const fallbackQuickAccesses = buildQuickAccesses(profiles.flatMap((profile) => profile.cards));
+  const isDiscente = user.perfil_principal === "DISCENTE" || user.roles.includes("DISCENTE");
   const liveCards =
     summary?.cards.map((card) => ({
       title: card.title,
       description: card.description,
-      href: card.href ?? undefined,
-      backend: card.backend,
+      href: isDiscente ? forceDiscenteDashboardRoute(card.title, card.href ?? undefined) : card.href ?? undefined,
+      backend: isDiscente ? false : card.backend,
       value: card.value,
       tone: card.tone,
     })) ?? [];
@@ -57,8 +58,8 @@ export function GeneralDashboard() {
     ? summary.quick_accesses.map((item) => ({
         title: item.label,
         description: item.description || "Acceso disponible para tu perfil.",
-        href: item.url,
-        backend: item.backend,
+        href: isDiscente ? forceDiscenteDashboardRoute(item.label, item.url) : item.url,
+        backend: isDiscente ? false : item.backend,
       }))
     : fallbackQuickAccesses;
 
@@ -163,4 +164,22 @@ function DotPattern() {
       )}
     </svg>
   );
+}
+
+function forceDiscenteDashboardRoute(title: string, currentHref?: string) {
+  const normalized = normalizeTitle(title);
+  if (normalized === "actas publicadas") return "/discente/actas";
+  if (normalized === "conformidad pendiente") return "/discente/actas";
+  if (normalized === "historial") return "/discente/historial-academico";
+  if (normalized === "mis actas") return "/discente/actas";
+  if (normalized === "mi historial") return "/discente/historial-academico";
+  return currentHref;
+}
+
+function normalizeTitle(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .trim()
+    .toLowerCase();
 }

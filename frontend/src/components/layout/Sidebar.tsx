@@ -42,8 +42,8 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
         </div>
 
         <div className="mt-6 flex gap-3">
-          <BrandChip label="EMI" />
-          <BrandChip label="UDEFA" />
+          <BrandChip src="/brand/institutions/emi.png" alt="Escudo EMI" />
+          <BrandChip src="/brand/institutions/udefa.png" alt="Escudo UDEFA" />
         </div>
 
         <h1 className="mt-6 text-xl font-black leading-tight text-[#10372e]">
@@ -184,10 +184,10 @@ function SidebarSection({ title, items }: NavigationSection) {
   );
 }
 
-function BrandChip({ label }: { label: string }) {
+function BrandChip({ src, alt }: { src: string; alt: string }) {
   return (
     <span className="flex h-12 w-12 items-center justify-center rounded-full border border-[#dfc79f] bg-[#fffaf1] text-xs font-black text-[#7a123d] shadow-sm">
-      {label}
+      <Image src={src} alt={alt} width={28} height={28} className="h-7 w-7 object-contain" />
     </span>
   );
 }
