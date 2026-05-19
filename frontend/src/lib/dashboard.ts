@@ -22,7 +22,7 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
   admin: {
     key: "ADMIN",
     title: "Administrador",
-    description: "Soporte técnico, usuarios, roles, cargos y estado institucional del sistema.",
+    description: "Gestión institucional de usuarios, roles, cargos y operación académica.",
     allowed: ["ADMIN", "ADMIN_SISTEMA"],
     cards: [
       { title: "Administración institucional", description: "Usuarios, grados, unidades, cargos y roles desde el portal.", href: "/administracion" },
@@ -31,15 +31,13 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
       { title: "Seguimiento institucional de trayectoria", description: "Historiales, extraordinarios, movimientos y situaciones académicas.", href: "/trayectoria/historial" },
       { title: "Periodos operativos", description: "Diagnóstico, cierre, apertura y pendientes de asignación docente.", href: "/periodos" },
       { title: "Reportes institucionales", description: "Documentos oficiales, reportes operativos, desempeño y trayectoria.", href: "/reportes" },
-      { title: "Auditoría institucional", description: "Eventos críticos y exportaciones auditadas con permisos separados.", href: "/reportes/auditoria" },
-      { title: "Django Admin", description: "Soporte técnico avanzado fuera del flujo operativo cotidiano.", href: "/admin/", backend: true },
-      { title: "Estado técnico", description: "Health check del backend.", href: "/health/", backend: true },
+      { title: "Auditoría institucional", description: "Consulta institucional de eventos disponibles según tu perfil.", href: "/reportes/auditoria" },
     ],
   },
   estadistica: {
     key: "ESTADISTICA",
     title: "Estadística",
-    description: "Consulta, consolidación, cierre y apertura de periodos académicos.",
+    description: "Consulta, consolidación, cierre y apertura de períodos académicos.",
     allowed: ["ENCARGADO_ESTADISTICA", "ESTADISTICA"],
     cards: [
       { title: "Catálogos académicos", description: "Operación de estructura académica desde el portal.", href: "/catalogos" },
@@ -49,7 +47,7 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
       { title: "Movimientos académicos", description: "Cambios de grupo y movimientos operativos.", href: "/movimientos-academicos" },
       { title: "Cierre y apertura", description: "Diagnóstico, cierre, apertura y pendientes docentes.", href: "/periodos" },
       { title: "Reportes institucionales", description: "Actas, desempeño, trayectoria, kárdex y exportaciones.", href: "/reportes" },
-      { title: "Auditoría institucional", description: "Eventos críticos y trazabilidad de exportaciones.", href: "/reportes/auditoria" },
+      { title: "Auditoría institucional", description: "Consulta institucional de eventos disponibles según tu perfil.", href: "/reportes/auditoria" },
     ],
   },
   docente: {
@@ -101,7 +99,7 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
       { title: "Seguimiento institucional de trayectoria", description: "Historiales, situaciones y movimientos autorizados.", href: "/trayectoria/historial" },
       { title: "Catálogos académicos", description: "Estructura académica autorizada.", href: "/catalogos" },
       { title: "Procesos de cierre", description: "Diagnósticos, cierres y aperturas.", href: "/periodos/cierres" },
-      { title: "Reportes y exportaciones", description: "Actas, historial de descargas y auditoría documental.", href: "/reportes" },
+      { title: "Reportes y exportaciones", description: "Actas, reportes y documentos disponibles según tu perfil.", href: "/reportes" },
       { title: "Desempeño académico", description: "Indicadores institucionales y cuadro de aprovechamiento.", href: "/reportes/desempeno" },
       { title: "Reportes de trayectoria", description: "Situación académica, bajas, reingresos e historial interno.", href: "/reportes/trayectoria" },
       { title: "Kárdex oficial", description: "Exportación documental PDF autorizada.", href: "/reportes/kardex" },

@@ -61,7 +61,9 @@ export function GeneralDashboard() {
     summary?.cards.map((card) => ({
       title: card.title,
       description: card.description,
-      href: isDiscente
+      href: ensurePeriodsRouteByTitle(
+        card.title,
+        isDiscente
         ? forceDiscenteDashboardRoute(card.title, card.href ?? undefined)
         : isDocente
           ? forceDocenteDashboardRoute(card.title, card.href ?? undefined)
@@ -70,10 +72,11 @@ export function GeneralDashboard() {
             : isJefaturaAcademica
               ? forceJefaturaAcademicaRoute(card.title, card.href ?? undefined)
           : card.href ?? undefined,
-      backend: isDiscente || isDocente || isJefaturaCarrera || isJefaturaAcademica ? false : card.backend,
+      ),
+      backend: false,
       value: card.value,
       tone: card.tone,
-    })) ?? [];
+    })).filter((card) => isSafeFrontendRoute(card.href)) ?? [];
 
   const rawQuickAccesses = summary?.quick_accesses?.length
     ? summary.quick_accesses.map((item) => ({
@@ -85,7 +88,9 @@ export function GeneralDashboard() {
     : fallbackQuickAccesses;
   const quickAccesses = rawQuickAccesses.map((item) => ({
     ...item,
-    href: isDiscente
+    href: ensurePeriodsRouteByTitle(
+      item.title,
+      isDiscente
       ? forceDiscenteDashboardRoute(item.title, item.href)
       : isDocente
         ? forceDocenteDashboardRoute(item.title, item.href)
@@ -94,8 +99,9 @@ export function GeneralDashboard() {
           : isJefaturaAcademica
             ? forceJefaturaAcademicaRoute(item.title, item.href)
         : item.href,
-    backend: isDiscente || isDocente || isJefaturaCarrera || isJefaturaAcademica ? false : item.backend,
-  }));
+    ),
+    backend: false,
+  })).filter((item) => isSafeFrontendRoute(item.href));
 
   return (
     <AppShell showRightPanel>
@@ -260,4 +266,21 @@ function normalizeTitle(value: string) {
     .replace(/\p{Diacritic}/gu, "")
     .trim()
     .toLowerCase();
+}
+
+function isSafeFrontendRoute(href?: string) {
+  if (!href) return true;
+  const lower = href.toLowerCase();
+  if (lower.startsWith("http://") || lower.startsWith("https://")) return false;
+  if (lower.includes("localhost:8000") || lower.includes("localhost:8080") || lower.includes("127.0.0.1")) return false;
+  if (lower.startsWith("/admin") || lower.startsWith("/health")) return false;
+  return true;
+}
+
+function ensurePeriodsRouteByTitle(title: string, href?: string) {
+  const normalized = normalizeTitle(title);
+  if (normalized === "periodos activos" || normalized === "periodos" || normalized === "periodo activo" || normalized === "periodos operativos") {
+    return "/periodos";
+  }
+  return href;
 }

@@ -3,6 +3,9 @@ import type { ReporteTrayectoriaConfig } from "@/lib/types";
 import { TrajectoryReportBadge } from "./TrajectoryReportBadge";
 
 export function TrajectoryReportCard({ config }: { config: ReporteTrayectoriaConfig }) {
+  const safeDescription = sanitizeTechnicalText(config.descripcion, "trayectoria");
+  const safeHelp = sanitizeTechnicalText(config.ayuda, "trayectoria");
+
   return (
     <article className="group rounded-[1.5rem] border border-[#eadfce] bg-white/88 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#bc955c]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -17,8 +20,8 @@ export function TrajectoryReportCard({ config }: { config: ReporteTrayectoriaCon
           {config.requiereDiscenteId ? <TrajectoryReportBadge label="Requiere discente" tone="dorado" /> : null}
         </div>
       </div>
-      <p className="mt-3 text-sm leading-6 text-[#5f6764]">{config.descripcion}</p>
-      <p className="mt-3 text-xs font-bold leading-5 text-[#7b837f]">{config.ayuda}</p>
+      <p className="mt-3 text-sm leading-6 text-[#5f6764]">{safeDescription}</p>
+      <p className="mt-3 text-xs font-bold leading-5 text-[#7b837f]">{safeHelp}</p>
       {config.datosSensibles ? (
         <p className="mt-3 rounded-2xl border border-[#e7c3ce] bg-[#fff7f9] px-3 py-2 text-xs font-bold leading-5 text-[#7a123d]">
           Consulta institucional autorizada.
@@ -37,4 +40,34 @@ export function TrajectoryReportCard({ config }: { config: ReporteTrayectoriaCon
       </div>
     </article>
   );
+}
+
+function sanitizeTechnicalText(text: string, context: "trayectoria") {
+  const source = (text || "").trim();
+  const lower = source.toLowerCase();
+  const hasTechnicalCopy =
+    lower.includes("bloque 9") ||
+    lower.includes("bloque 10") ||
+    lower.includes("xlsx implementado") ||
+    lower.includes("pdf implementado") ||
+    lower.includes("pdf queda pendiente") ||
+    lower.includes("xlsx queda pendiente") ||
+    lower.includes("serviciokardex") ||
+    lower.includes("familia de endpoints") ||
+    lower.includes("endpoints xlsx") ||
+    lower.includes("documento interno") ||
+    lower.includes("no sustituye kárdex oficial") ||
+    lower.includes("subbloques posteriores") ||
+    lower.includes("backend") ||
+    lower.includes("django") ||
+    lower.includes("api") ||
+    lower.includes("payload") ||
+    lower.includes("fuente de verdad") ||
+    lower.includes("trazabilidad técnica") ||
+    lower.includes("auditoría técnica") ||
+    lower.includes("ids internos");
+
+  if (!hasTechnicalCopy) return source;
+  if (context === "trayectoria") return "Consulta eventos académicos registrados para seguimiento institucional.";
+  return source;
 }

@@ -17,7 +17,7 @@ export function CatalogResourceTable({
     <section className="rounded-[1.5rem] border border-[#eadfce] bg-white/88 shadow-sm">
       <div className="border-b border-[#eadfce] p-4">
         <h3 className="text-base font-black text-[#101b18]">Registros</h3>
-        <p className="mt-1 text-sm text-[#5f6764]">Tabla operativa con acciones controladas por permisos del backend.</p>
+        <p className="mt-1 text-sm text-[#5f6764]">Tabla de registros con acciones disponibles según tu perfil.</p>
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse text-left text-sm">

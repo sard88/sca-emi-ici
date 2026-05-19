@@ -1,7 +1,7 @@
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 
-export function CatalogEmptyState({ title = "No hay registros.", description = "El backend no devolvió registros para los filtros actuales." }: { title?: string; description?: string }) {
+export function CatalogEmptyState({ title = "No hay registros.", description = "No hay información disponible para los filtros seleccionados." }: { title?: string; description?: string }) {
   return <EmptyState title={title} description={description} variant="search" />;
 }
 

@@ -7,9 +7,9 @@ export default function AdministracionPage() {
   return (
     <AdminCatalogIndex
       title="Administración institucional"
-      description="Operación base de usuarios, grados, unidades, cargos y roles visibles desde el portal moderno. Django Admin se conserva como respaldo técnico."
-      heroTitle="Administración base sin abandonar Django Admin"
-      heroDescription="Estas interfaces consumen APIs Django con sesión y CSRF. El frontend no expone contraseñas ni decide reglas críticas; solo presenta formularios y errores validados por backend."
+      description="Gestiona usuarios, grados, unidades, cargos y roles desde el portal institucional."
+      heroTitle="Administración institucional"
+      heroDescription="Consulta y administra información de acceso según tu perfil autorizado."
       resources={adminResources}
       canRead={canReadAdministracion}
       canWrite={canWriteAdministracion}

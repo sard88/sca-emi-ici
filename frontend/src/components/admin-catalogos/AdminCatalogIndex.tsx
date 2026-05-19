@@ -41,7 +41,7 @@ export function AdminCatalogIndex({
           </section>
           {!writable ? (
             <p className="rounded-2xl border border-[#d4af37]/35 bg-[#fff8e6] px-4 py-3 text-sm font-bold text-[#72530d]">
-              Tu perfil permite consulta de este módulo. Las modificaciones requieren perfil autorizado.
+              Tu perfil permite consultar este módulo. Las modificaciones requieren un perfil autorizado.
             </p>
           ) : null}
           <section className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
