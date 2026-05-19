@@ -23,21 +23,21 @@ export function DashboardCard({ item, index = 0 }: { item: DashboardCardItem; in
   const backend = resolved?.backend ?? false;
   const style = item.tone ? toneStyles[item.tone] : cardStyles[index % cardStyles.length];
   const content = (
-    <article className="group flex h-full min-h-[174px] flex-col justify-between rounded-[1.45rem] border border-[#eadfce] bg-white/88 p-5 shadow-institutional transition hover:-translate-y-1 hover:border-[#d8c5a7] hover:bg-white">
+    <article className="group flex h-full min-h-[148px] flex-col justify-between rounded-[1.25rem] border border-[#e7dccb] bg-[#fffcf6] p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[#d8c5a7] hover:bg-white">
       <div>
-        <div className="mb-5 flex items-start justify-between gap-3">
-          <span className={`flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${style.bg} text-white shadow-lg shadow-black/10`}>
-            <ModuleIcon name={item.title} className="h-7 w-7" />
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <span className={`flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br ${style.bg} text-white shadow-md shadow-black/10`}>
+            <ModuleIcon name={item.title} className="h-5 w-5" />
           </span>
           {item.badge ? <StatusBadge tone="warning">{item.badge}</StatusBadge> : null}
         </div>
         <div className="flex items-end justify-between gap-3">
-          <h3 className="text-lg font-black leading-tight text-[#101b18]">{item.title}</h3>
-          {typeof item.value === "number" ? <span className="text-3xl font-black leading-none text-[#152b25]">{item.value}</span> : null}
+          <h3 className="text-base font-black leading-tight text-[#101b18]">{item.title}</h3>
+          {typeof item.value === "number" ? <span className="text-2xl font-black leading-none text-[#152b25]">{item.value}</span> : null}
         </div>
-        <p className="mt-3 text-sm leading-6 text-[#5f6764]">{item.description}</p>
+        <p className="mt-2 text-sm leading-5 text-[#5f6764]">{item.description}</p>
       </div>
-      <span className={`mt-5 self-end text-3xl leading-none transition group-hover:translate-x-1 ${style.arrow}`} aria-hidden="true">
+      <span className={`mt-3 self-end text-2xl leading-none transition group-hover:translate-x-0.5 ${style.arrow}`} aria-hidden="true">
         →
       </span>
     </article>

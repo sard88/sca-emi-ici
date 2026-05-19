@@ -6,6 +6,9 @@ import { getActividadReciente, getCalendarioMes, getEventosProximos } from "@/li
 import { resolvePortalHref } from "@/lib/route-mapping";
 import type { ActividadRecienteItem, AuthenticatedUser, CalendarioMes, EventoCalendario } from "@/lib/types";
 
+const MAX_ACTIVITY = 5;
+const MAX_EVENTS = 4;
+
 export function DashboardSidePanel({ user }: { user: AuthenticatedUser }) {
   const today = useMemo(() => new Date(), []);
   const [actividad, setActividad] = useState<ActividadRecienteItem[]>([]);
@@ -22,9 +25,9 @@ export function DashboardSidePanel({ user }: { user: AuthenticatedUser }) {
           getCalendarioMes(today.getFullYear(), today.getMonth() + 1),
           getEventosProximos(),
         ]);
-        setActividad(actividadResponse.items);
+        setActividad(compactRecentActivity(actividadResponse.items));
         setCalendario(calendarioResponse);
-        setEventos(eventosResponse.items);
+        setEventos(eventosResponse.items.slice(0, MAX_EVENTS));
       } finally {
         setLoading(false);
       }
@@ -34,8 +37,8 @@ export function DashboardSidePanel({ user }: { user: AuthenticatedUser }) {
   }, [today]);
 
   return (
-    <aside className="space-y-5 xl:sticky xl:top-28 xl:self-start">
-      <PanelCard title="Actividad reciente" action="Ver todo">
+    <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
+      <PanelCard title="Actividad reciente" action="Últimos eventos">
         {loading ? <PanelState text="Cargando actividad..." /> : <Timeline items={actividad} user={user} />}
       </PanelCard>
 
@@ -43,7 +46,7 @@ export function DashboardSidePanel({ user }: { user: AuthenticatedUser }) {
         <MiniCalendar date={today} eventDays={new Set(calendario?.dias_con_eventos ?? [])} />
       </PanelCard>
 
-      <PanelCard title="Eventos próximos" action="Ver agenda">
+      <PanelCard title="Próximos eventos" action="Agenda">
         {loading ? <PanelState text="Cargando eventos..." /> : <EventsList eventos={eventos} />}
       </PanelCard>
     </aside>
@@ -52,12 +55,10 @@ export function DashboardSidePanel({ user }: { user: AuthenticatedUser }) {
 
 function PanelCard({ title, action, children }: { title: string; action?: string; children: ReactNode }) {
   return (
-    <section className="rounded-[1.75rem] border border-[#eadfce] bg-white/86 p-5 shadow-institutional backdrop-blur">
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <h3 className="text-base font-black text-[#101b18]">{title}</h3>
-        {action ? (
-          <span className="rounded-xl bg-[#f2e7d8] px-3 py-2 text-xs font-black text-[#432b20]">{action}</span>
-        ) : null}
+    <section className="rounded-[1.3rem] border border-[#eadfce] bg-white/86 p-4 shadow-sm backdrop-blur">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h3 className="text-sm font-black text-[#101b18]">{title}</h3>
+        {action ? <span className="rounded-lg bg-[#f2e7d8] px-2.5 py-1 text-[11px] font-black text-[#432b20]">{action}</span> : null}
       </div>
       {children}
     </section>
@@ -67,14 +68,14 @@ function PanelCard({ title, action, children }: { title: string; action?: string
 function Timeline({ items, user }: { items: ActividadRecienteItem[]; user: AuthenticatedUser }) {
   if (items.length === 0) {
     return (
-      <div className="relative space-y-4 pl-6 before:absolute before:left-2 before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-[#eadbc4]">
-        <TimelinePlaceholder color="#0b4a3d" title="Sin actividad reciente registrada" description={`Las acciones de ${user.nombre_visible || user.username} aparecerán aquí cuando exista auditoría operativa.`} />
+      <div className="relative space-y-3 pl-6 before:absolute before:left-2 before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-[#eadbc4]">
+        <TimelinePlaceholder color="#0b4a3d" title="Sin actividad reciente" description={`Las acciones de ${user.nombre_visible || user.username} aparecerán aquí cuando existan nuevos registros.`} />
       </div>
     );
   }
 
   return (
-    <div className="relative space-y-4 pl-6 before:absolute before:left-2 before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-[#eadbc4]">
+    <div className="relative space-y-3 pl-6 before:absolute before:left-2 before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-[#eadbc4]">
       {items.map((item) => <TimelineItem key={item.id} item={item} />)}
     </div>
   );
@@ -93,9 +94,7 @@ function TimelineItem({ item }: { item: ActividadRecienteItem }) {
   return (
     <div className="relative">
       <span className="absolute -left-[1.15rem] top-1.5 h-3 w-3 rounded-full ring-4 ring-white" style={{ backgroundColor: color }} />
-      {item.url && resolvePortalHref(item.url, item.backend) ? (
-        <TimelineLink item={item}>{content}</TimelineLink>
-      ) : content}
+      {item.url && resolvePortalHref(item.url, item.backend) ? <TimelineLink item={item}>{content}</TimelineLink> : content}
     </div>
   );
 }
@@ -104,7 +103,7 @@ function TimelineLink({ item, children }: { item: ActividadRecienteItem; childre
   const resolved = resolvePortalHref(item.url, item.backend);
   if (!resolved) return children;
   return (
-    <a href={resolved.href} target={resolved.backend ? "_blank" : undefined} rel={resolved.backend ? "noreferrer" : undefined} className="block rounded-xl transition hover:bg-[#f7efe2]">
+    <a href={resolved.href} target={resolved.backend ? "_blank" : undefined} rel={resolved.backend ? "noreferrer" : undefined} className="block rounded-lg transition hover:bg-[#f7efe2]">
       {children}
     </a>
   );
@@ -127,24 +126,30 @@ function MiniCalendar({ date, eventDays }: { date: Date; eventDays: Set<string> 
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <p className="font-black capitalize text-[#152b25]">{monthLabel}</p>
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-sm font-black capitalize text-[#152b25]">{monthLabel}</p>
         <div className="flex gap-2 text-[#152b25]">
           <span aria-hidden="true">‹</span>
           <span aria-hidden="true">›</span>
         </div>
       </div>
-      <div className="grid grid-cols-7 gap-y-2 text-center text-xs font-black text-[#152b25]">
+      <div className="grid grid-cols-7 gap-y-1.5 text-center text-xs font-black text-[#152b25]">
         {["L", "M", "M", "J", "V", "S", "D"].map((day) => <span key={day}>{day}</span>)}
       </div>
-      <div className="mt-3 grid grid-cols-7 gap-y-2 text-center text-sm text-[#152b25]">
+      <div className="mt-2 grid grid-cols-7 gap-y-1.5 text-center text-sm text-[#152b25]">
         {days.map((item) => {
           const hasEvent = eventDays.has(item.key);
           const isToday = item.key === todayKey;
           return (
             <span
               key={item.key}
-              className={isToday ? "relative mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-[#7a123d] font-black text-white" : item.currentMonth ? "relative mx-auto flex h-8 w-8 items-center justify-center" : "relative mx-auto flex h-8 w-8 items-center justify-center text-[#9ca39f]"}
+              className={
+                isToday
+                  ? "relative mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-[#7a123d] font-black text-white"
+                  : item.currentMonth
+                    ? "relative mx-auto flex h-7 w-7 items-center justify-center"
+                    : "relative mx-auto flex h-7 w-7 items-center justify-center text-[#9ca39f]"
+              }
             >
               {item.day}
               {hasEvent ? <span className="absolute bottom-0.5 h-1.5 w-1.5 rounded-full bg-[#d4af37]" /> : null}
@@ -152,7 +157,7 @@ function MiniCalendar({ date, eventDays }: { date: Date; eventDays: Set<string> 
           );
         })}
       </div>
-      {eventDays.size === 0 ? <p className="mt-4 text-xs leading-5 text-[#5f6764]">No hay eventos registrados en este mes.</p> : null}
+      {eventDays.size === 0 ? <p className="mt-3 text-xs leading-5 text-[#5f6764]">Sin eventos este mes.</p> : null}
     </div>
   );
 }
@@ -160,14 +165,14 @@ function MiniCalendar({ date, eventDays }: { date: Date; eventDays: Set<string> 
 function EventsList({ eventos }: { eventos: EventoCalendario[] }) {
   if (eventos.length === 0) {
     return (
-      <div className="space-y-4">
-        <EventPlaceholder color="#7a123d" title="No hay eventos próximos registrados" description="Cuando se cargue el calendario institucional, aparecerán aquí los eventos vigentes." />
+      <div className="space-y-3">
+        <EventPlaceholder color="#7a123d" title="Sin próximos eventos" description="Cuando se cargue la agenda institucional, aparecerán aquí." />
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {eventos.map((evento) => (
         <EventItem key={evento.id} evento={evento} />
       ))}
@@ -190,7 +195,7 @@ function EventItem({ evento }: { evento: EventoCalendario }) {
       <span className="mt-1.5 h-3 w-3 flex-none rounded-full bg-[#0b4a3d]" />
       <div>
         {resolved ? (
-          <a href={resolved.href} target={resolved.backend ? "_blank" : undefined} rel={resolved.backend ? "noreferrer" : undefined} className="block rounded-xl hover:bg-[#f7efe2]">
+          <a href={resolved.href} target={resolved.backend ? "_blank" : undefined} rel={resolved.backend ? "noreferrer" : undefined} className="block rounded-lg hover:bg-[#f7efe2]">
             {content}
           </a>
         ) : content}
@@ -242,4 +247,23 @@ function dateKey(date: Date) {
 function formatDate(value: string | null) {
   if (!value) return "Sin fecha";
   return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium" }).format(new Date(value));
+}
+
+function compactRecentActivity(items: ActividadRecienteItem[]) {
+  const result: ActividadRecienteItem[] = [];
+  const seen = new Set<string>();
+
+  for (const item of items) {
+    const signature = `${item.tipo}|${normalize(item.titulo)}|${normalize(item.descripcion)}`;
+    if (seen.has(signature)) continue;
+    seen.add(signature);
+    result.push(item);
+    if (result.length >= MAX_ACTIVITY) break;
+  }
+
+  return result;
+}
+
+function normalize(value: string | null | undefined) {
+  return (value || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
