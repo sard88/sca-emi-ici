@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { ActaComponente, ActaFilaDetalle, ValidacionActaDTO } from "@/lib/types";
 import { ValidationTimeline } from "@/components/trazabilidad";
 
-export function ActaDetailTable({ filas, componentes }: { filas: ActaFilaDetalle[]; componentes: ActaComponente[] }) {
+export function ActaDetailTable({ filas, componentes = [] }: { filas: ActaFilaDetalle[]; componentes?: ActaComponente[] }) {
   const orderedComponents = [...componentes].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
 
   return (
@@ -28,7 +28,7 @@ export function ActaDetailTable({ filas, componentes }: { filas: ActaFilaDetalle
           </thead>
           <tbody>
             {filas.map((fila, index) => {
-              const valuesByComponent = new Map(fila.calificaciones.map((calificacion) => [calificacion.componente_id, calificacion]));
+              const valuesByComponent = new Map((fila.calificaciones ?? []).map((calificacion) => [calificacion.componente_id, calificacion]));
               return (
                 <tr key={fila.detalle_id} className="border-b border-[#f0e5d6] odd:bg-white even:bg-[#fffaf1]/70">
                   <Cell className="text-center">{index + 1}</Cell>

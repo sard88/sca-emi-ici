@@ -74,8 +74,8 @@ export function OperativeReportPage({ config }: { config: ReporteOperativoConfig
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <div className="flex flex-wrap gap-2">
-                  <OperativeReportBadge label="XLSX disponible" tone="dorado" />
-                  <OperativeReportBadge label="PDF no disponible" tone="neutral" />
+                  <OperativeReportBadge label="Documento disponible" tone="dorado" />
+                  <OperativeReportBadge label="Formato adicional" tone="neutral" />
                 </div>
                 <p className="mt-4 max-w-3xl text-sm leading-6 text-white/82">{config.ayuda}</p>
               </div>
@@ -124,7 +124,7 @@ export function OperativeReportPage({ config }: { config: ReporteOperativoConfig
 
           {!loading && !error ? <OperativeReportSummaryBar data={data} /> : null}
           {!loading && !error && data && data.items.length === 0 ? (
-            <EmptyExportsState title="No hay registros para los filtros seleccionados." description="Ajusta los filtros o descarga el XLSX si necesitas confirmar el resultado completo." />
+            <EmptyExportsState title="No hay registros para los filtros seleccionados." description="Ajusta los filtros para confirmar el resultado completo." />
           ) : null}
           {!loading && !error && data && data.items.length > 0 ? (
             <OperativeReportTable columns={data.columnas} items={data.items} />

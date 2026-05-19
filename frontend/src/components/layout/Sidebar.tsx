@@ -5,7 +5,26 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import type { AuthenticatedUser } from "@/lib/types";
-import { canAccessAdministracionPortal, canAccessAuditoria, canAccessCatalogosPortal, canAccessDiscenteActas, canAccessDiscenteCargaAcademica, canAccessDocenteOperacion, canAccessEstadisticaActas, canAccessJefaturaAcademicaActas, canAccessJefaturaCarreraActas, canAccessKardexPdf, canAccessMiHistorialAcademico, canAccessPeriodosOperativos, canAccessReportes, canAccessReportesDesempeno, canAccessReportesOperativos, canAccessReportesTrayectoria, canAccessTrayectoriaInstitucional, getProfilesForUser } from "@/lib/dashboard";
+import {
+  canAccessAdministracionPortal,
+  canAccessAuditoria,
+  canAccessCatalogosPortal,
+  canAccessDiscenteActas,
+  canAccessDiscenteCargaAcademica,
+  canAccessDocenteOperacion,
+  canAccessEstadisticaActas,
+  canAccessJefaturaAcademicaActas,
+  canAccessJefaturaCarreraActas,
+  canAccessKardexPdf,
+  canAccessMiHistorialAcademico,
+  canAccessPeriodosOperativos,
+  canAccessReportes,
+  canAccessReportesDesempeno,
+  canAccessReportesOperativos,
+  canAccessReportesTrayectoria,
+  canAccessTrayectoriaInstitucional,
+  getProfilesForUser,
+} from "@/lib/dashboard";
 import { resolvePortalHref } from "@/lib/route-mapping";
 import { ModuleIcon } from "@/components/ui/icons";
 
@@ -46,9 +65,7 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
           <BrandChip src="/brand/institutions/udefa.png" alt="Escudo UDEFA" />
         </div>
 
-        <h1 className="mt-6 text-xl font-black leading-tight text-[#10372e]">
-          Sistema de Control Académico EMI
-        </h1>
+        <h1 className="mt-6 text-xl font-black leading-tight text-[#10372e]">Sistema de Control Académico EMI</h1>
       </div>
 
       <nav className="mt-4 flex-1 space-y-5 overflow-y-auto rounded-[1.75rem] border border-white bg-white/72 p-4 shadow-sm">
@@ -79,7 +96,9 @@ export function MobileModuleNav({ user }: { user: AuthenticatedUser }) {
   return (
     <div className="lg:hidden">
       <div className="flex gap-2 overflow-x-auto px-4 pb-2 pt-3">
-        {links.map((item) => <MobilePill key={`${item.href}-${item.label}`} href={item.href} active={item.active} label={item.shortLabel ?? item.label} backend={item.backend} />)}
+        {links.map((item) => (
+          <MobilePill key={`${item.href}-${item.label}`} href={item.href} active={item.active} label={item.shortLabel ?? item.label} backend={item.backend} />
+        ))}
       </div>
     </div>
   );
@@ -100,6 +119,10 @@ type NavigationSection = {
 };
 
 function buildNavigationSections(user: AuthenticatedUser, pathname: string): NavigationSection[] {
+  const isAdminUser = isAdmin(user);
+  const isEstadisticaUser = hasRole(user, "ENCARGADO_ESTADISTICA") || hasRole(user, "ESTADISTICA");
+  const isJefaturaCarreraUser = hasRole(user, "JEFE_CARRERA") || hasRole(user, "JEFATURA_CARRERA") || hasRole(user, "JEFE_SUB_EJEC_CTR");
+  const isJefaturaAcademicaUser = hasRole(user, "JEFE_ACADEMICO") || hasRole(user, "JEFATURA_ACADEMICA");
   const profileLinks = getProfilesForUser(user).map((profile) => {
     const href = routeByProfile[profile.key] ?? "/dashboard";
     return navItem(href, profile.title, profile.key, pathname, profile.title);
@@ -124,38 +147,32 @@ function buildNavigationSections(user: AuthenticatedUser, pathname: string): Nav
         canAccessJefaturaAcademicaActas(user) ? navItem("/jefatura-academica/actas", "Actas por formalizar", "ACTAS", pathname, "Formalizar") : null,
         canAccessTrayectoriaInstitucional(user) ? navItem("/trayectoria", "Trayectoria", "TRAYECTORIA", pathname) : null,
         canAccessTrayectoriaInstitucional(user) ? navItem("/movimientos-academicos", "Movimientos académicos", "TRAYECTORIA", pathname, "Movimientos") : null,
-        canAccessPeriodosOperativos(user) ? navItem("/periodos", "Periodos", "PERIODOS", pathname) : null,
+        canAccessPeriodosOperativos(user) ? navItem("/periodos", "Períodos", "PERIODOS", pathname) : null,
         canAccessPeriodosOperativos(user) ? navItem("/periodos/pendientes-asignacion-docente", "Pendientes de asignación docente", "PERIODOS", pathname, "Pendientes") : null,
       ].filter(Boolean) as NavigationItem[],
     },
     {
       title: "Gestión institucional",
       items: [
-        canAccessAdministracionPortal(user) ? navItem("/administracion", "Administración", "ADMINISTRACION", pathname, "Admin") : null,
-        canAccessCatalogosPortal(user) ? navItem("/catalogos", "Catálogos académicos", "CATALOGOS", pathname, "Catálogos") : null,
+        (isAdminUser || isEstadisticaUser) && canAccessAdministracionPortal(user) ? navItem("/administracion", "Administración", "ADMINISTRACION", pathname, "Admin") : null,
+        (isAdminUser || isEstadisticaUser) && canAccessCatalogosPortal(user) ? navItem("/catalogos", "Catálogos académicos", "CATALOGOS", pathname, "Catálogos") : null,
       ].filter(Boolean) as NavigationItem[],
     },
     {
       title: "Reportes y auditoría",
       items: [
         canAccessReportes(user) ? navItem("/reportes", "Reportes", "REPORTES", pathname) : null,
-        canAccessKardexPdf(user) && !hasRole(user, "JEFE_CARRERA") && !hasRole(user, "JEFATURA_CARRERA") && !hasRole(user, "JEFE_SUB_EJEC_CTR")
-          ? navItem("/reportes/kardex", "Kárdex oficial", "REPORTES", pathname, "Kárdex")
-          : null,
+        canAccessKardexPdf(user) && !isJefaturaCarreraUser && !isJefaturaAcademicaUser ? navItem("/reportes/kardex", "Kárdex oficial", "REPORTES", pathname, "Kárdex") : null,
         canAccessReportesOperativos(user) ? navItem("/reportes/operativos", "Reportes operativos", "REPORTES", pathname, "Operativos") : null,
         canAccessReportesDesempeno(user) ? navItem("/reportes/desempeno", "Desempeño académico", "REPORTES", pathname, "Desempeño") : null,
-        canAccessReportesTrayectoria(user) ? navItem("/reportes/trayectoria", "Reportes de trayectoria", "REPORTES", pathname, "Reportes trayectoria") : null,
-        canAccessReportes(user) && !hasRole(user, "DOCENTE") && !hasRole(user, "JEFE_CARRERA") && !hasRole(user, "JEFATURA_CARRERA") && !hasRole(user, "JEFE_SUB_EJEC_CTR")
-          ? navItem("/reportes/exportaciones", "Historial de exportaciones", "REPORTES", pathname, "Exportaciones")
-          : null,
-        canAccessAuditoria(user) && !hasRole(user, "JEFE_CARRERA") && !hasRole(user, "JEFATURA_CARRERA") && !hasRole(user, "JEFE_SUB_EJEC_CTR")
-          ? navItem("/reportes/auditoria", "Auditoría institucional", "SEGURIDAD", pathname, "Auditoría")
-          : null,
+        canAccessReportesTrayectoria(user) ? navItem("/reportes/trayectoria", "Reportes de trayectoria", "REPORTES", pathname, "Trayectoria") : null,
+        isAdminUser ? navItem("/reportes/exportaciones", "Historial de exportaciones", "REPORTES", pathname, "Exportaciones") : null,
+        isAdminUser && canAccessAuditoria(user) ? navItem("/reportes/auditoria", "Auditoría institucional", "SEGURIDAD", pathname, "Auditoría") : null,
       ].filter(Boolean) as NavigationItem[],
     },
     {
       title: "Soporte técnico",
-      items: isAdmin(user)
+      items: isAdminUser
         ? [
             navItem("/admin/", "Django Admin", "ADMINISTRACION", pathname, "Django Admin", true),
             navItem("/health/", "Estado técnico", "SEGURIDAD", pathname, "Health", true),
@@ -184,7 +201,9 @@ function SidebarSection({ title, items }: NavigationSection) {
     <section>
       <p className="px-2 text-xs font-black uppercase tracking-[0.22em] text-[#b46c13]">{title}</p>
       <div className="mt-3 space-y-1">
-        {items.map((item) => <SidebarLink key={`${item.href}-${item.label}`} {...item} />)}
+        {items.map((item) => (
+          <SidebarLink key={`${item.href}-${item.label}`} {...item} />
+        ))}
       </div>
     </section>
   );
@@ -236,7 +255,11 @@ function SidebarLink({ href, active, icon, label, backend = false }: NavigationI
   );
   if (!resolved) return null;
   if (resolved.backend) {
-    return <a href={resolved.href} target="_blank" rel="noreferrer" className={className}>{content}</a>;
+    return (
+      <a href={resolved.href} target="_blank" rel="noreferrer" className={className}>
+        {content}
+      </a>
+    );
   }
   return (
     <Link href={resolved.href} className={className}>

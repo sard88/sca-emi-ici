@@ -11,8 +11,8 @@ export function OperativeReportCard({ config }: { config: ReporteOperativoConfig
           <h3 className="mt-2 text-lg font-black text-[#152b25]">{config.titulo}</h3>
         </div>
         <div className="flex flex-wrap gap-2">
-          <OperativeReportBadge label="XLSX disponible" />
-          <OperativeReportBadge label="PDF no disponible" tone="dorado" />
+          <OperativeReportBadge label="Documento disponible" />
+          <OperativeReportBadge label="Formato adicional" tone="dorado" />
         </div>
       </div>
       <p className="mt-3 text-sm leading-6 text-[#5f6764]">{config.descripcion}</p>
@@ -25,7 +25,7 @@ export function OperativeReportCard({ config }: { config: ReporteOperativoConfig
           Ver reporte
         </Link>
         <span className="rounded-xl border border-[#d8c5a7] bg-white px-4 py-2 text-xs font-black text-[#7a123d]">
-          Descarga XLSX en esta vista
+          Descargar documento en esta vista
         </span>
       </div>
     </article>

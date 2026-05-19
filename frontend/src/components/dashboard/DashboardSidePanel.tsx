@@ -68,17 +68,18 @@ function PanelCard({ title, action, children }: { title: string; action?: string
 function Timeline({ items, user }: { items: ActividadRecienteItem[]; user: AuthenticatedUser }) {
   const isDiscente = isDiscenteUser(user);
   const isJefaturaCarrera = isJefaturaCarreraUser(user);
+  const isJefaturaAcademica = isJefaturaAcademicaUser(user);
 
   if (items.length === 0) {
     return (
       <div className="relative space-y-3 pl-6 before:absolute before:left-2 before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-[#eadbc4]">
         <TimelinePlaceholder
           color="#0b4a3d"
-          title={isDiscente || isJefaturaCarrera ? "Sin actividad reciente relevante" : "Sin actividad reciente"}
+          title={isDiscente || isJefaturaCarrera || isJefaturaAcademica ? "Sin actividad reciente relevante" : "Sin actividad reciente"}
           description={
             isDiscente
               ? "Aún no hay novedades para mostrar."
-              : isJefaturaCarrera
+              : isJefaturaCarrera || isJefaturaAcademica
                 ? "Sin actividad reciente relevante."
                 : `Las acciones de ${user.nombre_visible || user.username} aparecerán aquí cuando existan nuevos registros.`
           }
@@ -269,6 +270,7 @@ function compactRecentActivity(items: ActividadRecienteItem[], user: Authenticat
   for (const item of items) {
     if (isDiscenteUser(user) && isLowRelevanceForDiscente(item)) continue;
     if (isJefaturaCarreraUser(user) && isLowRelevanceForJefaturaCarrera(item)) continue;
+    if (isJefaturaAcademicaUser(user) && isLowRelevanceForJefaturaAcademica(item)) continue;
     const signature = `${item.tipo}|${normalize(item.titulo)}|${normalize(item.descripcion)}`;
     if (seen.has(signature)) continue;
     seen.add(signature);
@@ -290,6 +292,9 @@ function filterRecentActivityForUser(items: ActividadRecienteItem[], user: Authe
   if (isJefaturaCarreraUser(user)) {
     return items.filter((item) => !isLowRelevanceForJefaturaCarrera(item));
   }
+  if (isJefaturaAcademicaUser(user)) {
+    return items.filter((item) => !isLowRelevanceForJefaturaAcademica(item));
+  }
   return items;
 }
 
@@ -299,6 +304,17 @@ function isLowRelevanceForDiscente(item: ActividadRecienteItem) {
 }
 
 function isLowRelevanceForJefaturaCarrera(item: ActividadRecienteItem) {
+  const raw = `${item.tipo || ""} ${item.titulo || ""} ${item.descripcion || ""}`.toLowerCase();
+  return (
+    raw.includes("borrador docente") ||
+    raw.includes("captura preliminar") ||
+    raw.includes("en captura docente") ||
+    raw.includes("captura de calificaciones") ||
+    raw.includes("calificación preliminar")
+  );
+}
+
+function isLowRelevanceForJefaturaAcademica(item: ActividadRecienteItem) {
   const raw = `${item.tipo || ""} ${item.titulo || ""} ${item.descripcion || ""}`.toLowerCase();
   return (
     raw.includes("borrador docente") ||
@@ -320,5 +336,14 @@ function isJefaturaCarreraUser(user: AuthenticatedUser) {
     user.roles.includes("JEFATURA_CARRERA") ||
     user.roles.includes("JEFE_SUB_EJEC_CTR") ||
     user.cargos_vigentes.some((cargo) => ["JEFE_CARRERA", "JEFATURA_CARRERA", "JEFE_SUB_EJEC_CTR"].includes(cargo.cargo_codigo))
+  );
+}
+
+function isJefaturaAcademicaUser(user: AuthenticatedUser) {
+  return (
+    user.perfil_principal === "JEFE_ACADEMICO" ||
+    user.roles.includes("JEFE_ACADEMICO") ||
+    user.roles.includes("JEFATURA_ACADEMICA") ||
+    user.cargos_vigentes.some((cargo) => ["JEFE_ACADEMICO", "JEFATURA_ACADEMICA"].includes(cargo.cargo_codigo))
   );
 }

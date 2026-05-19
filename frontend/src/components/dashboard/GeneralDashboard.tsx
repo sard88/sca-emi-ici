@@ -52,6 +52,11 @@ export function GeneralDashboard() {
     user.roles.includes("JEFATURA_CARRERA") ||
     user.roles.includes("JEFE_SUB_EJEC_CTR") ||
     user.cargos_vigentes.some((cargo) => ["JEFE_CARRERA", "JEFATURA_CARRERA", "JEFE_SUB_EJEC_CTR"].includes(cargo.cargo_codigo));
+  const isJefaturaAcademica =
+    user.perfil_principal === "JEFE_ACADEMICO" ||
+    user.roles.includes("JEFE_ACADEMICO") ||
+    user.roles.includes("JEFATURA_ACADEMICA") ||
+    user.cargos_vigentes.some((cargo) => ["JEFE_ACADEMICO", "JEFATURA_ACADEMICA"].includes(cargo.cargo_codigo));
   const liveCards =
     summary?.cards.map((card) => ({
       title: card.title,
@@ -62,8 +67,10 @@ export function GeneralDashboard() {
           ? forceDocenteDashboardRoute(card.title, card.href ?? undefined)
           : isJefaturaCarrera
             ? forceJefaturaCarreraRoute(card.title, card.href ?? undefined)
+            : isJefaturaAcademica
+              ? forceJefaturaAcademicaRoute(card.title, card.href ?? undefined)
           : card.href ?? undefined,
-      backend: isDiscente || isDocente || isJefaturaCarrera ? false : card.backend,
+      backend: isDiscente || isDocente || isJefaturaCarrera || isJefaturaAcademica ? false : card.backend,
       value: card.value,
       tone: card.tone,
     })) ?? [];
@@ -84,8 +91,10 @@ export function GeneralDashboard() {
         ? forceDocenteDashboardRoute(item.title, item.href)
         : isJefaturaCarrera
           ? forceJefaturaCarreraRoute(item.title, item.href)
+          : isJefaturaAcademica
+            ? forceJefaturaAcademicaRoute(item.title, item.href)
         : item.href,
-    backend: isDiscente || isDocente || isJefaturaCarrera ? false : item.backend,
+    backend: isDiscente || isDocente || isJefaturaCarrera || isJefaturaAcademica ? false : item.backend,
   }));
 
   return (
@@ -227,6 +236,21 @@ function forceJefaturaCarreraRoute(title: string, currentHref?: string) {
   if (normalized === "kardex oficial") return undefined;
   if (normalized === "historial de exportaciones") return undefined;
   if (normalized === "auditoria institucional") return undefined;
+  return currentHref;
+}
+
+function forceJefaturaAcademicaRoute(title: string, currentHref?: string) {
+  const normalized = normalizeTitle(title);
+  if (normalized === "actas por formalizar") return "/jefatura-academica/actas";
+  if (normalized === "actas formalizadas") return "/jefatura-academica/actas?estado=formalizadas";
+  if (normalized === "formalizadas recientes") return "/jefatura-academica/actas?estado=formalizadas";
+  if (normalized === "periodos activos") return "/periodos";
+  if (normalized === "procesos de cierre") return "/periodos";
+  if (normalized === "seguimiento institucional de trayectoria") return "/trayectoria";
+  if (normalized === "reportes y exportaciones") return "/reportes";
+  if (normalized === "desempeno academico") return "/reportes/desempeno";
+  if (normalized === "reportes de trayectoria") return "/reportes/trayectoria";
+  if (normalized === "kardex oficial") return "/reportes";
   return currentHref;
 }
 

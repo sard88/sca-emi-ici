@@ -75,8 +75,8 @@ export function PerformanceReportPage({ config }: { config: ReporteDesempenoConf
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <div className="flex flex-wrap gap-2">
-                  <PerformanceReportBadge label="XLSX disponible" tone="dorado" />
-                  {config.pdfPendiente ? <PerformanceReportBadge label="PDF no disponible" tone="neutral" /> : null}
+                  <PerformanceReportBadge label="Documento disponible" tone="dorado" />
+                  {config.pdfPendiente ? <PerformanceReportBadge label="Formato adicional" tone="neutral" /> : null}
                   <PerformanceReportBadge label={config.nominal ? "Reporte nominal" : "Reporte agregado"} tone={config.nominal ? "guinda" : "verde"} />
                 </div>
                 <p className="mt-4 max-w-3xl text-sm leading-6 text-white/82">{config.ayuda}</p>
@@ -128,7 +128,7 @@ export function PerformanceReportPage({ config }: { config: ReporteDesempenoConf
 
           {!loading && !error ? <PerformanceReportSummaryBar data={data} /> : null}
           {!loading && !error && data && data.items.length === 0 ? (
-            <EmptyExportsState title="No hay resultados para los filtros seleccionados." description="Ajusta los filtros o descarga el XLSX si necesitas confirmar el reporte completo." />
+            <EmptyExportsState title="No hay resultados para los filtros seleccionados." description="Ajusta los filtros para confirmar el reporte completo." />
           ) : null}
           {!loading && !error && data && data.items.length > 0 ? (
             <PerformanceReportTable columns={data.columnas} items={data.items} />

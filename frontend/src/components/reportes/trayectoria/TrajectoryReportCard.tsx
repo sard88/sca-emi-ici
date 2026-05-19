@@ -11,8 +11,8 @@ export function TrajectoryReportCard({ config }: { config: ReporteTrayectoriaCon
           <h3 className="mt-2 text-lg font-black text-[#152b25]">{config.titulo}</h3>
         </div>
         <div className="flex flex-wrap gap-2">
-          <TrajectoryReportBadge label="XLSX disponible" />
-          {config.pdfPendiente ? <TrajectoryReportBadge label="PDF no disponible" tone="dorado" /> : null}
+          <TrajectoryReportBadge label="Documento disponible" />
+          {config.pdfPendiente ? <TrajectoryReportBadge label="Formato adicional" tone="dorado" /> : null}
           <TrajectoryReportBadge label={config.nominal ? "Nominal" : "Agregado"} tone={config.nominal ? "guinda" : "neutral"} />
           {config.requiereDiscenteId ? <TrajectoryReportBadge label="Requiere discente" tone="dorado" /> : null}
         </div>
@@ -32,7 +32,7 @@ export function TrajectoryReportCard({ config }: { config: ReporteTrayectoriaCon
           Ver reporte
         </Link>
         <span className="rounded-xl border border-[#d8c5a7] bg-white px-4 py-2 text-xs font-black text-[#7a123d]">
-          Descarga XLSX en esta vista
+          Descargar documento en esta vista
         </span>
       </div>
     </article>

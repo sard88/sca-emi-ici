@@ -97,7 +97,7 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
     allowed: ["JEFE_ACADEMICO", "JEFATURA_ACADEMICA"],
     cards: [
       { title: "Actas por formalizar", description: "Formalización de actas validadas por carrera.", href: "/jefatura-academica/actas" },
-      { title: "Actas formalizadas", description: "Seguimiento institucional de actas.", href: "/estadistica/actas" },
+      { title: "Actas formalizadas", description: "Seguimiento institucional de actas formalizadas.", href: "/jefatura-academica/actas?estado=formalizadas" },
       { title: "Seguimiento institucional de trayectoria", description: "Historiales, situaciones y movimientos autorizados.", href: "/trayectoria/historial" },
       { title: "Catálogos académicos", description: "Estructura académica autorizada.", href: "/catalogos" },
       { title: "Procesos de cierre", description: "Diagnósticos, cierres y aperturas.", href: "/periodos/cierres" },
