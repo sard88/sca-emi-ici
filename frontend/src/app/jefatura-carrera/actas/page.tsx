@@ -40,13 +40,13 @@ export default function JefaturaCarreraActasPage() {
       {!user ? null : !canAccessJefaturaCarreraActas(user) ? (
         <ErrorMessage message="No tienes permiso para validar actas." />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <PageHeader title="Actas por validar" description="Cola de actas remitidas por docentes dentro de tu ámbito." user={user} />
           <ActasFilters onApply={setFilters} includeEstado={false} />
           {loading ? <LoadingState label="Cargando actas..." /> : null}
           {error ? <ErrorMessage message={error} /> : null}
           {!loading && !error && items.length === 0 ? <EmptyState title="No hay actas pendientes." description="Cuando un docente remita un acta aparecerá aquí." /> : null}
-          <section className="grid gap-4 xl:grid-cols-2">
+          <section className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
             {items.map((acta) => <ActaListCard key={acta.acta_id} acta={acta} href={`/jefatura-carrera/actas/${acta.acta_id}`} />)}
           </section>
         </div>

@@ -40,13 +40,13 @@ export default function DocenteActasPage() {
       {!user ? null : !canAccessDocenteOperacion(user) ? (
         <ErrorMessage message="No tienes permiso para consultar actas docentes." />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <PageHeader title="Mis actas" description="Borradores, publicación, remisión y exportación de actas propias." user={user} />
           <ActasFilters onApply={setFilters} />
           {loading ? <LoadingState label="Cargando actas..." /> : null}
           {error ? <ErrorMessage message={error} /> : null}
           {!loading && !error && items.length === 0 ? <EmptyState title="No hay actas para los filtros seleccionados." description="Genera un borrador desde una asignación docente." /> : null}
-          <section className="grid gap-4 xl:grid-cols-2">
+          <section className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
             {items.map((acta) => <ActaListCard key={acta.acta_id} acta={acta} href={`/docente/actas/${acta.acta_id}`} />)}
           </section>
         </div>

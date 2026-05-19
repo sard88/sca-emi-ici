@@ -40,13 +40,13 @@ export default function DiscenteActasPage() {
       {!user ? null : !canAccessDiscenteActas(user) ? (
         <ErrorMessage message="No tienes permiso para consultar actas de discente." />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <PageHeader title="Mis actas publicadas" description="Consulta tus resultados publicados y registra acuse, conformidad o inconformidad informativa." user={user} />
           <SensitiveTraceNotice text="Después de la remisión, la conformidad queda en solo lectura. Solo se muestran tus propios detalles." tone="info" />
           {loading ? <LoadingState label="Cargando actas publicadas..." /> : null}
           {error ? <ErrorMessage message={error} /> : null}
           {!loading && !error && items.length === 0 ? <EmptyState title="No tienes actas publicadas." description="Las actas aparecerán cuando el docente las publique." /> : null}
-          <section className="grid gap-4 xl:grid-cols-2">
+          <section className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
             {items.map((item) => (
               <article key={item.detalle_id} className="rounded-[1.5rem] border border-[#eadfce] bg-white/90 p-5 shadow-sm">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b46c13]">Acta #{item.acta_id} · {String(item.corte_label || item.corte_codigo || "")}</p>

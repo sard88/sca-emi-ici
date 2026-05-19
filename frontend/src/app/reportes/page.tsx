@@ -50,7 +50,7 @@ export default function ReportesPage() {
       {!user ? null : !canAccessReportes(user) ? (
         <ErrorMessage message="No tienes permiso para consultar reportes y exportaciones desde el portal." />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <PageHeader
             title="Reportes y exportaciones"
             description="Consulta documentos oficiales, reportes institucionales, exportaciones y auditoría según tu perfil."
@@ -104,7 +104,7 @@ export default function ReportesPage() {
                   </p>
                 </div>
                 {catalogo.length > 0 ? (
-                  <div className="grid gap-4 xl:grid-cols-2">
+                  <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
                     {catalogo.map((item) => (
                       <ReportCatalogCard
                         key={item.codigo}
@@ -170,7 +170,7 @@ function QuickSection({ title, intent, links }: { title: string; intent: string;
         <h3 className="text-lg font-black text-[#101b18]">{title}</h3>
         <p className="mt-1 text-sm text-[#5f6764]">{intent}</p>
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {visibleLinks.map((item) => <QuickLink key={item.title} {...item} />)}
       </div>
     </section>

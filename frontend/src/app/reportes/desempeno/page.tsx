@@ -17,7 +17,7 @@ export default function ReportesDesempenoIndexPage() {
       {!user ? null : !canAccessReportesDesempeno(user) ? (
         <ErrorMessage message="No tienes permiso para consultar reportes de desempeño desde el portal." />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <PageHeader
             title="Reportes de desempeño académico"
             description="Vista previa y descarga XLSX de indicadores basados en resultados oficiales formalizados. El portal no calcula ni genera archivos; consume APIs Django."
@@ -32,7 +32,7 @@ export default function ReportesDesempenoIndexPage() {
             </p>
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-2">
+          <section className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
             {reportes.map((config) => (
               <PerformanceReportCard key={config.slug} config={config} />
             ))}

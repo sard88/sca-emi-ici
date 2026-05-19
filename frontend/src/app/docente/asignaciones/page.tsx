@@ -39,12 +39,12 @@ export default function DocenteAsignacionesPage() {
       {!user ? null : !canAccessDocenteOperacion(user) ? (
         <ErrorMessage message="No tienes permiso para consultar asignaciones docentes desde el portal." />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <PageHeader title="Mis asignaciones" description="Captura preliminar, resumen académico y actas asociadas a tus grupos." user={user} />
           {loading ? <LoadingState label="Cargando asignaciones..." /> : null}
           {error ? <ErrorMessage message={error} /> : null}
           {!loading && !error && items.length === 0 ? <EmptyState title="No hay asignaciones activas." description="Cuando existan asignaciones docentes activas aparecerán aquí." /> : null}
-          <section className="grid gap-4 xl:grid-cols-2">
+          <section className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
             {items.map((item) => <TeacherAssignmentCard key={item.asignacion_id} asignacion={item} />)}
           </section>
         </div>

@@ -17,7 +17,7 @@ export function TrajectoryReportsIndex() {
       {!user ? null : !canAccessReportesTrayectoria(user) ? (
         <ErrorMessage message="No tienes permiso para consultar reportes de trayectoria desde el portal." />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <PageHeader
             title="Reportes de trayectoria y situación académica"
             description="Vista previa y descarga XLSX de situación académica, movimientos e historial interno. El portal consume APIs Django y no modifica datos."
@@ -32,7 +32,7 @@ export function TrajectoryReportsIndex() {
             </p>
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-2">
+          <section className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
             {reportes.map((config) => (
               <TrajectoryReportCard key={config.slug} config={config} />
             ))}
