@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { clsx } from "clsx";
 import { LoadingState } from "@/components/states/LoadingState";
 import { ErrorMessage } from "@/components/states/ErrorMessage";
 import { DashboardSidePanel } from "@/components/dashboard/DashboardSidePanel";
@@ -31,7 +32,14 @@ export function AppShell({ children, showRightPanel = false }: { children: React
         <div className="min-w-0 flex-1">
           <Topbar user={user} />
           <MobileModuleNav user={user} />
-          <main className="grid w-full grid-cols-1 gap-5 px-4 py-6 sm:pl-6 sm:pr-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:pl-8 xl:pr-4 2xl:grid-cols-[minmax(0,1fr)_350px] 2xl:pr-6">
+          <main
+            className={clsx(
+              "grid w-full gap-4 px-3 py-5 sm:px-5 xl:px-6 2xl:px-8",
+              showRightPanel
+                ? "grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-5 2xl:grid-cols-[minmax(0,1fr)_340px]"
+                : "grid-cols-1",
+            )}
+          >
             <section className="min-w-0">{children}</section>
             {showRightPanel ? <DashboardSidePanel user={user} /> : null}
           </main>
