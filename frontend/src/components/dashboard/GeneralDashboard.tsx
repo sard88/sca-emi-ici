@@ -31,7 +31,7 @@ export function GeneralDashboard() {
       try {
         setSummary(await getDashboardResumen());
       } catch (err) {
-        setError(err instanceof Error ? err.message : "No fue posible cargar el resumen vivo.");
+        setError(err instanceof Error ? err.message : "No fue posible cargar el resumen.");
       } finally {
         setLoading(false);
       }
@@ -45,40 +45,55 @@ export function GeneralDashboard() {
   const profiles = getProfilesForUser(user);
   const fallbackQuickAccesses = buildQuickAccesses(profiles.flatMap((profile) => profile.cards));
   const isDiscente = user.perfil_principal === "DISCENTE" || user.roles.includes("DISCENTE");
+  const isDocente = user.perfil_principal === "DOCENTE" || user.roles.includes("DOCENTE");
   const liveCards =
     summary?.cards.map((card) => ({
       title: card.title,
       description: card.description,
-      href: isDiscente ? forceDiscenteDashboardRoute(card.title, card.href ?? undefined) : card.href ?? undefined,
-      backend: isDiscente ? false : card.backend,
+      href: isDiscente
+        ? forceDiscenteDashboardRoute(card.title, card.href ?? undefined)
+        : isDocente
+          ? forceDocenteDashboardRoute(card.title, card.href ?? undefined)
+          : card.href ?? undefined,
+      backend: isDiscente || isDocente ? false : card.backend,
       value: card.value,
       tone: card.tone,
     })) ?? [];
-  const quickAccesses = summary?.quick_accesses?.length
+
+  const rawQuickAccesses = summary?.quick_accesses?.length
     ? summary.quick_accesses.map((item) => ({
         title: item.label,
         description: item.description || "Acceso disponible para tu perfil.",
-        href: isDiscente ? forceDiscenteDashboardRoute(item.label, item.url) : item.url,
-        backend: isDiscente ? false : item.backend,
+        href: item.url,
+        backend: item.backend,
       }))
     : fallbackQuickAccesses;
+  const quickAccesses = rawQuickAccesses.map((item) => ({
+    ...item,
+    href: isDiscente
+      ? forceDiscenteDashboardRoute(item.title, item.href)
+      : isDocente
+        ? forceDocenteDashboardRoute(item.title, item.href)
+        : item.href,
+    backend: isDiscente || isDocente ? false : item.backend,
+  }));
 
   return (
     <AppShell showRightPanel>
       <div className="space-y-5">
         <InstitutionalHero />
 
-        <section aria-label="Resumen vivo">
+        <section aria-label="Resumen institucional">
           <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h3 className="text-lg font-black text-[#101b18]">Resumen institucional</h3>
-              <p className="text-sm text-[#5f6764]">Datos calculados según tu rol, cargo y ámbito autorizado.</p>
+              <p className="text-sm text-[#5f6764]">Información actual según tu rol y ámbito autorizado.</p>
             </div>
           </div>
           {loading ? <EmptyState title="Cargando resumen" description="Estamos consultando la información autorizada." /> : null}
           {!loading && error ? <EmptyState title="Resumen no disponible" description={error} /> : null}
           {!loading && !error && liveCards.length > 0 ? <DashboardGrid cards={liveCards} /> : null}
-          {!loading && !error && liveCards.length === 0 ? <EmptyState title="Sin datos de resumen" description="No hay registros vivos para mostrar en este momento." /> : null}
+          {!loading && !error && liveCards.length === 0 ? <EmptyState title="Sin datos de resumen" description="No hay registros para mostrar en este momento." /> : null}
         </section>
 
         <section id="accesos-rapidos">
@@ -173,6 +188,18 @@ function forceDiscenteDashboardRoute(title: string, currentHref?: string) {
   if (normalized === "historial") return "/discente/historial-academico";
   if (normalized === "mis actas") return "/discente/actas";
   if (normalized === "mi historial") return "/discente/historial-academico";
+  return currentHref;
+}
+
+function forceDocenteDashboardRoute(title: string, currentHref?: string) {
+  const normalized = normalizeTitle(title);
+  if (normalized === "asignaciones activas") return "/docente/asignaciones";
+  if (normalized === "mis asignaciones") return "/docente/asignaciones";
+  if (normalized === "actas en borrador") return "/docente/actas?estado=borrador";
+  if (normalized === "actas publicadas") return "/docente/actas?estado=publicadas";
+  if (normalized === "actas remitidas") return "/docente/actas?estado=remitidas";
+  if (normalized === "actas docente") return "/docente/actas";
+  if (normalized === "exportar mis actas") return undefined;
   return currentHref;
 }
 
