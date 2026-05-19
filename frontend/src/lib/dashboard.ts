@@ -81,14 +81,13 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
     allowed: ["JEFE_CARRERA", "JEFATURA_CARRERA", "JEFE_SUB_EJEC_CTR"],
     cards: [
       { title: "Actas por validar", description: "Validación de actas remitidas por docentes.", href: "/jefatura-carrera/actas" },
-      { title: "Pendientes de asignación docente", description: "Diagnóstico previo a cierre de periodo.", href: "/periodos/pendientes-asignacion-docente" },
-      { title: "Trayectoria operativa de mi carrera", description: "Consulta historiales y seguimiento de discentes de tu ámbito.", href: "/trayectoria/historial" },
+      { title: "Pendientes de asignación docente", description: "Seguimiento de asignaciones docentes por período.", href: "/periodos/pendientes-asignacion-docente" },
+      { title: "Trayectoria operativa de mi carrera", description: "Consulta de trayectoria académica dentro de tu ámbito.", href: "/trayectoria" },
       { title: "Catálogos de mi ámbito", description: "Revisión de estructura académica autorizada.", href: "/catalogos" },
-      { title: "Actas exportables", description: "Descarga documental de actas del ámbito autorizado.", href: "/reportes/actas" },
+      { title: "Actas exportables", description: "Consulta informativa de documentos de actas.", href: "/reportes/actas" },
       { title: "Seguimiento de actas", description: "Reportes operativos filtrados por ámbito.", href: "/reportes/operativos" },
       { title: "Desempeño de mi carrera", description: "Indicadores académicos filtrados por ámbito.", href: "/reportes/desempeno" },
-      { title: "Reportes de trayectoria", description: "Reportes XLSX y vistas agregadas de situación, movimientos e historial interno.", href: "/reportes/trayectoria" },
-      { title: "Kárdex oficial", description: "Exportación PDF de discentes del ámbito autorizado.", href: "/reportes/kardex" },
+      { title: "Reportes de trayectoria", description: "Consulta de situación, movimientos e historial académico.", href: "/reportes/trayectoria" },
     ],
   },
   jefaturaAcademica: {

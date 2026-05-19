@@ -12,7 +12,7 @@ export function PerformanceReportCard({ config }: { config: ReporteDesempenoConf
         </div>
         <div className="flex flex-wrap gap-2">
           <PerformanceReportBadge label="XLSX disponible" />
-          {config.pdfPendiente ? <PerformanceReportBadge label="PDF pendiente" tone="dorado" /> : null}
+          {config.pdfPendiente ? <PerformanceReportBadge label="PDF no disponible" tone="dorado" /> : null}
           <PerformanceReportBadge label={config.nominal ? "Nominal" : "Agregado"} tone={config.nominal ? "guinda" : "neutral"} />
         </div>
       </div>
@@ -20,7 +20,7 @@ export function PerformanceReportCard({ config }: { config: ReporteDesempenoConf
       <p className="mt-3 text-xs font-bold leading-5 text-[#7b837f]">{config.ayuda}</p>
       {config.datosSensibles ? (
         <p className="mt-3 rounded-2xl border border-[#e7c3ce] bg-[#fff7f9] px-3 py-2 text-xs font-bold leading-5 text-[#7a123d]">
-          Información nominal autorizada. El backend valida permisos y ámbito institucional.
+          Consulta institucional autorizada.
         </p>
       ) : null}
       <div className="mt-5 flex flex-wrap gap-3">
@@ -31,7 +31,7 @@ export function PerformanceReportCard({ config }: { config: ReporteDesempenoConf
           Ver reporte
         </Link>
         <span className="rounded-xl border border-[#d8c5a7] bg-white px-4 py-2 text-xs font-black text-[#7a123d]">
-          Descarga XLSX dentro de la vista
+          Descarga XLSX en esta vista
         </span>
       </div>
     </article>

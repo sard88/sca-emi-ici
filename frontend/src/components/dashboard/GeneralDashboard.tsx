@@ -46,6 +46,12 @@ export function GeneralDashboard() {
   const fallbackQuickAccesses = buildQuickAccesses(profiles.flatMap((profile) => profile.cards));
   const isDiscente = user.perfil_principal === "DISCENTE" || user.roles.includes("DISCENTE");
   const isDocente = user.perfil_principal === "DOCENTE" || user.roles.includes("DOCENTE");
+  const isJefaturaCarrera =
+    user.perfil_principal === "JEFE_CARRERA" ||
+    user.roles.includes("JEFE_CARRERA") ||
+    user.roles.includes("JEFATURA_CARRERA") ||
+    user.roles.includes("JEFE_SUB_EJEC_CTR") ||
+    user.cargos_vigentes.some((cargo) => ["JEFE_CARRERA", "JEFATURA_CARRERA", "JEFE_SUB_EJEC_CTR"].includes(cargo.cargo_codigo));
   const liveCards =
     summary?.cards.map((card) => ({
       title: card.title,
@@ -54,8 +60,10 @@ export function GeneralDashboard() {
         ? forceDiscenteDashboardRoute(card.title, card.href ?? undefined)
         : isDocente
           ? forceDocenteDashboardRoute(card.title, card.href ?? undefined)
+          : isJefaturaCarrera
+            ? forceJefaturaCarreraRoute(card.title, card.href ?? undefined)
           : card.href ?? undefined,
-      backend: isDiscente || isDocente ? false : card.backend,
+      backend: isDiscente || isDocente || isJefaturaCarrera ? false : card.backend,
       value: card.value,
       tone: card.tone,
     })) ?? [];
@@ -74,8 +82,10 @@ export function GeneralDashboard() {
       ? forceDiscenteDashboardRoute(item.title, item.href)
       : isDocente
         ? forceDocenteDashboardRoute(item.title, item.href)
+        : isJefaturaCarrera
+          ? forceJefaturaCarreraRoute(item.title, item.href)
         : item.href,
-    backend: isDiscente || isDocente ? false : item.backend,
+    backend: isDiscente || isDocente || isJefaturaCarrera ? false : item.backend,
   }));
 
   return (
@@ -200,6 +210,23 @@ function forceDocenteDashboardRoute(title: string, currentHref?: string) {
   if (normalized === "actas remitidas") return "/docente/actas?estado=remitidas";
   if (normalized === "actas docente") return "/docente/actas";
   if (normalized === "exportar mis actas") return undefined;
+  return currentHref;
+}
+
+function forceJefaturaCarreraRoute(title: string, currentHref?: string) {
+  const normalized = normalizeTitle(title);
+  if (normalized === "actas por validar") return "/jefatura-carrera/actas";
+  if (normalized === "actas remitidas") return "/jefatura-carrera/actas";
+  if (normalized === "asignaciones docentes") return "/periodos/pendientes-asignacion-docente";
+  if (normalized === "periodos activos") return "/periodos";
+  if (normalized === "pendientes de asignacion docente") return "/periodos/pendientes-asignacion-docente";
+  if (normalized === "grupos activos") return "/periodos";
+  if (normalized === "trayectoria operativa de mi carrera") return "/trayectoria";
+  if (normalized === "actas exportables") return "/reportes/actas";
+  if (normalized === "catalogos de mi ambito") return undefined;
+  if (normalized === "kardex oficial") return undefined;
+  if (normalized === "historial de exportaciones") return undefined;
+  if (normalized === "auditoria institucional") return undefined;
   return currentHref;
 }
 

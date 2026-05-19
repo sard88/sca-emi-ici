@@ -17,8 +17,8 @@ export function OperativeReportSummaryBar({ data }: { data: ReporteOperativoResp
       <div className="rounded-[1.25rem] border border-[#eadfce] bg-white/88 p-4 shadow-sm">
         <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f6a22]">Disponibilidad</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          <OperativeReportBadge label="Vista previa JSON" />
-          <OperativeReportBadge label="XLSX auditado" tone="dorado" />
+          <OperativeReportBadge label="Vista previa en pantalla" />
+          <OperativeReportBadge label="XLSX disponible" tone="dorado" />
         </div>
       </div>
     </section>

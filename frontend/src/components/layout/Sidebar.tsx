@@ -139,12 +139,18 @@ function buildNavigationSections(user: AuthenticatedUser, pathname: string): Nav
       title: "Reportes y auditoría",
       items: [
         canAccessReportes(user) ? navItem("/reportes", "Reportes", "REPORTES", pathname) : null,
-        canAccessKardexPdf(user) ? navItem("/reportes/kardex", "Kárdex oficial", "REPORTES", pathname, "Kárdex") : null,
+        canAccessKardexPdf(user) && !hasRole(user, "JEFE_CARRERA") && !hasRole(user, "JEFATURA_CARRERA") && !hasRole(user, "JEFE_SUB_EJEC_CTR")
+          ? navItem("/reportes/kardex", "Kárdex oficial", "REPORTES", pathname, "Kárdex")
+          : null,
         canAccessReportesOperativos(user) ? navItem("/reportes/operativos", "Reportes operativos", "REPORTES", pathname, "Operativos") : null,
         canAccessReportesDesempeno(user) ? navItem("/reportes/desempeno", "Desempeño académico", "REPORTES", pathname, "Desempeño") : null,
         canAccessReportesTrayectoria(user) ? navItem("/reportes/trayectoria", "Reportes de trayectoria", "REPORTES", pathname, "Reportes trayectoria") : null,
-        canAccessReportes(user) && !hasRole(user, "DOCENTE") ? navItem("/reportes/exportaciones", "Historial de exportaciones", "REPORTES", pathname, "Exportaciones") : null,
-        canAccessAuditoria(user) ? navItem("/reportes/auditoria", "Auditoría institucional", "SEGURIDAD", pathname, "Auditoría") : null,
+        canAccessReportes(user) && !hasRole(user, "DOCENTE") && !hasRole(user, "JEFE_CARRERA") && !hasRole(user, "JEFATURA_CARRERA") && !hasRole(user, "JEFE_SUB_EJEC_CTR")
+          ? navItem("/reportes/exportaciones", "Historial de exportaciones", "REPORTES", pathname, "Exportaciones")
+          : null,
+        canAccessAuditoria(user) && !hasRole(user, "JEFE_CARRERA") && !hasRole(user, "JEFATURA_CARRERA") && !hasRole(user, "JEFE_SUB_EJEC_CTR")
+          ? navItem("/reportes/auditoria", "Auditoría institucional", "SEGURIDAD", pathname, "Auditoría")
+          : null,
       ].filter(Boolean) as NavigationItem[],
     },
     {

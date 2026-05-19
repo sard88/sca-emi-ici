@@ -44,6 +44,7 @@ export default function ReportesPage() {
 
     if (user && canAccessReportes(user)) void load();
   }, [user]);
+  const isJefaturaCarrera = user ? isJefaturaCarreraRole(user) : false;
 
   return (
     <AppShell>
@@ -53,7 +54,7 @@ export default function ReportesPage() {
         <div className="space-y-5">
           <PageHeader
             title="Reportes y exportaciones"
-            description="Consulta documentos oficiales, reportes institucionales, exportaciones y auditoría según tu perfil."
+            description="Consulta reportes y documentos disponibles según tu perfil autorizado."
             user={user}
           />
 
@@ -63,7 +64,7 @@ export default function ReportesPage() {
               intent="Consultar y exportar documentos autorizados."
               links={[
                 { title: "Actas PDF/XLSX", description: "Consultar y exportar actas de corte y calificación final.", href: "/reportes/actas" },
-                canAccessKardexPdf(user) ? { title: "Kárdex oficial PDF", description: "Exportar kárdex institucional autorizado.", href: "/reportes/kardex" } : null,
+                canAccessKardexPdf(user) && !isJefaturaCarrera ? { title: "Kárdex oficial PDF", description: "Exportar Kárdex institucional autorizado.", href: "/reportes/kardex" } : null,
               ]}
             />
             <QuickSection
@@ -75,20 +76,24 @@ export default function ReportesPage() {
                 canAccessReportesTrayectoria(user) ? { title: "Reportes de trayectoria", description: "Consultar extraordinarios, bajas, reingresos, movimientos e historial interno.", href: "/reportes/trayectoria" } : null,
               ]}
             />
-            <QuickSection
-              title="Exportaciones"
-              intent="Revisar archivos generados y folios técnicos."
-              links={[
-                { title: canAccessAuditoriaExportaciones(user) ? "Exportaciones institucionales" : "Mis exportaciones", description: "Consulta descargas PDF/XLSX realizadas y su folio técnico.", href: "/reportes/exportaciones" },
-              ]}
-            />
-            <QuickSection
-              title="Auditoría"
-              intent="Trazabilidad de eventos críticos y salidas documentales."
-              links={[
-                canAccessAuditoria(user) ? { title: "Auditoría institucional", description: "Auditar eventos críticos y exportaciones según permisos separados.", href: "/reportes/auditoria" } : null,
-              ]}
-            />
+            {!isJefaturaCarrera ? (
+              <QuickSection
+                title="Exportaciones"
+                intent="Revisar archivos generados."
+                links={[
+                  { title: canAccessAuditoriaExportaciones(user) ? "Exportaciones institucionales" : "Mis exportaciones", description: "Consulta descargas realizadas.", href: "/reportes/exportaciones" },
+                ]}
+              />
+            ) : null}
+            {!isJefaturaCarrera ? (
+              <QuickSection
+                title="Auditoría"
+                intent="Consulta institucional autorizada."
+                links={[
+                  canAccessAuditoria(user) ? { title: "Auditoría institucional", description: "Consulta eventos disponibles según tu perfil.", href: "/reportes/auditoria" } : null,
+                ]}
+              />
+            ) : null}
           </div>
 
           {loading ? <LoadingState label="Cargando catálogo documental..." /> : null}
@@ -99,9 +104,7 @@ export default function ReportesPage() {
               <section>
                 <div className="mb-4">
                   <h3 className="text-lg font-black text-[#101b18]">Catálogo de reportes</h3>
-                  <p className="mt-1 text-sm text-[#5f6764]">
-                    Las actas PDF/XLSX ya están integradas. Los reportes todavía no implementados se muestran como pendientes sin inventar información.
-                  </p>
+                  <p className="mt-1 text-sm text-[#5f6764]">Consulta reportes disponibles según tu perfil autorizado.</p>
                 </div>
                 {catalogo.length > 0 ? (
                   <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
@@ -119,25 +122,37 @@ export default function ReportesPage() {
                 )}
               </section>
 
-              <section>
-                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <h3 className="text-lg font-black text-[#101b18]">Últimas exportaciones</h3>
-                    <p className="mt-1 text-sm text-[#5f6764]">Trazabilidad reciente de descargas documentales autorizadas.</p>
+              {!isJefaturaCarrera ? (
+                <section>
+                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <h3 className="text-lg font-black text-[#101b18]">Últimas exportaciones</h3>
+                      <p className="mt-1 text-sm text-[#5f6764]">Consulta las descargas recientes disponibles para tu perfil.</p>
+                    </div>
+                    <Link href="/reportes/exportaciones" className="text-sm font-black text-[#7a123d]">Ver historial completo</Link>
                   </div>
-                  <Link href="/reportes/exportaciones" className="text-sm font-black text-[#7a123d]">Ver historial completo</Link>
-                </div>
-                {exportaciones.length > 0 ? (
-                  <ExportHistoryTable items={exportaciones} showUser={canAccessAuditoriaExportaciones(user)} />
-                ) : (
-                  <EmptyState title="Aún no hay exportaciones" description="Cuando se generen documentos autorizados, aparecerán en esta sección." variant="noData" />
-                )}
-              </section>
+                  {exportaciones.length > 0 ? (
+                    <ExportHistoryTable items={exportaciones} showUser={canAccessAuditoriaExportaciones(user)} />
+                  ) : (
+                    <EmptyState title="Aún no hay exportaciones" description="Sin información disponible." variant="noData" />
+                  )}
+                </section>
+              ) : null}
             </>
           ) : null}
         </div>
       )}
     </AppShell>
+  );
+}
+
+function isJefaturaCarreraRole(user: AuthenticatedUser) {
+  return (
+    user.perfil_principal === "JEFE_CARRERA" ||
+    user.roles.includes("JEFE_CARRERA") ||
+    user.roles.includes("JEFATURA_CARRERA") ||
+    user.roles.includes("JEFE_SUB_EJEC_CTR") ||
+    user.cargos_vigentes.some((cargo) => ["JEFE_CARRERA", "JEFATURA_CARRERA", "JEFE_SUB_EJEC_CTR"].includes(cargo.cargo_codigo))
   );
 }
 

@@ -21,8 +21,8 @@ export function PerformanceReportSummaryBar({ data }: { data: ReporteDesempenoRe
       <div className="rounded-[1.25rem] border border-[#eadfce] bg-white/88 p-4 shadow-sm">
         <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f6a22]">Disponibilidad</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          <PerformanceReportBadge label="Vista previa JSON" />
-          <PerformanceReportBadge label="XLSX auditado" tone="dorado" />
+          <PerformanceReportBadge label="Vista previa en pantalla" />
+          <PerformanceReportBadge label="XLSX disponible" tone="dorado" />
         </div>
       </div>
     </section>

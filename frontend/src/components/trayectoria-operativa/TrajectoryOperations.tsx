@@ -106,7 +106,7 @@ export function TrajectoryHomeCards() {
         if (canAccessMiHistorialAcademico(user) && !canAccessTrayectoriaInstitucional(user)) {
           return (
             <div className="grid gap-4 xl:grid-cols-2">
-              <ModuleCard title="Mi historial académico" href="/trayectoria/mi-historial" description="Consulta personal de resultados, eventos y movimientos visibles. No es kárdex oficial." tone="verde" />
+              <ModuleCard title="Mi historial académico" href="/trayectoria/mi-historial" description="Consulta personal de resultados, eventos y movimientos visibles." tone="verde" />
               <ModuleCard title="Mi carga académica" href="/discente/carga-academica" description="Asignaturas inscritas, docente, grupo y estado de actas visibles para tu perfil." />
               <ModuleCard title="Mis actas publicadas" href="/discente/actas" description="Resultados publicados y conformidad informativa por acta." tone="dorado" />
             </div>
@@ -116,12 +116,12 @@ export function TrajectoryHomeCards() {
         const operator = canOperateTrayectoria(user);
         return (
           <div className="grid gap-4 xl:grid-cols-2">
-            {canAccessMiHistorialAcademico(user) ? <ModuleCard title="Mi historial académico" href="/trayectoria/mi-historial" description="Consulta personal de resultados, eventos y movimientos visibles. No es kárdex oficial." tone="verde" /> : null}
+            {canAccessMiHistorialAcademico(user) ? <ModuleCard title="Mi historial académico" href="/trayectoria/mi-historial" description="Consulta personal de resultados, eventos y movimientos visibles." tone="verde" /> : null}
             {institutional ? <ModuleCard title="Buscar historial académico" href="/trayectoria/historial" description="Seguimiento filtrado por ámbito autorizado." /> : null}
             {institutional ? <ModuleCard title="Extraordinarios" href="/trayectoria/extraordinarios" description="Seguimiento de extraordinarios registrados y marca EE cuando aplique." /> : null}
-            {operator ? <ModuleCard title="Registrar extraordinario" href="/trayectoria/extraordinarios/nuevo" description="Registro operativo con validación real en backend." tone="dorado" /> : null}
+            {operator ? <ModuleCard title="Registrar extraordinario" href="/trayectoria/extraordinarios/nuevo" description="Registro operativo de extraordinarios." tone="dorado" /> : null}
             {institutional ? <ModuleCard title="Situaciones académicas" href="/trayectoria/situaciones" description="Bajas temporales, bajas definitivas, reingresos y eventos de trayectoria." /> : null}
-            {operator ? <ModuleCard title="Registrar situación" href="/trayectoria/situaciones/nuevo" description="Alta de evento académico con confirmación y validación backend." tone="dorado" /> : null}
+            {operator ? <ModuleCard title="Registrar situación" href="/trayectoria/situaciones/nuevo" description="Alta de evento académico." tone="dorado" /> : null}
             {institutional ? <ModuleCard title="Movimientos académicos" href="/movimientos-academicos" description="Cambios de grupo y evidencia operativa sin borrar historial." /> : null}
             {operator ? <ModuleCard title="Cambio de grupo" href="/movimientos-academicos/cambio-grupo" description="Movimiento transaccional: adscripción, inscripciones y bloqueos por actas vivas." tone="guinda" /> : null}
             {canAccessPeriodosOperativos(user) ? <ModuleCard title="Cierre y apertura de periodo" href="/periodos" description="Diagnóstico, cierre, apertura y pendientes de asignación docente." tone="verde" /> : null}
@@ -141,7 +141,7 @@ function ModuleCard({ title, description, href, tone = "neutral" }: { title: str
   }[tone];
   return (
     <Link href={href} className={`block rounded-[1.5rem] border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-institutional ${toneClass}`}>
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b46c13]">Operación 10C-6</p>
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b46c13]">Operación institucional</p>
       <h2 className="mt-2 text-xl font-black">{title}</h2>
       <p className="mt-2 text-sm leading-6 text-[#5f6764]">{description}</p>
       <span className="mt-4 inline-flex rounded-xl bg-[#7a123d] px-4 py-2 text-sm font-black text-white">Abrir</span>
@@ -159,7 +159,7 @@ export function MyHistoryView() {
   }, []);
 
   return (
-    <AccessPage title="Mi historial académico" description="Consulta personal de trayectoria. Esta vista no sustituye al kárdex oficial." allowed={canAccessMiHistorialAcademico}>
+    <AccessPage title="Mi historial académico" description="Consulta informativa de tu trayectoria académica." allowed={canAccessMiHistorialAcademico}>
       {() => <HistoryContent state={state} own />}
     </AccessPage>
   );
@@ -180,7 +180,7 @@ export function InstitutionalHistorySearch() {
     <AccessPage title="Búsqueda institucional de historial" description="Consulta de discentes filtrada por permisos y ámbito de carrera." allowed={canAccessTrayectoriaInstitucional}>
       {() => (
         <div className="space-y-5">
-          <SensitiveInfoNotice text="El historial interno contiene información académica sensible y no es kárdex oficial." />
+          <SensitiveInfoNotice text="Consulta institucional autorizada." />
           <FiltersBar filters={filters} setFilters={setFilters} fields={["q", "carrera", "grupo", "plan", "antiguedad", "situacion"]} onSearch={load} />
           <StateBlock state={state} loadingLabel="Buscando historiales..." emptyTitle="Sin resultados" />
           {state.data ? <DataTable items={state.data} detailBase="/trayectoria/historial" detailKey="id" /> : null}
@@ -212,8 +212,8 @@ function HistoryContent({ state, own = false }: { state: LoadState<HistorialAcad
       <StateBlock state={state} loadingLabel="Cargando historial..." emptyTitle="Registro no encontrado" />
       {state.data ? (
         <>
-          <SensitiveInfoNotice text={own ? "Esta vista es informativa y no corresponde al kárdex oficial." : "Historial interno sensible. Consulta exclusiva para perfiles autorizados."} />
-          <SensitiveTraceNotice text="El historial académico interno conserva evidencia completa. No sustituye al kárdex oficial." tone="warning" />
+          <SensitiveInfoNotice text={own ? "Consulta informativa de trayectoria académica." : "Consulta institucional autorizada."} />
+          <SensitiveTraceNotice text="La información mostrada corresponde al historial académico registrado." tone="warning" />
           <Card className="p-5">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b46c13]">Discente</p>
             <h2 className="mt-2 text-2xl font-black text-[#101b18]">{formatValue(state.data.discente)}</h2>
@@ -261,7 +261,7 @@ export function ExtraordinaryForm() {
   const [payload, setPayload] = useState<FilterState>({});
   const [state, setState] = useState<{ saving: boolean; error: string | null; ok: string | null }>({ saving: false, error: null, ok: null });
   async function submit() {
-    if (!window.confirm("Registrar extraordinario puede actualizar resultado vigente y situación académica según reglas backend. ¿Continuamos?")) return;
+    if (!window.confirm("Registrar extraordinario puede actualizar resultados académicos. ¿Continuamos?")) return;
     setState({ saving: true, error: null, ok: null });
     try {
       const response = await crearExtraordinario(payload as unknown as { inscripcion_materia_id: string; calificacion: string; fecha_aplicacion?: string; observaciones?: string });
@@ -271,7 +271,7 @@ export function ExtraordinaryForm() {
       setState({ saving: false, error: error instanceof Error ? error.message : "No fue posible registrar el extraordinario.", ok: null });
     }
   }
-  return <FormPage title="Registrar extraordinario" description="El backend valida acta FINAL formalizada, ordinario reprobatorio y duplicidad." allowed={canOperateTrayectoria} payload={payload} setPayload={setPayload} fields={["inscripcion_materia_id", "fecha_aplicacion", "calificacion", "observaciones"]} state={state} onSubmit={submit} submitLabel="Registrar extraordinario" />;
+  return <FormPage title="Registrar extraordinario" description="Registro sujeto a reglas académicas institucionales." allowed={canOperateTrayectoria} payload={payload} setPayload={setPayload} fields={["inscripcion_materia_id", "fecha_aplicacion", "calificacion", "observaciones"]} state={state} onSubmit={submit} submitLabel="Registrar extraordinario" />;
 }
 
 export function ExtraordinaryDetail({ id }: { id: string }) {
@@ -298,7 +298,7 @@ export function AcademicSituationForm() {
   async function submit() {
     const code = payload.situacion_codigo || payload.situacion;
     const strong = code === "BAJA_DEFINITIVA" ? "Baja definitiva es una acción crítica. " : code === "REINGRESO" ? "Reingreso puede cerrar baja temporal abierta. " : "";
-    if (!window.confirm(`${strong}El backend aplicará las reglas institucionales. ¿Continuamos?`)) return;
+    if (!window.confirm(`${strong}Se aplicarán las reglas institucionales. ¿Continuamos?`)) return;
     setState({ saving: true, error: null, ok: null });
     try {
       const response = await crearSituacionAcademica(payload as unknown as { discente_id: string; situacion_codigo: string; periodo_id?: string; fecha_inicio?: string; fecha_fin?: string; motivo?: string; observaciones?: string });
@@ -308,7 +308,7 @@ export function AcademicSituationForm() {
       setState({ saving: false, error: error instanceof Error ? error.message : "No fue posible registrar la situación.", ok: null });
     }
   }
-  return <FormPage title="Registrar situación académica" description="Usa códigos como BAJA_TEMPORAL, BAJA_DEFINITIVA o REINGRESO. El backend decide y valida." allowed={canOperateTrayectoria} payload={payload} setPayload={setPayload} fields={["discente_id", "situacion_codigo", "periodo_id", "fecha_inicio", "fecha_fin", "motivo", "observaciones"]} state={state} onSubmit={submit} submitLabel="Registrar situación" />;
+  return <FormPage title="Registrar situación académica" description="Registra la situación académica con la información autorizada." allowed={canOperateTrayectoria} payload={payload} setPayload={setPayload} fields={["discente_id", "situacion_codigo", "periodo_id", "fecha_inicio", "fecha_fin", "motivo", "observaciones"]} state={state} onSubmit={submit} submitLabel="Registrar situación" />;
 }
 
 export function AcademicSituationDetail({ id }: { id: string }) {
@@ -333,7 +333,7 @@ export function AcademicMovementForm({ cambioGrupo = false }: { cambioGrupo?: bo
   const [payload, setPayload] = useState<FilterState>(cambioGrupo ? { tipo_movimiento: "cambio_grupo" } : {});
   const [state, setState] = useState<{ saving: boolean; error: string | null; ok: string | null }>({ saving: false, error: null, ok: null });
   async function submit() {
-    if (!window.confirm("Este movimiento puede afectar adscripciones e inscripciones. El backend validará actas vivas y reglas de ámbito. ¿Continuamos?")) return;
+    if (!window.confirm("Este movimiento puede afectar adscripciones e inscripciones. ¿Continuamos?")) return;
     setState({ saving: true, error: null, ok: null });
     try {
       const response = cambioGrupo
@@ -345,7 +345,7 @@ export function AcademicMovementForm({ cambioGrupo = false }: { cambioGrupo?: bo
       setState({ saving: false, error: error instanceof Error ? error.message : "No fue posible registrar el movimiento.", ok: null });
     }
   }
-  return <FormPage title={cambioGrupo ? "Registrar cambio de grupo" : "Registrar movimiento académico"} description="No se borra evidencia previa. Las reglas transaccionales viven en backend." allowed={canOperateTrayectoria} payload={payload} setPayload={setPayload} fields={cambioGrupo ? ["discente_id", "periodo_id", "grupo_origen_id", "grupo_destino_id", "fecha_movimiento", "observaciones"] : ["discente_id", "periodo_id", "tipo_movimiento", "grupo_origen_id", "grupo_destino_id", "fecha_movimiento", "observaciones"]} state={state} onSubmit={submit} submitLabel={cambioGrupo ? "Aplicar cambio de grupo" : "Registrar movimiento"} />;
+  return <FormPage title={cambioGrupo ? "Registrar cambio de grupo" : "Registrar movimiento académico"} description="No se borra evidencia previa durante el movimiento." allowed={canOperateTrayectoria} payload={payload} setPayload={setPayload} fields={cambioGrupo ? ["discente_id", "periodo_id", "grupo_origen_id", "grupo_destino_id", "fecha_movimiento", "observaciones"] : ["discente_id", "periodo_id", "tipo_movimiento", "grupo_origen_id", "grupo_destino_id", "fecha_movimiento", "observaciones"]} state={state} onSubmit={submit} submitLabel={cambioGrupo ? "Aplicar cambio de grupo" : "Registrar movimiento"} />;
 }
 
 export function ChangeGroupForm() {
@@ -356,7 +356,7 @@ export function AcademicMovementDetail({ id }: { id: string }) {
   return (
     <DetailPage
       title="Detalle de movimiento académico"
-      description="Efecto operativo sobre adscripción e inscripciones cuando el backend lo reporta."
+      description="Efecto operativo sobre adscripción e inscripciones."
       allowed={canAccessTrayectoriaInstitucional}
       load={() => getMovimientoAcademico(id).then((r) => r.item)}
       extra={(item, user) => (
@@ -470,7 +470,7 @@ export function ClosureDiagnosticPanel({ periodoId }: { periodoId: string }) {
 }
 
 export function ClosureBlockersList({ title, items, tone }: { title: string; items: Array<unknown>; tone: "danger" | "warning" }) {
-  if (!items.length) return <EmptyState title={`Sin ${title.toLowerCase()}.`} description="El backend no reportó elementos en esta categoría." />;
+  if (!items.length) return <EmptyState title={`Sin ${title.toLowerCase()}.`} description="Sin información disponible en esta categoría." />;
   const color = tone === "danger" ? "border-[#7a123d]/30 bg-[#fff5f8] text-[#7a123d]" : "border-[#d4af37]/40 bg-[#fff8e6] text-[#72530d]";
   return (
     <Card className="p-5">
@@ -519,7 +519,7 @@ export function ClosureProcessDetail({ id }: { id: string }) {
       extra={(item, user) => (
         <>
           <PeriodProcessStepper activeStep="cierre" periodo={item.periodo as PeriodoOperativoDTO | undefined} />
-          <SensitiveTraceNotice text="El cierre no modifica actas formalizadas; preserva evidencia y clasificación calculada por backend." tone="info" />
+          <SensitiveTraceNotice text="El cierre no modifica actas formalizadas y preserva la evidencia registrada." tone="info" />
           {item.detalles ? <DataSection title="Detalles por discente" items={item.detalles as Array<RecordValue>} /> : null}
           {canAccessAuditoriaEventos(user) ? <AuditTrailPanel objetoTipo="PROCESO_CIERRE_PERIODO" objetoId={String(item.id)} /> : null}
         </>
@@ -639,7 +639,7 @@ function FormPage({ title, description, allowed, payload, setPayload, fields, st
         <div className="space-y-5">
           {leading}
           <Card className="p-5">
-            <SensitiveInfoNotice text="Captura únicamente IDs internos autorizados. No uses matrícula militar." />
+            <SensitiveInfoNotice text="Registra la información académica autorizada para esta operación." />
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               {fields.map((field) => (
                 <SmartFormField
@@ -928,7 +928,7 @@ export function MovementSafetyNotice() {
 }
 
 export function HistoryPrivacyNotice() {
-  return <SensitiveInfoNotice text="Este historial interno es sensible y no debe presentarse como kárdex oficial." />;
+  return <SensitiveInfoNotice text="Consulta informativa de trayectoria académica." />;
 }
 
 export function SensitiveInfoNotice({ text }: { text: string }) {

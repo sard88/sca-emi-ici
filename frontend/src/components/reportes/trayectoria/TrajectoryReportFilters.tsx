@@ -19,9 +19,7 @@ export function TrajectoryReportFilters({
       <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h3 className="text-base font-black text-[#101b18]">Filtros</h3>
-          <p className="text-sm text-[#5f6764]">
-            Los filtros se envían al backend y se reutilizan en la descarga XLSX auditada.
-          </p>
+          <p className="text-sm text-[#5f6764]">Aplica filtros para consultar la información disponible.</p>
         </div>
         <div className="flex gap-2">
           <button

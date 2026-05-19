@@ -75,7 +75,7 @@ export function OperativeReportPage({ config }: { config: ReporteOperativoConfig
               <div>
                 <div className="flex flex-wrap gap-2">
                   <OperativeReportBadge label="XLSX disponible" tone="dorado" />
-                  <OperativeReportBadge label="PDF pendiente" tone="neutral" />
+                  <OperativeReportBadge label="PDF no disponible" tone="neutral" />
                 </div>
                 <p className="mt-4 max-w-3xl text-sm leading-6 text-white/82">{config.ayuda}</p>
               </div>

@@ -10,7 +10,7 @@ export function OperativeReportTable({ columns, items }: { columns: ReporteOpera
       <div className="flex flex-col gap-2 border-b border-[#eadfce] p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-base font-black text-[#101b18]">Vista previa</h3>
-          <p className="text-sm text-[#5f6764]">La tabla usa columnas devueltas por el backend.</p>
+          <p className="text-sm text-[#5f6764]">Consulta los resultados disponibles en pantalla.</p>
         </div>
         {items.length > MAX_PREVIEW_ROWS ? (
           <p className="rounded-full bg-[#fff7e8] px-3 py-1 text-xs font-black text-[#7b4c0c]">

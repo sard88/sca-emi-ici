@@ -12,7 +12,7 @@ export function TrajectoryReportCard({ config }: { config: ReporteTrayectoriaCon
         </div>
         <div className="flex flex-wrap gap-2">
           <TrajectoryReportBadge label="XLSX disponible" />
-          {config.pdfPendiente ? <TrajectoryReportBadge label="PDF pendiente" tone="dorado" /> : null}
+          {config.pdfPendiente ? <TrajectoryReportBadge label="PDF no disponible" tone="dorado" /> : null}
           <TrajectoryReportBadge label={config.nominal ? "Nominal" : "Agregado"} tone={config.nominal ? "guinda" : "neutral"} />
           {config.requiereDiscenteId ? <TrajectoryReportBadge label="Requiere discente" tone="dorado" /> : null}
         </div>
@@ -21,7 +21,7 @@ export function TrajectoryReportCard({ config }: { config: ReporteTrayectoriaCon
       <p className="mt-3 text-xs font-bold leading-5 text-[#7b837f]">{config.ayuda}</p>
       {config.datosSensibles ? (
         <p className="mt-3 rounded-2xl border border-[#e7c3ce] bg-[#fff7f9] px-3 py-2 text-xs font-bold leading-5 text-[#7a123d]">
-          Información académica sensible. El backend valida permisos y ámbito institucional.
+          Consulta institucional autorizada.
         </p>
       ) : null}
       <div className="mt-5 flex flex-wrap gap-3">
@@ -32,7 +32,7 @@ export function TrajectoryReportCard({ config }: { config: ReporteTrayectoriaCon
           Ver reporte
         </Link>
         <span className="rounded-xl border border-[#d8c5a7] bg-white px-4 py-2 text-xs font-black text-[#7a123d]">
-          Descarga XLSX dentro de la vista
+          Descarga XLSX en esta vista
         </span>
       </div>
     </article>

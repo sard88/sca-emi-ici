@@ -34,7 +34,7 @@ export function DashboardSidePanel({ user }: { user: AuthenticatedUser }) {
     }
 
     void load();
-  }, [today]);
+  }, [today, user]);
 
   return (
     <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
@@ -66,13 +66,22 @@ function PanelCard({ title, action, children }: { title: string; action?: string
 }
 
 function Timeline({ items, user }: { items: ActividadRecienteItem[]; user: AuthenticatedUser }) {
+  const isDiscente = isDiscenteUser(user);
+  const isJefaturaCarrera = isJefaturaCarreraUser(user);
+
   if (items.length === 0) {
     return (
       <div className="relative space-y-3 pl-6 before:absolute before:left-2 before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-[#eadbc4]">
         <TimelinePlaceholder
           color="#0b4a3d"
-          title={isDiscenteUser(user) ? "Sin actividad reciente relevante" : "Sin actividad reciente"}
-          description={isDiscenteUser(user) ? "Aún no hay novedades para mostrar." : `Las acciones de ${user.nombre_visible || user.username} aparecerán aquí cuando existan nuevos registros.`}
+          title={isDiscente || isJefaturaCarrera ? "Sin actividad reciente relevante" : "Sin actividad reciente"}
+          description={
+            isDiscente
+              ? "Aún no hay novedades para mostrar."
+              : isJefaturaCarrera
+                ? "Sin actividad reciente relevante."
+                : `Las acciones de ${user.nombre_visible || user.username} aparecerán aquí cuando existan nuevos registros.`
+          }
         />
       </div>
     );
@@ -259,6 +268,7 @@ function compactRecentActivity(items: ActividadRecienteItem[], user: Authenticat
 
   for (const item of items) {
     if (isDiscenteUser(user) && isLowRelevanceForDiscente(item)) continue;
+    if (isJefaturaCarreraUser(user) && isLowRelevanceForJefaturaCarrera(item)) continue;
     const signature = `${item.tipo}|${normalize(item.titulo)}|${normalize(item.descripcion)}`;
     if (seen.has(signature)) continue;
     seen.add(signature);
@@ -274,8 +284,13 @@ function normalize(value: string | null | undefined) {
 }
 
 function filterRecentActivityForUser(items: ActividadRecienteItem[], user: AuthenticatedUser) {
-  if (!isDiscenteUser(user)) return items;
-  return items.filter((item) => !isLowRelevanceForDiscente(item));
+  if (isDiscenteUser(user)) {
+    return items.filter((item) => !isLowRelevanceForDiscente(item));
+  }
+  if (isJefaturaCarreraUser(user)) {
+    return items.filter((item) => !isLowRelevanceForJefaturaCarrera(item));
+  }
+  return items;
 }
 
 function isLowRelevanceForDiscente(item: ActividadRecienteItem) {
@@ -283,6 +298,27 @@ function isLowRelevanceForDiscente(item: ActividadRecienteItem) {
   return raw.includes("captura preliminar") || raw.includes("actualizada");
 }
 
+function isLowRelevanceForJefaturaCarrera(item: ActividadRecienteItem) {
+  const raw = `${item.tipo || ""} ${item.titulo || ""} ${item.descripcion || ""}`.toLowerCase();
+  return (
+    raw.includes("borrador docente") ||
+    raw.includes("captura preliminar") ||
+    raw.includes("en captura docente") ||
+    raw.includes("captura de calificaciones") ||
+    raw.includes("calificación preliminar")
+  );
+}
+
 function isDiscenteUser(user: AuthenticatedUser) {
   return user.perfil_principal === "DISCENTE" || user.roles.includes("DISCENTE");
+}
+
+function isJefaturaCarreraUser(user: AuthenticatedUser) {
+  return (
+    user.perfil_principal === "JEFE_CARRERA" ||
+    user.roles.includes("JEFE_CARRERA") ||
+    user.roles.includes("JEFATURA_CARRERA") ||
+    user.roles.includes("JEFE_SUB_EJEC_CTR") ||
+    user.cargos_vigentes.some((cargo) => ["JEFE_CARRERA", "JEFATURA_CARRERA", "JEFE_SUB_EJEC_CTR"].includes(cargo.cargo_codigo))
+  );
 }

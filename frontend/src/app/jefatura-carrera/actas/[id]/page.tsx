@@ -70,7 +70,7 @@ export default function JefaturaCarreraActaDetallePage() {
               <ActaExportActions acta={data.acta} />
               <ConformitySummaryPanel filas={data.filas} />
               <ActaComponentsTable componentes={data.componentes} />
-              <ActaDetailTable filas={data.filas} />
+              <ActaDetailTable filas={data.filas} componentes={data.componentes} />
               <ActaValidationTimeline validaciones={data.validaciones} />
               {canAccessAuditoriaEventos(user) ? <AuditTrailPanel objetoTipo="ACTA" objetoId={data.acta.acta_id} /> : null}
             </>

@@ -76,7 +76,7 @@ export function PerformanceReportPage({ config }: { config: ReporteDesempenoConf
               <div>
                 <div className="flex flex-wrap gap-2">
                   <PerformanceReportBadge label="XLSX disponible" tone="dorado" />
-                  {config.pdfPendiente ? <PerformanceReportBadge label="PDF pendiente" tone="neutral" /> : null}
+                  {config.pdfPendiente ? <PerformanceReportBadge label="PDF no disponible" tone="neutral" /> : null}
                   <PerformanceReportBadge label={config.nominal ? "Reporte nominal" : "Reporte agregado"} tone={config.nominal ? "guinda" : "verde"} />
                 </div>
                 <p className="mt-4 max-w-3xl text-sm leading-6 text-white/82">{config.ayuda}</p>

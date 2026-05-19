@@ -10,8 +10,8 @@ export function KardexExportEmptyState({
       title={filtered ? "No hay discentes que coincidan con la búsqueda." : "No hay kárdex exportables para tu perfil."}
       description={
         filtered
-          ? "Ajusta el nombre, carrera, situación académica o ID interno e intenta nuevamente."
-          : "El backend no devolvió discentes autorizados para exportar kárdex oficial."
+          ? "Ajusta el nombre, carrera o situación académica e intenta nuevamente."
+          : "No hay discentes disponibles para exportación con los filtros aplicados."
       }
       variant={filtered ? "search" : "restricted"}
     />

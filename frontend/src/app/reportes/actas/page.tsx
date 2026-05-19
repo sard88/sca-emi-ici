@@ -67,7 +67,7 @@ export default function ActasExportablesPage() {
         <div className="space-y-6">
           <PageHeader
             title="Actas exportables"
-            description="Descarga actas PDF/XLSX autorizadas. Cada archivo generado queda registrado en auditoría con folio técnico."
+            description="Descarga actas PDF/XLSX disponibles según la información académica registrada."
             user={user}
           />
 
@@ -76,7 +76,7 @@ export default function ActasExportablesPage() {
               <input
                 value={texto}
                 onChange={(event) => setTexto(event.target.value)}
-                placeholder="Buscar por asignatura, docente, grupo o periodo..."
+                placeholder="Buscar por asignatura, docente, grupo o período..."
                 className="h-12 rounded-2xl border border-[#e4d6c2] bg-white px-4 text-sm font-medium outline-none focus:border-[#bc955c]"
               />
               <select value={estado} onChange={(event) => setEstado(event.target.value)} className="h-12 rounded-2xl border border-[#e4d6c2] bg-white px-4 text-sm font-bold outline-none focus:border-[#bc955c]">
@@ -97,7 +97,7 @@ export default function ActasExportablesPage() {
           {error ? <ErrorMessage message={error} /> : null}
 
           {!loading && !error && filtered.length === 0 ? (
-            <EmptyExportsState title="No hay actas exportables para tu perfil." description="El backend no devolvió actas disponibles con los permisos actuales o filtros aplicados." />
+            <EmptyExportsState title="No hay actas exportables para tu perfil." description="No hay actas disponibles con los filtros aplicados." />
           ) : null}
 
           {!loading && !error && filtered.length > 0 ? (
