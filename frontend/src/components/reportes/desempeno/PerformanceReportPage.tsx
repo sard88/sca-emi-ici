@@ -88,18 +88,20 @@ export function PerformanceReportPage({ config }: { config: ReporteDesempenoConf
                 >
                   Volver a desempeño
                 </Link>
-                <PerformanceReportDownloadButton
-                  slug={config.slug}
-                  filters={appliedFilters}
-                  onDone={(result) => {
-                    setDownloadError(null);
-                    setLastDownload(result);
-                  }}
-                  onError={(message) => {
-                    setLastDownload(null);
-                    setDownloadError(message);
-                  }}
-                />
+                {config.formatosDisponibles.includes("XLSX") ? (
+                  <PerformanceReportDownloadButton
+                    slug={config.slug}
+                    filters={appliedFilters}
+                    onDone={(result) => {
+                      setDownloadError(null);
+                      setLastDownload(result);
+                    }}
+                    onError={(message) => {
+                      setLastDownload(null);
+                      setDownloadError(message);
+                    }}
+                  />
+                ) : null}
               </div>
             </div>
           </section>

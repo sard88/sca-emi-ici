@@ -354,9 +354,10 @@ export async function getReporteDesempenoCuadroAprovechamiento(params: Record<st
   return getReporteDesempeno("cuadro-aprovechamiento", params);
 }
 
-const desempenoDownloadEndpoint: Record<ReporteDesempenoCodigo, string> = {
+const desempenoDownloadEndpoint: Partial<Record<ReporteDesempenoCodigo, string>> = {
   "aprobados-reprobados": "aprobados-reprobados",
   promedios: "promedios",
+  "consolidado-materia": "consolidado-materia",
   distribucion: "distribucion",
   exentos: "exentos",
   docentes: "desempeno-docente",
@@ -366,7 +367,11 @@ const desempenoDownloadEndpoint: Record<ReporteDesempenoCodigo, string> = {
 };
 
 export async function descargarReporteDesempenoXlsx(slug: ReporteDesempenoCodigo, params: Record<string, string> = {}) {
-  return downloadFile(`/api/exportaciones/reportes/${desempenoDownloadEndpoint[slug]}/xlsx/${queryString(params)}`, {
+  const endpoint = desempenoDownloadEndpoint[slug];
+  if (!endpoint) {
+    throw new Error("La descarga XLSX no está disponible para este reporte.");
+  }
+  return downloadFile(`/api/exportaciones/reportes/${endpoint}/xlsx/${queryString(params)}`, {
     forbidden: "No tienes permiso para exportar este reporte de desempeño.",
     fallback: "La descarga del reporte falló. Intenta nuevamente o contacta soporte.",
   });

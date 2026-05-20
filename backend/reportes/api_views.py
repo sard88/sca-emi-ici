@@ -294,6 +294,18 @@ def reporte_cuadro_aprovechamiento_view(request):
 
 @require_GET
 @api_login_required
+def reporte_consolidado_materia_view(request):
+    return _reporte_consolidado_materia_json(request)
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_consolidado_materia_xlsx_view(request):
+    return _exportar_reporte_consolidado_materia_xlsx(request)
+
+
+@require_GET
+@api_login_required
 def exportar_reporte_aprobados_reprobados_xlsx_view(request):
     return _exportar_reporte_desempeno_xlsx(request, "aprobados-reprobados")
 
@@ -541,6 +553,39 @@ def _reporte_desempeno_json(request, slug):
             ],
         }
     )
+
+
+def _reporte_consolidado_materia_json(request):
+    try:
+        data = ServicioReportesDesempeno(request.user, request=request).vista_previa_consolidado_materia(request.GET)
+    except (PermissionDenied, ValidationError) as exc:
+        return _error_response(exc)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "No fue posible consultar el reporte consolidado por materia."}, status=500)
+
+    limit = normalizar_limit(request.GET.get("limit"), default=200, maximum=1000)
+    return JsonResponse(
+        {
+            "ok": True,
+            "slug": "consolidado-materia",
+            "nombre": "Consolidado por materia y grupo",
+            "total": len(data["items"]),
+            "filtros": data["filtros"],
+            "columnas": data["columnas"],
+            "items": data["items"][:limit],
+            "resumen": data["resumen"],
+        }
+    )
+
+
+def _exportar_reporte_consolidado_materia_xlsx(request):
+    try:
+        resultado = ServicioReportesDesempeno(request.user, request=request).exportar_consolidado_materia_xlsx(request.GET)
+    except (PermissionDenied, ValidationError) as exc:
+        return _error_response(exc)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "No fue posible generar el consolidado por materia."}, status=500)
+    return _archivo_response(resultado)
 
 
 def _exportar_reporte_desempeno_xlsx(request, slug):

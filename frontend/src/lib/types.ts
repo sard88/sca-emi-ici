@@ -434,6 +434,7 @@ export type ReporteOperativoConfig = {
 export type ReporteDesempenoCodigo =
   | "aprobados-reprobados"
   | "promedios"
+  | "consolidado-materia"
   | "distribucion"
   | "exentos"
   | "docentes"

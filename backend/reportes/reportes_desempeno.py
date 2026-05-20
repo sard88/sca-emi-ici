@@ -307,6 +307,94 @@ class ServicioReportesDesempeno:
             registro=registro,
         )
 
+    def vista_previa_consolidado_materia(self, params):
+        self._validar_permiso(RegistroExportacion.TIPO_REPORTE_PROMEDIOS_ACADEMICOS)
+        filtros = self._filtros_consolidado(params)
+        records = self._consolidado_records(filtros)
+        estadisticos = _metricas([record["calificacion_final"] for record in records if record["calificacion_final"] is not None])
+        return {
+            "filtros": filtros,
+            "columnas": [
+                {"key": "numero", "label": "No."},
+                {"key": "grado_empleo", "label": "Grado y empleo"},
+                {"key": "nombre", "label": "Nombre del discente"},
+                {"key": "grupo", "label": "Grupo"},
+                {"key": "asignatura", "label": "Materia"},
+                {"key": "p1", "label": "P1"},
+                {"key": "p2", "label": "P2"},
+                {"key": "p3", "label": "P3"},
+                {"key": "promedio_parciales", "label": "PP"},
+                {"key": "exencion", "label": "Exención"},
+                {"key": "evaluacion_final", "label": "EF"},
+                {"key": "calificacion_final", "label": "PF"},
+                {"key": "situacion", "label": "Situación"},
+            ],
+            "items": records,
+            "resumen": {
+                "extraordinarios": sum(1 for record in records if record["extraordinario_registrado"]),
+                "media_aritmetica": estadisticos["promedio"],
+                "moda": estadisticos["moda"],
+                "desviacion_estandar": estadisticos["desviacion_estandar"],
+                "reprobados": estadisticos["reprobados"],
+            },
+        }
+
+    def exportar_consolidado_materia_xlsx(self, params) -> ArchivoReporteDesempeno:
+        self._validar_permiso(RegistroExportacion.TIPO_REPORTE_PROMEDIOS_ACADEMICOS)
+        data = self.vista_previa_consolidado_materia(params)
+        filtros = data["filtros"]
+        nombre_documento = "Consolidado por materia y grupo"
+        nombre_archivo = construir_nombre_archivo(
+            RegistroExportacion.TIPO_REPORTE_PROMEDIOS_ACADEMICOS,
+            RegistroExportacion.FORMATO_XLSX,
+            objeto_repr=self._objeto_repr_filtros_consolidado(filtros),
+        )
+        registro = self.servicio_exportacion.registrar_solicitud(
+            tipo_documento=RegistroExportacion.TIPO_REPORTE_PROMEDIOS_ACADEMICOS,
+            formato=RegistroExportacion.FORMATO_XLSX,
+            nombre_documento=nombre_documento,
+            nombre_archivo=nombre_archivo,
+            filtros=filtros,
+            parametros={"slug": "consolidado-materia"},
+        )
+        try:
+            resumen_fila = {
+                "extraordinarios": data["resumen"]["extraordinarios"],
+                "media_aritmetica": data["resumen"]["media_aritmetica"],
+                "moda": data["resumen"]["moda"],
+                "desviacion_estandar": data["resumen"]["desviacion_estandar"],
+                "reprobados": data["resumen"]["reprobados"],
+            }
+            sheets = [
+                ReporteSheet("Consolidado", data["columnas"], data["items"]),
+                ReporteSheet(
+                    "Resumen",
+                    [
+                        {"key": "extraordinarios", "label": "Extraordinarios"},
+                        {"key": "media_aritmetica", "label": "Media aritmetica"},
+                        {"key": "moda", "label": "Moda"},
+                        {"key": "desviacion_estandar", "label": "Desviacion estandar"},
+                        {"key": "reprobados", "label": "Reprobados"},
+                    ],
+                    [resumen_fila],
+                ),
+            ]
+            contenido = generar_reporte_xlsx(titulo=nombre_documento, filtros=filtros, sheets=sheets)
+        except Exception as exc:
+            self.servicio_exportacion.marcar_fallida(registro, exc)
+            raise
+        self.servicio_exportacion.marcar_generada(
+            registro,
+            tamano_bytes=len(contenido),
+            hash_archivo=hashlib.sha256(contenido).hexdigest(),
+        )
+        return ArchivoReporteDesempeno(
+            contenido=contenido,
+            nombre_archivo=nombre_archivo,
+            content_type=XLSX_MIME,
+            registro=registro,
+        )
+
     def _config(self, slug):
         if slug not in REPORTES_DESEMPENO:
             raise PermissionDenied("Reporte no reconocido.")
@@ -336,6 +424,26 @@ class ServicioReportesDesempeno:
             "rango_aprovechamiento",
         )
         return {key: str(params.get(key, "")).strip() for key in keys if str(params.get(key, "")).strip()}
+
+    def _filtros_consolidado(self, params):
+        alias_map = {
+            "periodo": ["periodo", "periodo_academico_id", "periodo_id"],
+            "carrera": ["carrera", "carrera_id"],
+            "grupo": ["grupo", "grupo_id"],
+            "asignatura": ["asignatura", "programa_asignatura_id", "materia_id"],
+            "asignacion": ["asignacion", "asignacion_docente_id"],
+            "semestre": ["semestre"],
+        }
+        filtros = {}
+        for key, aliases in alias_map.items():
+            for alias in aliases:
+                value = str(params.get(alias, "")).strip()
+                if value:
+                    filtros[key] = value
+                    break
+        if "asignacion" in filtros:
+            filtros["asignacion_docente_id"] = filtros["asignacion"]
+        return filtros
 
     def _build_sheets(self, slug, filtros):
         records = self._official_records(filtros)
@@ -437,6 +545,67 @@ class ServicioReportesDesempeno:
     def _official_records(self, filtros):
         return [self._record(inscripcion) for inscripcion in self._official_queryset(filtros)]
 
+    def _consolidado_records(self, filtros):
+        base_qs = self._official_queryset(filtros)
+        if filtros.get("asignacion_docente_id"):
+            base_qs = base_qs.filter(asignacion_docente_id=_int_or_none(filtros["asignacion_docente_id"]))
+
+        inscripciones = list(base_qs)
+        inscripcion_ids = [item.id for item in inscripciones]
+        detalles = (
+            DetalleActa.objects.select_related("acta")
+            .filter(
+                inscripcion_materia_id__in=inscripcion_ids,
+                acta__estado_acta=Acta.ESTADO_FORMALIZADO_JEFATURA_ACADEMICA,
+                acta__corte_codigo__in=[
+                    ComponenteEvaluacion.CORTE_P1,
+                    ComponenteEvaluacion.CORTE_P2,
+                    ComponenteEvaluacion.CORTE_P3,
+                    ComponenteEvaluacion.CORTE_FINAL,
+                ],
+            )
+            .order_by("-acta__formalizada_en", "-acta_id")
+        )
+
+        cortes_por_inscripcion = {}
+        for detalle in detalles:
+            corte = detalle.acta.corte_codigo
+            by_corte = cortes_por_inscripcion.setdefault(detalle.inscripcion_materia_id, {})
+            if corte in by_corte:
+                continue
+            by_corte[corte] = detalle
+
+        rows = []
+        for index, inscripcion in enumerate(inscripciones, start=1):
+            cortes = cortes_por_inscripcion.get(inscripcion.id, {})
+            p1 = _detalle_visible(cortes.get(ComponenteEvaluacion.CORTE_P1))
+            p2 = _detalle_visible(cortes.get(ComponenteEvaluacion.CORTE_P2))
+            p3 = _detalle_visible(cortes.get(ComponenteEvaluacion.CORTE_P3))
+            final = _detalle_visible(cortes.get(ComponenteEvaluacion.CORTE_FINAL))
+            pp = _detalle_promedio(cortes.get(ComponenteEvaluacion.CORTE_FINAL))
+            exencion = _detalle_exencion(cortes.get(ComponenteEvaluacion.CORTE_FINAL))
+            calificacion_final = _fmt_decimal(inscripcion.calificacion_final)
+            extraordinario = getattr(inscripcion, "extraordinario", None)
+            rows.append(
+                {
+                    "numero": index,
+                    "grado_empleo": _grado(inscripcion.discente.usuario),
+                    "nombre": inscripcion.discente.usuario.nombre_visible,
+                    "grupo": inscripcion.asignacion_docente.grupo_academico.clave_grupo,
+                    "asignatura": inscripcion.asignacion_docente.programa_asignatura.materia.nombre,
+                    "p1": p1,
+                    "p2": p2,
+                    "p3": p3,
+                    "promedio_parciales": pp,
+                    "exencion": exencion,
+                    "evaluacion_final": final,
+                    "calificacion_final": calificacion_final,
+                    "situacion": inscripcion.discente.get_situacion_actual_display(),
+                    "extraordinario_registrado": bool(extraordinario),
+                }
+            )
+        return rows
+
     def _record(self, inscripcion):
         asignacion = inscripcion.asignacion_docente
         grupo = asignacion.grupo_academico
@@ -470,6 +639,7 @@ class ServicioReportesDesempeno:
             "marca": inscripcion.codigo_marca or "",
             "extraordinario_aprobado": bool(extraordinario and extraordinario.aprobado),
             "extraordinario_pendiente": calificacion < APROBATORIA and not (extraordinario and extraordinario.aprobado),
+            "extraordinario_registrado": bool(extraordinario),
             "final_acta_id": final_acta.id if final_acta else "",
             "formalizada_en": _dt(final_acta.formalizada_en if final_acta else None),
             "asignacion_id": asignacion.id,
@@ -756,6 +926,10 @@ class ServicioReportesDesempeno:
         parts = [filtros.get("periodo"), filtros.get("carrera"), filtros.get("grupo")]
         return "-".join(part for part in parts if part) or ""
 
+    def _objeto_repr_filtros_consolidado(self, filtros):
+        parts = [filtros.get("periodo"), filtros.get("carrera"), filtros.get("grupo"), filtros.get("asignatura")]
+        return "-".join(part for part in parts if part) or ""
+
 
 def _metricas(values):
     values = [Decimal(value) for value in values if value is not None]
@@ -868,3 +1042,23 @@ def _is_truthy(value):
 def _is_summary_sheet(sheet):
     keys = {column["key"] for column in sheet.columnas}
     return keys == {"categoria", "total"}
+
+
+def _detalle_visible(detalle):
+    if not detalle:
+        return "N/A"
+    value = detalle.resultado_corte_visible if detalle.resultado_corte_visible is not None else detalle.resultado_corte
+    return _fmt_decimal(value) if value is not None else "N/A"
+
+
+def _detalle_promedio(detalle):
+    if not detalle:
+        return "N/A"
+    value = detalle.promedio_parciales_visible if detalle.promedio_parciales_visible is not None else detalle.promedio_parciales
+    return _fmt_decimal(value) if value is not None else "N/A"
+
+
+def _detalle_exencion(detalle):
+    if not detalle:
+        return "No"
+    return "Sí" if detalle.exencion_aplica else "No"
