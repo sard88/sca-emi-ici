@@ -6,7 +6,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { EmptyState } from "@/components/states/EmptyState";
 import { DashboardGrid } from "./DashboardGrid";
 import { getProfilesForUser, type DashboardCardItem } from "@/lib/dashboard";
-import { getDashboardResumen } from "@/lib/api";
+import { getDashboardResumen, getEstadisticaActas } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { careerBrand } from "@/config/branding";
 import type { DashboardResumen } from "@/lib/types";
@@ -21,6 +21,7 @@ const careers = [
 export function GeneralDashboard() {
   const { user } = useAuth();
   const [summary, setSummary] = useState<DashboardResumen | null>(null);
+  const [estadisticaActasVivasCount, setEstadisticaActasVivasCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,12 +41,43 @@ export function GeneralDashboard() {
     if (user) void load();
   }, [user]);
 
+  useEffect(() => {
+    async function loadEstadisticaActasVivas() {
+      try {
+        const response = await getEstadisticaActas({});
+        const count = response.items.filter(isActaFormalizadaPorJefaturaAcademica).length;
+        setEstadisticaActasVivasCount(count);
+      } catch {
+        setEstadisticaActasVivasCount(null);
+      }
+    }
+
+    const canLoadEstadisticaCount =
+      user?.perfil_principal === "ENCARGADO_ESTADISTICA" ||
+      user?.perfil_principal === "ESTADISTICA" ||
+      user?.roles.includes("ENCARGADO_ESTADISTICA") ||
+      user?.roles.includes("ESTADISTICA") ||
+      user?.cargos_vigentes.some((cargo) => ["ENCARGADO_ESTADISTICA", "ESTADISTICA"].includes(cargo.cargo_codigo));
+
+    if (canLoadEstadisticaCount) {
+      void loadEstadisticaActasVivas();
+    } else {
+      setEstadisticaActasVivasCount(null);
+    }
+  }, [user]);
+
   if (!user) return null;
 
   const profiles = getProfilesForUser(user);
   const fallbackQuickAccesses = buildQuickAccesses(profiles.flatMap((profile) => profile.cards));
   const isDiscente = user.perfil_principal === "DISCENTE" || user.roles.includes("DISCENTE");
   const isDocente = user.perfil_principal === "DOCENTE" || user.roles.includes("DOCENTE");
+  const isEstadistica =
+    user.perfil_principal === "ENCARGADO_ESTADISTICA" ||
+    user.perfil_principal === "ESTADISTICA" ||
+    user.roles.includes("ENCARGADO_ESTADISTICA") ||
+    user.roles.includes("ESTADISTICA") ||
+    user.cargos_vigentes.some((cargo) => ["ENCARGADO_ESTADISTICA", "ESTADISTICA"].includes(cargo.cargo_codigo));
   const isJefaturaCarrera =
     user.perfil_principal === "JEFE_CARRERA" ||
     user.roles.includes("JEFE_CARRERA") ||
@@ -67,14 +99,16 @@ export function GeneralDashboard() {
         ? forceDiscenteDashboardRoute(card.title, card.href ?? undefined)
         : isDocente
           ? forceDocenteDashboardRoute(card.title, card.href ?? undefined)
-          : isJefaturaCarrera
+          : isEstadistica
+            ? forceEstadisticaRoute(card.title, card.href ?? undefined)
+            : isJefaturaCarrera
             ? forceJefaturaCarreraRoute(card.title, card.href ?? undefined)
             : isJefaturaAcademica
               ? forceJefaturaAcademicaRoute(card.title, card.href ?? undefined)
           : card.href ?? undefined,
       ),
       backend: false,
-      value: card.value,
+      value: resolveDashboardCardValue(card.title, card.value, isEstadistica, estadisticaActasVivasCount),
       tone: card.tone,
     })).filter((card) => isSafeFrontendRoute(card.href)) ?? [];
 
@@ -94,7 +128,9 @@ export function GeneralDashboard() {
       ? forceDiscenteDashboardRoute(item.title, item.href)
       : isDocente
         ? forceDocenteDashboardRoute(item.title, item.href)
-        : isJefaturaCarrera
+        : isEstadistica
+          ? forceEstadisticaRoute(item.title, item.href)
+          : isJefaturaCarrera
           ? forceJefaturaCarreraRoute(item.title, item.href)
           : isJefaturaAcademica
             ? forceJefaturaAcademicaRoute(item.title, item.href)
@@ -245,6 +281,20 @@ function forceJefaturaCarreraRoute(title: string, currentHref?: string) {
   return currentHref;
 }
 
+function forceEstadisticaRoute(title: string, currentHref?: string) {
+  const normalized = normalizeTitle(title);
+  if (normalized === "seguimiento de actas" || normalized === "actas por validar" || normalized === "actas remitidas") return "/estadistica/actas";
+  if (normalized === "actas vivas") return "/estadistica/actas";
+  if (normalized === "trayectoria academica" || normalized === "seguimiento institucional de trayectoria") return "/trayectoria";
+  if (normalized === "movimientos academicos") return "/movimientos-academicos";
+  if (normalized === "cierre y apertura" || normalized === "periodos activos" || normalized === "periodos" || normalized === "periodos operativos") return "/periodos";
+  if (normalized === "cierres registrados") return "/periodos";
+  if (normalized === "reportes institucionales" || normalized === "reportes y exportaciones") return "/reportes";
+  if (normalized === "auditoria institucional") return "/reportes/auditoria";
+  if (normalized === "historial de exportaciones" || normalized === "exportaciones institucionales") return "/reportes/exportaciones";
+  return currentHref;
+}
+
 function forceJefaturaAcademicaRoute(title: string, currentHref?: string) {
   const normalized = normalizeTitle(title);
   if (normalized === "actas por formalizar") return "/jefatura-academica/actas";
@@ -283,4 +333,52 @@ function ensurePeriodsRouteByTitle(title: string, href?: string) {
     return "/periodos";
   }
   return href;
+}
+
+function resolveDashboardCardValue(title: string, fallbackValue: number | undefined, isEstadistica: boolean, estadisticaActasVivasCount: number | null) {
+  const normalized = normalizeTitle(title);
+  if (isEstadistica && normalized === "actas vivas" && estadisticaActasVivasCount !== null) {
+    return estadisticaActasVivasCount;
+  }
+  return fallbackValue;
+}
+
+function isActaFormalizadaPorJefaturaAcademica(acta: { estado_acta?: string | null; estado_acta_label?: string | null; formalizada_en?: string | null }) {
+  const record = acta as unknown as Record<string, unknown>;
+  const rawStates = [
+    acta.estado_acta,
+    acta.estado_acta_label,
+    record.estado,
+    record.estado_codigo,
+    record.estado_display,
+    record.estado_nombre,
+    record.estadoActual,
+    record.fase,
+    record.situacion,
+  ];
+
+  const normalizedStates = rawStates.map(normalizeState).filter(Boolean);
+
+  const isFormalizedState = normalizedStates.some((value) =>
+    value === "FORMALIZADO" ||
+    value === "FORMALIZADA" ||
+    value === "FORMALIZADO JEFATURA ACADEMICA" ||
+    value === "FORMALIZADA JEFATURA ACADEMICA" ||
+    value === "FORMALIZADO POR JEFATURA ACADEMICA" ||
+    value === "FORMALIZADA POR JEFATURA ACADEMICA",
+  );
+
+  if (isFormalizedState) return true;
+  return Boolean(acta.formalizada_en);
+}
+
+function normalizeState(value: unknown) {
+  if (typeof value !== "string") return "";
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
 }

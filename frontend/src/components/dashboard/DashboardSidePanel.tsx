@@ -67,6 +67,7 @@ function PanelCard({ title, action, children }: { title: string; action?: string
 
 function Timeline({ items, user }: { items: ActividadRecienteItem[]; user: AuthenticatedUser }) {
   const isDiscente = isDiscenteUser(user);
+  const isEstadistica = isEstadisticaUser(user);
   const isJefaturaCarrera = isJefaturaCarreraUser(user);
   const isJefaturaAcademica = isJefaturaAcademicaUser(user);
 
@@ -75,11 +76,11 @@ function Timeline({ items, user }: { items: ActividadRecienteItem[]; user: Authe
       <div className="relative space-y-3 pl-6 before:absolute before:left-2 before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-[#eadbc4]">
         <TimelinePlaceholder
           color="#0b4a3d"
-          title={isDiscente || isJefaturaCarrera || isJefaturaAcademica ? "Sin actividad reciente relevante" : "Sin actividad reciente"}
+          title={isDiscente || isEstadistica || isJefaturaCarrera || isJefaturaAcademica ? "Sin actividad reciente relevante" : "Sin actividad reciente"}
           description={
             isDiscente
               ? "Aún no hay novedades para mostrar."
-              : isJefaturaCarrera || isJefaturaAcademica
+              : isEstadistica || isJefaturaCarrera || isJefaturaAcademica
                 ? "Sin actividad reciente relevante."
                 : `Las acciones de ${user.nombre_visible || user.username} aparecerán aquí cuando existan nuevos registros.`
           }
@@ -269,6 +270,7 @@ function compactRecentActivity(items: ActividadRecienteItem[], user: Authenticat
 
   for (const item of items) {
     if (isDiscenteUser(user) && isLowRelevanceForDiscente(item)) continue;
+    if (isEstadisticaUser(user) && isLowRelevanceForEstadistica(item)) continue;
     if (isJefaturaCarreraUser(user) && isLowRelevanceForJefaturaCarrera(item)) continue;
     if (isJefaturaAcademicaUser(user) && isLowRelevanceForJefaturaAcademica(item)) continue;
     const signature = `${item.tipo}|${normalize(item.titulo)}|${normalize(item.descripcion)}`;
@@ -289,6 +291,9 @@ function filterRecentActivityForUser(items: ActividadRecienteItem[], user: Authe
   if (isDiscenteUser(user)) {
     return items.filter((item) => !isLowRelevanceForDiscente(item));
   }
+  if (isEstadisticaUser(user)) {
+    return items.filter((item) => !isLowRelevanceForEstadistica(item));
+  }
   if (isJefaturaCarreraUser(user)) {
     return items.filter((item) => !isLowRelevanceForJefaturaCarrera(item));
   }
@@ -301,6 +306,17 @@ function filterRecentActivityForUser(items: ActividadRecienteItem[], user: Authe
 function isLowRelevanceForDiscente(item: ActividadRecienteItem) {
   const raw = `${item.tipo || ""} ${item.titulo || ""} ${item.descripcion || ""}`.toLowerCase();
   return raw.includes("captura preliminar") || raw.includes("actualizada");
+}
+
+function isLowRelevanceForEstadistica(item: ActividadRecienteItem) {
+  const raw = `${item.tipo || ""} ${item.titulo || ""} ${item.descripcion || ""}`.toLowerCase();
+  return (
+    raw.includes("borrador docente") ||
+    raw.includes("captura preliminar") ||
+    raw.includes("en captura docente") ||
+    raw.includes("captura de calificaciones") ||
+    raw.includes("calificación preliminar")
+  );
 }
 
 function isLowRelevanceForJefaturaCarrera(item: ActividadRecienteItem) {
@@ -345,5 +361,15 @@ function isJefaturaAcademicaUser(user: AuthenticatedUser) {
     user.roles.includes("JEFE_ACADEMICO") ||
     user.roles.includes("JEFATURA_ACADEMICA") ||
     user.cargos_vigentes.some((cargo) => ["JEFE_ACADEMICO", "JEFATURA_ACADEMICA"].includes(cargo.cargo_codigo))
+  );
+}
+
+function isEstadisticaUser(user: AuthenticatedUser) {
+  return (
+    user.perfil_principal === "ENCARGADO_ESTADISTICA" ||
+    user.perfil_principal === "ESTADISTICA" ||
+    user.roles.includes("ENCARGADO_ESTADISTICA") ||
+    user.roles.includes("ESTADISTICA") ||
+    user.cargos_vigentes.some((cargo) => ["ENCARGADO_ESTADISTICA", "ESTADISTICA"].includes(cargo.cargo_codigo))
   );
 }
