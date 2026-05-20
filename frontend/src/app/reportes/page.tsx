@@ -161,6 +161,12 @@ function isJefaturaAcademicaRole(user: AuthenticatedUser) {
 }
 
 function actionHrefForCatalogItem(item: ReporteCatalogoItem, user: AuthenticatedUser) {
+  if (item.codigo === "ACTA_EVALUACION_PARCIAL") return "/reportes/actas?tipo=parcial";
+  if (item.codigo === "ACTA_EVALUACION_FINAL") return "/reportes/actas?tipo=final&corte=FINAL";
+  if (item.codigo === "ACTA_CALIFICACION_FINAL") {
+    const isDocente = user.perfil_principal === "DOCENTE" || user.roles.includes("DOCENTE") || user.cargos_vigentes.some((cargo) => cargo.cargo_codigo === "DOCENTE");
+    return isDocente ? "/reportes/actas?tipo=calificacion-final" : "/reportes/desempeno/consolidado-materia";
+  }
   if (item.codigo === "KARDEX_OFICIAL" && canAccessKardexPdf(user) && !isJefaturaAcademicaRole(user)) return "/reportes/kardex";
   const desempeno = reportesDesempeno.find((config) => config.tipoDocumento === item.codigo && canAccessReporteDesempeno(user, config));
   if (desempeno) return desempeno.ruta;
@@ -171,6 +177,9 @@ function actionHrefForCatalogItem(item: ReporteCatalogoItem, user: Authenticated
 }
 
 function actionLabelForCatalogItem(item: ReporteCatalogoItem) {
+  if (item.codigo === "ACTA_EVALUACION_PARCIAL") return "Ver reporte";
+  if (item.codigo === "ACTA_EVALUACION_FINAL") return "Ver reporte";
+  if (item.codigo === "ACTA_CALIFICACION_FINAL") return "Ver consolidado";
   if (item.codigo === "KARDEX_OFICIAL") return "Exportar kárdex PDF";
   if (reportesDesempeno.some((config) => config.tipoDocumento === item.codigo)) return "Ver reporte de desempeño";
   if (reportesTrayectoria.some((config) => config.tipoDocumento === item.codigo)) return "Ver reporte de trayectoria";
