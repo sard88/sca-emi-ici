@@ -221,7 +221,24 @@ export type ActaExportable = {
   url_calificacion_final_xlsx: string;
 };
 
+export type KardexExportable = {
+  discente_id: number;
+  nombre_completo: string;
+  grado_empleo: string;
+  carrera: Carrera;
+  plan_estudios: string;
+  antiguedad: string;
+  grupo_actual: string;
+  periodo_actual: string;
+  situacion_actual: string;
+  puede_exportar_pdf: boolean;
+  url_kardex_pdf: string;
+  motivo_no_disponible: string;
+};
+
 export type DownloadResult = {
   filename: string;
   registroExportacionId: string | null;
+  contentType: string;
+  size: number;
 };

@@ -10,11 +10,14 @@ from django.views.decorators.http import require_GET, require_POST
 
 from core.portal_services import portal_context
 from evaluacion.models import Acta, ComponenteEvaluacion
+from relaciones.models import Discente
 
 from .actas_services import ServicioExportacionActa
 from .kardex_services import ServicioExportacionKardex
 from .models import RegistroExportacion
+from .reportes_operativos import ServicioReportesOperativos
 from .services import CatalogoExportaciones, ServicioExportacion, ServicioPermisosExportacion
+from trayectoria.permisos import filtrar_discentes_por_ambito, puede_consultar_kardex
 
 Usuario = get_user_model()
 
@@ -75,6 +78,17 @@ def actas_disponibles_view(request):
     qs = actas_exportables_queryset(ctx)
     limit = normalizar_limit(request.GET.get("limit"), default=100, maximum=300)
     return JsonResponse({"items": [serializar_acta_exportable(acta) for acta in qs[:limit]]})
+
+
+@require_GET
+@api_login_required
+def kardex_disponibles_view(request):
+    if not puede_consultar_kardex(request.user):
+        return JsonResponse({"items": []})
+
+    qs = kardex_exportables_queryset(request.user, request.GET)
+    limit = normalizar_limit(request.GET.get("page_size") or request.GET.get("limit"), default=40, maximum=100)
+    return JsonResponse({"items": [serializar_kardex_exportable(discente) for discente in qs[:limit]]})
 
 
 @require_GET
@@ -141,6 +155,130 @@ def exportar_kardex_pdf_view(request, discente_id):
         return _error_response(exc)
     except Exception:
         return JsonResponse({"ok": False, "error": "No fue posible generar el archivo de kárdex."}, status=500)
+    return _archivo_response(resultado)
+
+
+@require_GET
+@api_login_required
+def reporte_actas_estado_view(request):
+    return _reporte_operativo_json(request, "actas-estado")
+
+
+@require_GET
+@api_login_required
+def reporte_actas_pendientes_view(request):
+    return _reporte_operativo_json(request, "actas-pendientes")
+
+
+@require_GET
+@api_login_required
+def reporte_inconformidades_view(request):
+    return _reporte_operativo_json(request, "inconformidades")
+
+
+@require_GET
+@api_login_required
+def reporte_sin_conformidad_view(request):
+    return _reporte_operativo_json(request, "sin-conformidad")
+
+
+@require_GET
+@api_login_required
+def reporte_actas_formalizadas_view(request):
+    return _reporte_operativo_json(request, "actas-formalizadas")
+
+
+@require_GET
+@api_login_required
+def reporte_validaciones_acta_view(request):
+    return _reporte_operativo_json(request, "validaciones-acta")
+
+
+@require_GET
+@api_login_required
+def reporte_exportaciones_realizadas_view(request):
+    return _reporte_operativo_json(request, "exportaciones-realizadas")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_actas_estado_xlsx_view(request):
+    return _exportar_reporte_operativo_xlsx(request, "actas-estado")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_actas_pendientes_xlsx_view(request):
+    return _exportar_reporte_operativo_xlsx(request, "actas-pendientes")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_inconformidades_xlsx_view(request):
+    return _exportar_reporte_operativo_xlsx(request, "inconformidades")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_sin_conformidad_xlsx_view(request):
+    return _exportar_reporte_operativo_xlsx(request, "sin-conformidad")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_actas_formalizadas_xlsx_view(request):
+    return _exportar_reporte_operativo_xlsx(request, "actas-formalizadas")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_validaciones_acta_xlsx_view(request):
+    return _exportar_reporte_operativo_xlsx(request, "validaciones-acta")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_exportaciones_realizadas_xlsx_view(request):
+    return _exportar_reporte_operativo_xlsx(request, "exportaciones-realizadas")
+
+
+def _reporte_operativo_json(request, slug):
+    try:
+        data = ServicioReportesOperativos(request.user, request=request).vista_previa(slug, request.GET)
+    except (PermissionDenied, ValidationError) as exc:
+        return _error_response(exc)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "No fue posible consultar el reporte operativo."}, status=500)
+
+    limit = normalizar_limit(request.GET.get("limit"), default=100, maximum=500)
+    return JsonResponse(
+        {
+            "ok": True,
+            "slug": data.slug,
+            "nombre": data.nombre,
+            "total": len(data.filas),
+            "filtros": data.filtros,
+            "columnas": data.columnas,
+            "items": data.filas[:limit],
+            "sheets": [
+                {
+                    "titulo": sheet.titulo,
+                    "total": len(sheet.filas),
+                    "columnas": sheet.columnas,
+                }
+                for sheet in data.sheets
+            ],
+        }
+    )
+
+
+def _exportar_reporte_operativo_xlsx(request, slug):
+    try:
+        resultado = ServicioReportesOperativos(request.user, request=request).exportar_xlsx(slug, request.GET)
+    except (PermissionDenied, ValidationError) as exc:
+        return _error_response(exc)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "No fue posible generar el reporte operativo."}, status=500)
     return _archivo_response(resultado)
 
 
@@ -230,6 +368,48 @@ def actas_exportables_queryset(ctx):
     return qs.none()
 
 
+def kardex_exportables_queryset(user, params):
+    qs = Discente.objects.filter(activo=True).select_related(
+        "usuario",
+        "usuario__grado_empleo",
+        "plan_estudios",
+        "plan_estudios__carrera",
+        "antiguedad",
+    )
+    qs = filtrar_discentes_por_ambito(user, qs)
+
+    query = (params.get("q") or "").strip()
+    if query:
+        filters = (
+            Q(usuario__nombre_completo__icontains=query)
+            | Q(usuario__first_name__icontains=query)
+            | Q(usuario__last_name__icontains=query)
+            | Q(usuario__grado_empleo__nombre__icontains=query)
+            | Q(usuario__grado_empleo__abreviatura__icontains=query)
+            | Q(plan_estudios__carrera__clave__icontains=query)
+            | Q(plan_estudios__carrera__nombre__icontains=query)
+            | Q(plan_estudios__nombre__icontains=query)
+            | Q(antiguedad__nombre__icontains=query)
+            | Q(adscripciones_grupo__grupo_academico__clave_grupo__icontains=query)
+        )
+        if query.isdigit():
+            filters |= Q(pk=int(query))
+        qs = qs.filter(filters)
+
+    carrera = (params.get("carrera") or "").strip()
+    if carrera:
+        carrera_filter = Q(plan_estudios__carrera__clave__iexact=carrera)
+        if carrera.isdigit():
+            carrera_filter |= Q(plan_estudios__carrera_id=int(carrera))
+        qs = qs.filter(carrera_filter)
+
+    situacion = (params.get("situacion") or "").strip()
+    if situacion:
+        qs = qs.filter(situacion_actual=situacion)
+
+    return qs.distinct().order_by("usuario__nombre_completo", "id")
+
+
 def normalizar_limit(value, *, default, maximum):
     try:
         limit = int(value or default)
@@ -308,4 +488,30 @@ def serializar_acta_exportable(acta: Acta):
         "calificacion_final_disponible": True,
         "url_calificacion_final_pdf": f"/api/exportaciones/asignaciones/{asignacion.id}/calificacion-final/pdf/",
         "url_calificacion_final_xlsx": f"/api/exportaciones/asignaciones/{asignacion.id}/calificacion-final/xlsx/",
+    }
+
+
+def serializar_kardex_exportable(discente: Discente):
+    carrera = discente.plan_estudios.carrera
+    adscripcion = (
+        discente.adscripciones_grupo.filter(activo=True)
+        .select_related("grupo_academico", "grupo_academico__periodo")
+        .order_by("-vigente_desde", "-id")
+        .first()
+    )
+    grupo = adscripcion.grupo_academico if adscripcion else None
+    grado = discente.usuario.grado_empleo
+    return {
+        "discente_id": discente.id,
+        "nombre_completo": discente.usuario.nombre_visible,
+        "grado_empleo": grado.abreviatura if grado else "",
+        "carrera": {"clave": carrera.clave, "nombre": carrera.nombre},
+        "plan_estudios": discente.plan_estudios.nombre,
+        "antiguedad": discente.antiguedad.nombre,
+        "grupo_actual": grupo.clave_grupo if grupo else "",
+        "periodo_actual": grupo.periodo.clave if grupo and grupo.periodo_id else "",
+        "situacion_actual": discente.get_situacion_actual_display(),
+        "puede_exportar_pdf": True,
+        "url_kardex_pdf": f"/api/exportaciones/kardex/{discente.id}/pdf/",
+        "motivo_no_disponible": "",
     }

@@ -127,6 +127,8 @@ class ServicioPermisosExportacion:
                 RegistroExportacion.TIPO_REPORTE_ACTAS_ESTADO,
                 RegistroExportacion.TIPO_REPORTE_ACTAS_PENDIENTES,
                 RegistroExportacion.TIPO_REPORTE_INCONFORMIDADES,
+                RegistroExportacion.TIPO_REPORTE_ACTAS_SIN_CONFORMIDAD,
+                RegistroExportacion.TIPO_REPORTE_ACTAS_FORMALIZADAS,
                 RegistroExportacion.TIPO_REPORTE_VALIDACIONES_ACTA,
                 RegistroExportacion.TIPO_REPORTE_MOVIMIENTOS_ACADEMICOS,
             }
@@ -140,9 +142,12 @@ class ServicioPermisosExportacion:
                 RegistroExportacion.TIPO_REPORTE_ACTAS_ESTADO,
                 RegistroExportacion.TIPO_REPORTE_ACTAS_PENDIENTES,
                 RegistroExportacion.TIPO_REPORTE_INCONFORMIDADES,
+                RegistroExportacion.TIPO_REPORTE_ACTAS_SIN_CONFORMIDAD,
+                RegistroExportacion.TIPO_REPORTE_ACTAS_FORMALIZADAS,
                 RegistroExportacion.TIPO_REPORTE_DESEMPENO,
                 RegistroExportacion.TIPO_REPORTE_SITUACION_ACADEMICA,
                 RegistroExportacion.TIPO_REPORTE_VALIDACIONES_ACTA,
+                RegistroExportacion.TIPO_REPORTE_EXPORTACIONES,
             }
         return False
 

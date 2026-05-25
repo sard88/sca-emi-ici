@@ -13,7 +13,15 @@ from django.test import RequestFactory, TestCase
 from django.utils import timezone
 
 from catalogos.models import Antiguedad, Carrera, GrupoAcademico, Materia, PeriodoEscolar, PlanEstudios, ProgramaAsignatura
-from evaluacion.models import Acta, CalificacionComponente, ComponenteEvaluacion, DetalleActa, EsquemaEvaluacion
+from evaluacion.models import (
+    Acta,
+    CalificacionComponente,
+    ComponenteEvaluacion,
+    ConformidadDiscente,
+    DetalleActa,
+    EsquemaEvaluacion,
+    ValidacionActa,
+)
 from relaciones.models import AdscripcionGrupo, AsignacionDocente, Discente, InscripcionMateria
 from trayectoria.models import CatalogoResultadoAcademico
 from trayectoria.services import registrar_extraordinario
@@ -811,6 +819,74 @@ class ReportesBloque9BActasTests(TestCase):
         codigos = {item["codigo"] for item in response_discente.json()["items"]}
         self.assertNotIn(RegistroExportacion.TIPO_KARDEX_OFICIAL, codigos)
 
+    def test_kardex_disponibles_requiere_autenticacion(self):
+        response = self.client.get("/api/exportaciones/kardex-disponibles/")
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_kardex_disponibles_admin_y_estadistica_ven_resultados_sin_matricula(self):
+        for usuario in [self.admin_user, self.estadistica]:
+            self.client.force_login(usuario)
+            response = self.client.get("/api/exportaciones/kardex-disponibles/")
+
+            self.assertEqual(response.status_code, 200)
+            data = response.json()["items"]
+            self.assertGreaterEqual(len(data), len(self.discentes))
+            primer_item = data[0]
+            self.assertIn("url_kardex_pdf", primer_item)
+            self.assertIn("discente_id", primer_item)
+            self.assertNotIn("matricula", primer_item)
+            self.assertNotIn(self.discentes[0].matricula, json.dumps(data))
+
+    def test_kardex_disponibles_jefatura_carrera_solo_ambito(self):
+        otra_carrera = Carrera.objects.create(clave="R9B10C2", nombre="Otra carrera 10C2")
+        otro_plan = PlanEstudios.objects.create(carrera=otra_carrera, clave="R9B10C2P", nombre="Plan externo 10C2")
+        otra_antiguedad = Antiguedad.objects.create(
+            plan_estudios=otro_plan,
+            clave="R9B10C2A",
+            nombre="Antigüedad externa 10C2",
+            anio_inicio=2025,
+            anio_fin=2029,
+        )
+        usuario_discente = self.crear_usuario("discenteexterno10c2", "DISCENTE", nombre="Discente Externo 10C2")
+        discente_externo = Discente.objects.create(
+            usuario=usuario_discente,
+            matricula="R9B10C2EXT",
+            plan_estudios=otro_plan,
+            antiguedad=otra_antiguedad,
+        )
+
+        self.client.force_login(self.jefe_carrera)
+        response = self.client.get("/api/exportaciones/kardex-disponibles/")
+
+        self.assertEqual(response.status_code, 200)
+        ids = {item["discente_id"] for item in response.json()["items"]}
+        self.assertIn(self.discentes[0].id, ids)
+        self.assertNotIn(discente_externo.id, ids)
+
+    def test_kardex_disponibles_discente_y_docente_no_ven_resultados(self):
+        self.client.force_login(self.discentes[0].usuario)
+        response_discente = self.client.get("/api/exportaciones/kardex-disponibles/")
+
+        self.client.force_login(self.docente)
+        response_docente = self.client.get("/api/exportaciones/kardex-disponibles/")
+
+        self.assertEqual(response_discente.status_code, 200)
+        self.assertEqual(response_discente.json()["items"], [])
+        self.assertEqual(response_docente.status_code, 200)
+        self.assertEqual(response_docente.json()["items"], [])
+
+    def test_kardex_disponibles_respeta_filtros(self):
+        self.client.force_login(self.estadistica)
+        response = self.client.get(
+            "/api/exportaciones/kardex-disponibles/",
+            {"q": self.discentes[0].usuario.nombre_visible.split()[0], "carrera": self.carrera.clave, "situacion": Discente.SITUACION_REGULAR},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        ids = {item["discente_id"] for item in response.json()["items"]}
+        self.assertIn(self.discentes[0].id, ids)
+
     def test_kardex_no_crea_modelo_transaccional(self):
         nombres_modelos = {model.__name__ for model in apps.get_models()}
 
@@ -902,3 +978,257 @@ class ReportesBloque9BActasTests(TestCase):
         self.assertEqual(calificacion_numerica_con_letra(Decimal("10.0")), "10.0 (DIEZ PUNTO CERO)")
         self.assertEqual(calificacion_numerica_con_letra(Decimal("9.5")), "9.5 (NUEVE PUNTO CINCO)")
         self.assertEqual(calificacion_numerica_con_letra(Decimal("8.0")), "8.0 (OCHO PUNTO CERO)")
+
+    def crear_validaciones_operativas(self):
+        cargo_carrera = AsignacionCargo.objects.get(usuario=self.jefe_carrera)
+        cargo_academico = AsignacionCargo.objects.get(usuario=self.jefe_academico)
+        return (
+            ValidacionActa.objects.create(
+                acta=self.acta_p2,
+                asignacion_cargo=cargo_carrera,
+                usuario=self.jefe_carrera,
+                etapa_validacion=ValidacionActa.ETAPA_JEFATURA_CARRERA,
+                accion=ValidacionActa.ACCION_VALIDA,
+                ip_origen="127.0.0.10",
+                comentario="Validación de carrera",
+            ),
+            ValidacionActa.objects.create(
+                acta=self.acta_p2,
+                asignacion_cargo=cargo_academico,
+                usuario=self.jefe_academico,
+                etapa_validacion=ValidacionActa.ETAPA_JEFATURA_ACADEMICA,
+                accion=ValidacionActa.ACCION_FORMALIZA,
+                ip_origen="127.0.0.11",
+                comentario="Formalización académica",
+            ),
+        )
+
+    def preparar_actas_pendientes(self):
+        ahora = timezone.now()
+        self.acta_p1.estado_acta = Acta.ESTADO_REMITIDO_JEFATURA_CARRERA
+        self.acta_p1.remitida_en = ahora
+        self.acta_p1.publicada_en = ahora
+        self.acta_p1.save(update_fields=["estado_acta", "remitida_en", "publicada_en"])
+        self.acta_p3.estado_acta = Acta.ESTADO_VALIDADO_JEFATURA_CARRERA
+        self.acta_p3.remitida_en = ahora
+        self.acta_p3.save(update_fields=["estado_acta", "remitida_en"])
+
+    def crear_inconformidad_operativa(self):
+        detalle = self.acta_p2.detalles.select_related("inscripcion_materia__discente__usuario").first()
+        return ConformidadDiscente.objects.create(
+            detalle=detalle,
+            discente=detalle.inscripcion_materia.discente,
+            usuario=detalle.inscripcion_materia.discente.usuario,
+            estado_conformidad=ConformidadDiscente.ESTADO_INCONFORME,
+            comentario="Solicito revisión del corte.",
+        )
+
+    def crear_acta_externa_operativa(self):
+        otra_carrera = Carrera.objects.create(clave="R9FEXT", nombre="Carrera externa 9F")
+        otro_plan = PlanEstudios.objects.create(carrera=otra_carrera, clave="R9FPLAN", nombre="Plan externo 9F")
+        otra_antiguedad = Antiguedad.objects.create(
+            plan_estudios=otro_plan,
+            clave="R9FANT",
+            nombre="Antigüedad externa 9F",
+            anio_inicio=2025,
+            anio_fin=2029,
+        )
+        otro_grupo = GrupoAcademico.objects.create(
+            clave_grupo="R9FEXTG",
+            antiguedad=otra_antiguedad,
+            periodo=self.periodo,
+            semestre_numero=1,
+        )
+        otra_materia = Materia.objects.create(clave="R9FEXTM", nombre="Materia externa 9F", horas_totales=40)
+        otro_programa = ProgramaAsignatura.objects.create(
+            plan_estudios=otro_plan,
+            materia=otra_materia,
+            semestre_numero=1,
+        )
+        otro_esquema = EsquemaEvaluacion.objects.create(
+            programa_asignatura=otro_programa,
+            version="v9f-ext",
+            num_parciales=EsquemaEvaluacion.PARCIALES_1,
+        )
+        ComponenteEvaluacion.objects.create(
+            esquema=otro_esquema,
+            corte_codigo=ComponenteEvaluacion.CORTE_P1,
+            nombre="Componente externo",
+            porcentaje=Decimal("100.00"),
+            orden=1,
+        )
+        ComponenteEvaluacion.objects.create(
+            esquema=otro_esquema,
+            corte_codigo=ComponenteEvaluacion.CORTE_FINAL,
+            nombre="Examen externo",
+            porcentaje=Decimal("100.00"),
+            es_examen=True,
+            orden=1,
+        )
+        otra_asignacion = AsignacionDocente.objects.create(
+            usuario_docente=self.otro_docente,
+            grupo_academico=otro_grupo,
+            programa_asignatura=otro_programa,
+        )
+        return Acta.objects.create(
+            asignacion_docente=otra_asignacion,
+            corte_codigo=ComponenteEvaluacion.CORTE_P1,
+            estado_acta=Acta.ESTADO_BORRADOR_DOCENTE,
+            esquema=otro_esquema,
+            esquema_version_snapshot=otro_esquema.version,
+            peso_parciales_snapshot=otro_esquema.peso_parciales,
+            peso_final_snapshot=otro_esquema.peso_final,
+            umbral_exencion_snapshot=otro_esquema.umbral_exencion,
+            creado_por=self.otro_docente,
+        )
+
+    def assert_xlsx_response(self, response):
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertTrue(response.content.startswith(b"PK"))
+        self.assertIn("X-Registro-Exportacion-Id", response)
+
+    def test_reportes_operativos_json_y_xlsx_como_estadistica(self):
+        self.preparar_actas_pendientes()
+        self.crear_inconformidad_operativa()
+        self.crear_validaciones_operativas()
+        RegistroExportacion.objects.create(
+            usuario=self.docente,
+            tipo_documento=RegistroExportacion.TIPO_ACTA_EVALUACION_PARCIAL,
+            formato=RegistroExportacion.FORMATO_XLSX,
+            nombre_documento="Acta previa",
+            nombre_archivo="acta-previa.xlsx",
+            estado=RegistroExportacion.ESTADO_GENERADA,
+        )
+
+        endpoints = [
+            "actas-estado",
+            "actas-pendientes",
+            "inconformidades",
+            "sin-conformidad",
+            "actas-formalizadas",
+            "validaciones-acta",
+            "exportaciones-realizadas",
+        ]
+        self.client.force_login(self.estadistica)
+        for slug in endpoints:
+            json_response = self.client.get(f"/api/reportes/operativos/{slug}/")
+            self.assertEqual(json_response.status_code, 200, slug)
+            self.assertIn("total", json_response.json(), slug)
+            self.assertIn("columnas", json_response.json(), slug)
+
+            xlsx_response = self.client.get(f"/api/exportaciones/reportes/{slug}/xlsx/")
+            self.assert_xlsx_response(xlsx_response)
+            registro = RegistroExportacion.objects.get(id=xlsx_response["X-Registro-Exportacion-Id"])
+            self.assertEqual(registro.estado, RegistroExportacion.ESTADO_GENERADA)
+            self.assertEqual(registro.formato, RegistroExportacion.FORMATO_XLSX)
+
+    def test_reportes_operativos_bloquean_anonimo_discente_y_docente_global(self):
+        anonimo = self.client.get("/api/reportes/operativos/actas-estado/")
+        self.assertEqual(anonimo.status_code, 401)
+
+        self.client.force_login(self.discentes[0].usuario)
+        discente_json = self.client.get("/api/reportes/operativos/actas-estado/")
+        discente_xlsx = self.client.get("/api/exportaciones/reportes/actas-estado/xlsx/")
+        self.assertEqual(discente_json.status_code, 403)
+        self.assertEqual(discente_xlsx.status_code, 403)
+
+        self.client.force_login(self.docente)
+        docente_json = self.client.get("/api/reportes/operativos/actas-estado/")
+        docente_xlsx = self.client.get("/api/exportaciones/reportes/actas-estado/xlsx/")
+        self.assertEqual(docente_json.status_code, 403)
+        self.assertEqual(docente_xlsx.status_code, 403)
+
+    def test_reportes_operativos_jefatura_carrera_filtra_por_ambito(self):
+        acta_externa = self.crear_acta_externa_operativa()
+
+        self.client.force_login(self.jefe_carrera)
+        response = self.client.get("/api/reportes/operativos/actas-estado/")
+
+        self.assertEqual(response.status_code, 200)
+        ids = {item["acta_id"] for item in response.json()["items"]}
+        self.assertIn(self.acta_p1.id, ids)
+        self.assertNotIn(acta_externa.id, ids)
+
+    def test_reporte_inconformidades_incluye_comentario_y_no_matricula(self):
+        self.crear_inconformidad_operativa()
+
+        self.client.force_login(self.estadistica)
+        response = self.client.get("/api/reportes/operativos/inconformidades/")
+
+        self.assertEqual(response.status_code, 200)
+        serializado = json.dumps(response.json(), ensure_ascii=False)
+        self.assertIn("Solicito revisión del corte.", serializado)
+        self.assertNotIn(self.discentes[0].matricula, serializado)
+        self.assertNotIn("matricula", serializado.lower())
+
+    def test_reporte_actas_sin_conformidad_lista_excepciones_no_bloqueantes(self):
+        self.acta_p1.estado_acta = Acta.ESTADO_PUBLICADO_DISCENTE
+        self.acta_p1.publicada_en = timezone.now()
+        self.acta_p1.save(update_fields=["estado_acta", "publicada_en"])
+
+        self.client.force_login(self.estadistica)
+        response = self.client.get("/api/reportes/operativos/sin-conformidad/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertGreaterEqual(response.json()["total"], len(self.discentes))
+        self.assertIn("Sin conformidad vigente registrada", json.dumps(response.json(), ensure_ascii=False))
+
+    def test_reporte_validaciones_acta_muestra_trazabilidad(self):
+        self.crear_validaciones_operativas()
+
+        self.client.force_login(self.estadistica)
+        response = self.client.get("/api/reportes/operativos/validaciones-acta/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.dumps(response.json(), ensure_ascii=False)
+        self.assertIn("Validación de carrera", payload)
+        self.assertIn("Formalización académica", payload)
+        self.assertIn("Jefe Carrera ICI", payload)
+
+    def test_reporte_exportaciones_realizadas_admin_ve_registros(self):
+        registro = RegistroExportacion.objects.create(
+            usuario=self.docente,
+            tipo_documento=RegistroExportacion.TIPO_ACTA_EVALUACION_PARCIAL,
+            formato=RegistroExportacion.FORMATO_PDF,
+            nombre_documento="Acta exportada",
+            nombre_archivo="acta-exportada.pdf",
+            estado=RegistroExportacion.ESTADO_GENERADA,
+            hash_archivo="abc123",
+        )
+
+        self.client.force_login(self.admin_user)
+        response = self.client.get("/api/reportes/operativos/exportaciones-realizadas/")
+
+        self.assertEqual(response.status_code, 200)
+        ids = {item["registro_id"] for item in response.json()["items"]}
+        self.assertIn(registro.id, ids)
+
+    def test_exportacion_reporte_operativo_fallida_registra_fallida(self):
+        self.client.force_login(self.estadistica)
+        with patch("reportes.reportes_operativos.generar_reporte_xlsx", side_effect=RuntimeError("fallo reporte")):
+            response = self.client.get("/api/exportaciones/reportes/actas-estado/xlsx/")
+
+        self.assertEqual(response.status_code, 500)
+        registro = RegistroExportacion.objects.latest("id")
+        self.assertEqual(registro.tipo_documento, RegistroExportacion.TIPO_REPORTE_ACTAS_ESTADO)
+        self.assertEqual(registro.estado, RegistroExportacion.ESTADO_FALLIDA)
+        self.assertIn("fallo reporte", registro.mensaje_error)
+
+    def test_exportacion_reporte_operativo_nombre_seguro_y_filtros_sanitizados(self):
+        self.client.force_login(self.estadistica)
+        response = self.client.get(
+            "/api/exportaciones/reportes/actas-estado/xlsx/",
+            {"periodo": self.periodo.clave, "carrera": self.carrera.clave, "password": "secreto"},
+        )
+
+        self.assert_xlsx_response(response)
+        disposition = response["Content-Disposition"]
+        filename = disposition.split('filename="', 1)[1].rstrip('"')
+        registro = RegistroExportacion.objects.get(id=response["X-Registro-Exportacion-Id"])
+        self.assertNotIn(" ", filename)
+        self.assertNotIn(self.discentes[0].matricula, filename)
+        self.assertEqual(registro.filtros_json, {"periodo": self.periodo.clave, "carrera": self.carrera.clave})

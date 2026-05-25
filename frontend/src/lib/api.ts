@@ -9,6 +9,7 @@ import type {
   DownloadResult,
   EventoCalendario,
   ExportacionRegistro,
+  KardexExportable,
   NotificacionesResponse,
   PerfilUsuario,
   PortalQuickAccess,
@@ -153,6 +154,10 @@ export async function getActasExportables() {
   return apiGet<{ items: ActaExportable[] }>("/api/exportaciones/actas-disponibles/");
 }
 
+export async function getKardexExportables(params: Record<string, string> = {}) {
+  return apiGet<{ items: KardexExportable[] }>(`/api/exportaciones/kardex-disponibles/${queryString(params)}`);
+}
+
 export async function descargarActaPdf(actaId: number) {
   return downloadFile(`/api/exportaciones/actas/${actaId}/pdf/`);
 }
@@ -169,6 +174,14 @@ export async function descargarCalificacionFinalXlsx(asignacionDocenteId: number
   return downloadFile(`/api/exportaciones/asignaciones/${asignacionDocenteId}/calificacion-final/xlsx/`);
 }
 
+export async function descargarKardexPdf(discenteId: number) {
+  return downloadFile(`/api/exportaciones/kardex/${discenteId}/pdf/`, {
+    forbidden: "No tienes permiso para exportar este kárdex.",
+    notFound: "No se encontró el discente o no existe información suficiente para generar el kárdex.",
+    fallback: "No fue posible generar el kárdex. Intenta nuevamente o contacta soporte.",
+  });
+}
+
 export function backendUrl(path: string) {
   if (path.startsWith("http")) return path;
   return apiUrl(path.startsWith("/") ? path : `/${path}`);
@@ -183,7 +196,10 @@ function queryString(params: Record<string, string>) {
   return value ? `?${value}` : "";
 }
 
-async function downloadFile(path: string): Promise<DownloadResult> {
+async function downloadFile(
+  path: string,
+  messages: { forbidden?: string; notFound?: string; fallback?: string } = {},
+): Promise<DownloadResult> {
   const response = await fetch(apiUrl(path), {
     method: "GET",
     credentials: "include",
@@ -191,7 +207,9 @@ async function downloadFile(path: string): Promise<DownloadResult> {
   });
 
   if (!response.ok) {
-    throw new Error(await readDownloadError(response));
+    if (response.status === 403 && messages.forbidden) throw new Error(messages.forbidden);
+    if (response.status === 404 && messages.notFound) throw new Error(messages.notFound);
+    throw new Error(await readDownloadError(response, messages.fallback));
   }
 
   const blob = await response.blob();
@@ -205,10 +223,15 @@ async function downloadFile(path: string): Promise<DownloadResult> {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(objectUrl);
-  return { filename, registroExportacionId };
+  return {
+    filename,
+    registroExportacionId,
+    contentType: blob.type || response.headers.get("Content-Type") || "application/octet-stream",
+    size: blob.size,
+  };
 }
 
-async function readDownloadError(response: Response) {
+async function readDownloadError(response: Response, fallback = "La exportación falló. Intenta nuevamente o contacta soporte.") {
   const contentType = response.headers.get("Content-Type") || "";
   if (contentType.includes("application/json")) {
     try {
@@ -217,11 +240,11 @@ async function readDownloadError(response: Response) {
         return typeof data.error === "string" ? data.error : JSON.stringify(data.error);
       }
     } catch {
-      return "La exportación falló. Intenta nuevamente o contacta soporte.";
+      return fallback;
     }
   }
   const text = await response.text();
-  return text || "La exportación falló. Intenta nuevamente o contacta soporte.";
+  return text || fallback;
 }
 
 function filenameFromDisposition(disposition: string | null) {

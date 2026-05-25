@@ -1,7 +1,8 @@
 import type { ReporteCatalogoItem } from "@/lib/types";
 import { ReportAvailabilityBadge } from "./ReportAvailabilityBadge";
+import Link from "next/link";
 
-export function ReportCatalogCard({ item }: { item: ReporteCatalogoItem }) {
+export function ReportCatalogCard({ item, actionHref, actionLabel = "Abrir módulo" }: { item: ReporteCatalogoItem; actionHref?: string; actionLabel?: string }) {
   return (
     <article className="rounded-[1.5rem] border border-[#eadfce] bg-white/88 p-5 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -21,6 +22,11 @@ export function ReportCatalogCard({ item }: { item: ReporteCatalogoItem }) {
       </div>
       {item.nota ? <p className="mt-4 text-xs font-semibold text-[#7b837f]">{item.nota}</p> : null}
       {item.motivo_no_disponible ? <p className="mt-2 text-xs font-black text-[#8c1239]">{item.motivo_no_disponible}</p> : null}
+      {actionHref && item.implementado && item.disponible ? (
+        <Link href={actionHref} className="mt-4 inline-flex rounded-xl border border-[#d8c5a7] px-4 py-2 text-xs font-black text-[#7a123d] transition hover:border-[#bc955c] hover:bg-[#fff7e8]">
+          {actionLabel}
+        </Link>
+      ) : null}
     </article>
   );
 }
