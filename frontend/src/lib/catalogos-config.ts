@@ -65,7 +65,7 @@ export const catalogosResources: AdminCatalogResourceConfig[] = [
     formFields: [
       { key: "clave", label: "Clave", required: true },
       { key: "nombre", label: "Nombre", required: true },
-      { key: "carrera_id", label: "Carrera", type: "relation", relationEndpoint: "/api/catalogos/carreras/", required: true },
+      { key: "carrera_id", label: "Carrera", type: "relation", relationEndpoint: "/api/catalogos/carreras/", relationActiveOnly: true, relationSearchEnabled: true, required: true },
       { key: "version", label: "Versión" },
       { key: "estado", label: "Estado", type: "select", options: estadoOptions },
       { key: "vigente_desde", label: "Vigente desde", type: "date" },
@@ -93,7 +93,7 @@ export const catalogosResources: AdminCatalogResourceConfig[] = [
     formFields: [
       { key: "clave", label: "Clave", required: true },
       { key: "nombre", label: "Nombre", required: true },
-      { key: "plan_estudios_id", label: "Plan de estudios", type: "relation", relationEndpoint: "/api/catalogos/planes/", required: true },
+      { key: "plan_estudios_id", label: "Plan de estudios", type: "relation", relationEndpoint: "/api/catalogos/planes/", relationActiveOnly: true, relationSearchEnabled: true, required: true },
       { key: "anio_inicio", label: "Año inicio", type: "number" },
       { key: "anio_fin", label: "Año fin", type: "number" },
       { key: "estado", label: "Estado", type: "select", options: estadoOptions },
@@ -172,8 +172,8 @@ export const catalogosResources: AdminCatalogResourceConfig[] = [
     ],
     formFields: [
       { key: "clave_grupo", label: "Clave de grupo", required: true },
-      { key: "antiguedad_id", label: "Antigüedad", type: "relation", relationEndpoint: "/api/catalogos/antiguedades/", required: true },
-      { key: "periodo_id", label: "Periodo", type: "relation", relationEndpoint: "/api/catalogos/periodos/", required: true },
+      { key: "antiguedad_id", label: "Antigüedad", type: "relation", relationEndpoint: "/api/catalogos/antiguedades/", relationActiveOnly: true, relationSearchEnabled: true, required: true },
+      { key: "periodo_id", label: "Periodo", type: "relation", relationEndpoint: "/api/catalogos/periodos/", relationActiveOnly: true, relationSearchEnabled: true, required: true },
       { key: "semestre_numero", label: "Semestre", type: "number", required: true },
       { key: "cupo_maximo", label: "Cupo máximo", type: "number" },
       { key: "estado", label: "Estado", type: "select", options: estadoOptions },
@@ -226,8 +226,8 @@ export const catalogosResources: AdminCatalogResourceConfig[] = [
       { key: "obligatoria", label: "Obligatoria", type: "boolean" },
     ],
     formFields: [
-      { key: "plan_estudios_id", label: "Plan de estudios", type: "relation", relationEndpoint: "/api/catalogos/planes/", required: true },
-      { key: "materia_id", label: "Materia", type: "relation", relationEndpoint: "/api/catalogos/materias/", required: true },
+      { key: "plan_estudios_id", label: "Plan de estudios", type: "relation", relationEndpoint: "/api/catalogos/planes/", relationActiveOnly: true, relationSearchEnabled: true, required: true },
+      { key: "materia_id", label: "Materia", type: "relation", relationEndpoint: "/api/catalogos/materias/", relationActiveOnly: true, relationSearchEnabled: true, required: true },
       { key: "semestre_numero", label: "Semestre", type: "number", required: true },
       { key: "anio_formacion", label: "Año de formación", readOnly: true, help: "Calculado por backend a partir del semestre." },
       { key: "obligatoria", label: "Obligatoria", type: "boolean", readOnly: true, help: "El backend conserva obligatoria activa por regla institucional." },
@@ -253,7 +253,7 @@ export const catalogosResources: AdminCatalogResourceConfig[] = [
       { key: "activo", label: "Activo", type: "boolean" },
     ],
     formFields: [
-      { key: "programa_asignatura_id", label: "Programa de asignatura", type: "relation", relationEndpoint: "/api/catalogos/programas-asignatura/", required: true },
+      { key: "programa_asignatura_id", label: "Programa de asignatura", type: "relation", relationEndpoint: "/api/catalogos/programas-asignatura/", relationActiveOnly: true, relationSearchEnabled: true, required: true },
       { key: "version", label: "Versión", required: true },
       {
         key: "num_parciales",

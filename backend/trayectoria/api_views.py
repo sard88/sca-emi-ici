@@ -3,6 +3,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Q
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
@@ -13,7 +14,7 @@ from catalogos.models import GrupoAcademico, PeriodoEscolar
 from core.api_views import api_login_required
 from relaciones.models import AdscripcionGrupo, Discente, InscripcionMateria, MovimientoAcademico
 
-from .models import CatalogoSituacionAcademica, EventoSituacionAcademica, Extraordinario
+from .models import CatalogoResultadoAcademico, CatalogoSituacionAcademica, EventoSituacionAcademica, Extraordinario
 from .permisos import (
     carreras_ambito_usuario,
     filtrar_discentes_por_ambito,
@@ -425,6 +426,69 @@ def historial_list_view(request):
         item = _discente_min(discente)
         item["url_detalle"] = f"/trayectoria/historial/{discente.id}"
         items.append(item)
+    return JsonResponse({"ok": True, "total": total, "page": page, "page_size": page_size, "items": items})
+
+
+@require_GET
+@api_login_required
+def opciones_inscripciones_extraordinario_view(request):
+    if not puede_operar_trayectoria(request.user):
+        return _deny("No tienes permiso para consultar inscripciones elegibles.")
+    queryset = InscripcionMateria.objects.select_related(
+        "discente",
+        "discente__usuario",
+        "discente__usuario__grado_empleo",
+        "discente__plan_estudios__carrera",
+        "discente__antiguedad",
+        "asignacion_docente",
+        "asignacion_docente__grupo_academico",
+        "asignacion_docente__grupo_academico__periodo",
+        "asignacion_docente__programa_asignatura",
+        "asignacion_docente__programa_asignatura__materia",
+        "asignacion_docente__programa_asignatura__plan_estudios__carrera",
+    ).filter(
+        discente__in=_discentes_queryset(request.user),
+        codigo_resultado_oficial=CatalogoResultadoAcademico.CLAVE_REPROBADO,
+        calificacion_final__isnull=False,
+        extraordinario__isnull=True,
+    )
+    q = (request.GET.get("q") or "").strip()
+    if q:
+        queryset = queryset.filter(
+            Q(discente__usuario__nombre_completo__icontains=q)
+            | Q(discente__usuario__username__icontains=q)
+            | Q(asignacion_docente__programa_asignatura__materia__clave__icontains=q)
+            | Q(asignacion_docente__programa_asignatura__materia__nombre__icontains=q)
+            | Q(asignacion_docente__grupo_academico__clave_grupo__icontains=q)
+        )
+    if request.GET.get("periodo"):
+        queryset = queryset.filter(asignacion_docente__grupo_academico__periodo_id=request.GET["periodo"])
+    if request.GET.get("carrera"):
+        queryset = queryset.filter(discente__plan_estudios__carrera_id=request.GET["carrera"])
+    if request.GET.get("grupo"):
+        queryset = queryset.filter(asignacion_docente__grupo_academico_id=request.GET["grupo"])
+    page, page_size, start, end = _page_params(request)
+    total = queryset.count()
+    items = []
+    for inscripcion in queryset.order_by("discente__usuario__nombre_completo", "asignacion_docente__programa_asignatura__materia__clave")[start:end]:
+        contexto = _inscripcion_contexto(inscripcion)
+        discente = _discente_min(inscripcion.discente)
+        materia = contexto["materia"]
+        grupo = contexto["grupo"]
+        periodo = contexto["periodo"]
+        items.append(
+            {
+                "id": inscripcion.id,
+                "inscripcion_materia_id": inscripcion.id,
+                "discente": discente,
+                "materia": materia,
+                "grupo": grupo,
+                "periodo": periodo,
+                "calificacion_ordinaria": _decimal(inscripcion.calificacion_final),
+                "codigo_resultado_oficial": inscripcion.codigo_resultado_oficial,
+                "label": f"{discente['nombre_institucional']} - {materia['label']} - {grupo['label']} - {periodo['label']} ({inscripcion.calificacion_final})",
+            }
+        )
     return JsonResponse({"ok": True, "total": total, "page": page, "page_size": page_size, "items": items})
 
 

@@ -8,11 +8,13 @@ export function FormFieldRenderer({
   value,
   onChange,
   disabled,
+  values,
 }: {
   field: ResourceFormField;
   value: string | boolean;
   onChange: (value: string | boolean) => void;
   disabled: boolean;
+  values?: Record<string, string | boolean>;
 }) {
   const commonClass = "h-12 w-full rounded-2xl border border-[#e4d6c2] bg-white px-4 text-sm font-medium outline-none focus:border-[#bc955c] disabled:bg-[#f5efe6] disabled:text-[#8a8176]";
 
@@ -41,6 +43,11 @@ export function FormFieldRenderer({
         valueKey={field.relationValueKey}
         disabled={disabled}
         required={field.required}
+        activeOnly={field.relationActiveOnly}
+        searchEnabled={field.relationSearchEnabled}
+        minSearchLength={field.relationMinSearchLength}
+        queryParams={buildRelationParams(field, values)}
+        disabledReason={relationDisabledReason(field, values)}
       />
     );
   }
@@ -85,6 +92,22 @@ export function FormFieldRenderer({
       className={commonClass}
     />
   );
+}
+
+function buildRelationParams(field: ResourceFormField, values?: Record<string, string | boolean>) {
+  const params: Record<string, string | number | boolean | undefined> = { ...(field.relationQueryParams ?? {}) };
+  if (!values || !field.relationParamMap) return params;
+  Object.entries(field.relationParamMap).forEach(([fieldKey, paramKey]) => {
+    const value = values[fieldKey];
+    if (value !== "" && value !== undefined && value !== false) params[paramKey] = String(value);
+  });
+  return params;
+}
+
+function relationDisabledReason(field: ResourceFormField, values?: Record<string, string | boolean>) {
+  const missing = (field.relationDependsOn ?? []).filter((key) => !values?.[key]);
+  if (!missing.length) return field.relationDisabledReason;
+  return field.relationDisabledReason || "Selecciona primero los campos relacionados.";
 }
 
 function inputType(type?: ResourceFormField["type"]) {

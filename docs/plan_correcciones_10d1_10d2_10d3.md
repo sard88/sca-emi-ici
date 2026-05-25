@@ -36,6 +36,23 @@
 5. Cambiar formularios críticos de trayectoria/movimientos/periodos de texto libre a selectores básicos.
 6. Añadir filtros de activos a selectores relacionales de administración/catálogos.
 
+## Estado posterior al Bloque 10D-1
+
+| ID | Estado | Evidencia de atención |
+|---|---|---|
+| 10D0-P1-001 | Atendido | `AppShell` oculta el panel derecho por defecto; dashboards/home/perfil lo activan explicitamente. |
+| 10D0-P1-002 | Atendido | `dashboard.ts` reemplaza enlaces de usuarios, cargos, unidades y catalogos por rutas Next.js. |
+| 10D0-P1-003 | Atendido | Kárdex institucional apunta a `/reportes/kardex`. |
+| 10D0-P1-004 | Atendido | Jefatura pedagogica usa reportes del portal en lugar de la consulta Django antigua. |
+| 10D0-P1-005 | Atendido | Se separaron `canAccessAuditoriaEventos`, `canAccessAuditoriaExportaciones` y `canAccessAuditoria`. |
+| 10D0-P1-006 | Atendido | Las acciones de cierre/apertura se muestran solo con `canOperateTrayectoria`. |
+| 10D0-P1-007 | Atendido | Formularios de extraordinarios/situaciones usan selectores y buscadores autorizados. |
+| 10D0-P1-008 | Atendido | Movimientos y cambio de grupo usan selectores dependientes para discente, periodo y grupos. |
+| 10D0-P1-009 | Atendido | Apertura de periodo usa selectores de periodos origen/destino elegibles. |
+| 10D0-P1-010 | Atendido | `RelationSelect` soporta busqueda, activos, parametros y dependencias contextuales. |
+
+Detalle tecnico: `docs/resumen_bloque10d1_estabilizacion_ux_funcional.md`.
+
 ## Alcance recomendado para 10D-2
 
 1. Reordenar menú y dashboard por intención.

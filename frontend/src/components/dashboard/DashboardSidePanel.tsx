@@ -2,7 +2,8 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { backendUrl, getActividadReciente, getCalendarioMes, getEventosProximos } from "@/lib/api";
+import { getActividadReciente, getCalendarioMes, getEventosProximos } from "@/lib/api";
+import { resolvePortalHref } from "@/lib/route-mapping";
 import type { ActividadRecienteItem, AuthenticatedUser, CalendarioMes, EventoCalendario } from "@/lib/types";
 
 export function DashboardSidePanel({ user }: { user: AuthenticatedUser }) {
@@ -92,12 +93,20 @@ function TimelineItem({ item }: { item: ActividadRecienteItem }) {
   return (
     <div className="relative">
       <span className="absolute -left-[1.15rem] top-1.5 h-3 w-3 rounded-full ring-4 ring-white" style={{ backgroundColor: color }} />
-      {item.url ? (
-        <a href={item.backend ? backendUrl(item.url) : item.url} target={item.backend ? "_blank" : undefined} rel={item.backend ? "noreferrer" : undefined} className="block rounded-xl transition hover:bg-[#f7efe2]">
-          {content}
-        </a>
+      {item.url && resolvePortalHref(item.url, item.backend) ? (
+        <TimelineLink item={item}>{content}</TimelineLink>
       ) : content}
     </div>
+  );
+}
+
+function TimelineLink({ item, children }: { item: ActividadRecienteItem; children: ReactNode }) {
+  const resolved = resolvePortalHref(item.url, item.backend);
+  if (!resolved) return children;
+  return (
+    <a href={resolved.href} target={resolved.backend ? "_blank" : undefined} rel={resolved.backend ? "noreferrer" : undefined} className="block rounded-xl transition hover:bg-[#f7efe2]">
+      {children}
+    </a>
   );
 }
 
@@ -167,6 +176,7 @@ function EventsList({ eventos }: { eventos: EventoCalendario[] }) {
 }
 
 function EventItem({ evento }: { evento: EventoCalendario }) {
+  const resolved = resolvePortalHref(evento.url_destino, true);
   const content = (
     <>
       <p className="text-sm font-black text-[#152b25]">{evento.titulo}</p>
@@ -179,8 +189,8 @@ function EventItem({ evento }: { evento: EventoCalendario }) {
     <div className="flex gap-3">
       <span className="mt-1.5 h-3 w-3 flex-none rounded-full bg-[#0b4a3d]" />
       <div>
-        {evento.url_destino ? (
-          <a href={backendUrl(evento.url_destino)} target="_blank" rel="noreferrer" className="block rounded-xl hover:bg-[#f7efe2]">
+        {resolved ? (
+          <a href={resolved.href} target={resolved.backend ? "_blank" : undefined} rel={resolved.backend ? "noreferrer" : undefined} className="block rounded-xl hover:bg-[#f7efe2]">
             {content}
           </a>
         ) : content}

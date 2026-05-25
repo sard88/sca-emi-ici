@@ -10,7 +10,7 @@ import { LoadingState } from "@/components/states/LoadingState";
 import { ReportCatalogCard } from "@/components/reportes/ReportCatalogCard";
 import { ExportHistoryTable } from "@/components/reportes/ExportHistoryTable";
 import { getExportaciones, getReportesCatalogo } from "@/lib/api";
-import { canAccessAuditoriaExportaciones, canAccessKardexPdf, canAccessReportes, canAccessReportesDesempeno, canAccessReportesOperativos, canAccessReportesTrayectoria } from "@/lib/dashboard";
+import { canAccessAuditoria, canAccessAuditoriaExportaciones, canAccessKardexPdf, canAccessReportes, canAccessReportesDesempeno, canAccessReportesOperativos, canAccessReportesTrayectoria } from "@/lib/dashboard";
 import { canAccessReporteDesempeno, reportesDesempeno } from "@/lib/reportes-desempeno";
 import { canAccessReporteOperativo, reportesOperativos } from "@/lib/reportes-operativos";
 import { canAccessReporteTrayectoria, reportesTrayectoria } from "@/lib/reportes-trayectoria";
@@ -72,7 +72,7 @@ export default function ReportesPage() {
               <QuickLink title="Kárdex oficial" description="PDF institucional desde ServicioKardex, con auditoría documental." href="/reportes/kardex" />
             ) : null}
             <QuickLink title="Historial de exportaciones" description="Descargas recientes y folios técnicos." href="/reportes/exportaciones" />
-            {canAccessAuditoriaExportaciones(user) ? (
+            {canAccessAuditoria(user) ? (
               <QuickLink title="Auditoría institucional" description="Consulta ampliada de salidas documentales." href="/reportes/auditoria" />
             ) : (
               <QuickLink title="Reportes futuros" description="Reportes analíticos y kárdex Excel quedarán para subbloques posteriores." />

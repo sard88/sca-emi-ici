@@ -167,6 +167,37 @@ def _filter_scope(qs, request):
     return qs
 
 
+def _filter_context(qs, request):
+    model = qs.model
+    carrera_id = request.GET.get("carrera") or request.GET.get("carrera_id")
+    plan_id = request.GET.get("plan") or request.GET.get("plan_estudios") or request.GET.get("plan_estudios_id")
+    periodo_id = request.GET.get("periodo") or request.GET.get("periodo_id")
+    antiguedad_id = request.GET.get("antiguedad") or request.GET.get("antiguedad_id")
+    if carrera_id:
+        if model is PlanEstudios:
+            qs = qs.filter(carrera_id=carrera_id)
+        elif model is Antiguedad:
+            qs = qs.filter(plan_estudios__carrera_id=carrera_id)
+        elif model is GrupoAcademico:
+            qs = qs.filter(antiguedad__plan_estudios__carrera_id=carrera_id)
+        elif model is ProgramaAsignatura:
+            qs = qs.filter(plan_estudios__carrera_id=carrera_id)
+        elif model is EsquemaEvaluacion:
+            qs = qs.filter(programa_asignatura__plan_estudios__carrera_id=carrera_id)
+    if plan_id:
+        if model is Antiguedad:
+            qs = qs.filter(plan_estudios_id=plan_id)
+        elif model is ProgramaAsignatura:
+            qs = qs.filter(plan_estudios_id=plan_id)
+        elif model is EsquemaEvaluacion:
+            qs = qs.filter(programa_asignatura__plan_estudios_id=plan_id)
+    if periodo_id and model is GrupoAcademico:
+        qs = qs.filter(periodo_id=periodo_id)
+    if antiguedad_id and model is GrupoAcademico:
+        qs = qs.filter(antiguedad_id=antiguedad_id)
+    return qs
+
+
 def _has_field(model, field_name):
     try:
         model._meta.get_field(field_name)
@@ -243,7 +274,7 @@ def _collection(request, slug):
     if request.method == "GET":
         if not _can_read(request.user):
             return _deny()
-        qs = _filter_scope(config["queryset"](), request)
+        qs = _filter_context(_filter_scope(config["queryset"](), request), request)
         qs = _filter_active(_apply_search(qs, request, config["search"]), request)
         total, page, page_size, items = _paginate(request, qs.distinct())
         return JsonResponse({"ok": True, "total": total, "page": page, "page_size": page_size, "items": [config["serializer"](item) for item in items]})

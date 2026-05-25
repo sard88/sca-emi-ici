@@ -8,7 +8,7 @@ import { ExportHistoryTable } from "@/components/reportes/ExportHistoryTable";
 import { ErrorMessage } from "@/components/states/ErrorMessage";
 import { LoadingState } from "@/components/states/LoadingState";
 import { descargarAuditoriaEventosXlsx, getAuditoriaEventos, getAuditoriaExportaciones } from "@/lib/api";
-import { canAccessAuditoriaExportaciones } from "@/lib/dashboard";
+import { canAccessAuditoria, canAccessAuditoriaEventos, canAccessAuditoriaExportaciones } from "@/lib/dashboard";
 import { useAuth } from "@/lib/auth";
 import type { BitacoraEventoCritico, ExportacionRegistro } from "@/lib/types";
 
@@ -45,6 +45,10 @@ export default function AuditoriaExportacionesPage() {
   const [evento, setEvento] = useState("");
   const [resultado, setResultado] = useState("");
   const [severidad, setSeveridad] = useState("");
+  const canExportaciones = user ? canAccessAuditoriaExportaciones(user) : false;
+  const canEventos = user ? canAccessAuditoriaEventos(user) : false;
+  const canAuditoria = user ? canAccessAuditoria(user) : false;
+  const showTabs = canExportaciones && canEventos;
 
   const filtrosExportaciones = useMemo(() => ({
     limit: "120",
@@ -66,6 +70,16 @@ export default function AuditoriaExportacionesPage() {
   }), [evento, fechaDesde, fechaHasta, modulo, resultado, severidad, usuario]);
 
   useEffect(() => {
+    if (!user || !canAuditoria) return;
+    if (tab === "exportaciones" && !canExportaciones) {
+      setTab("eventos");
+      return;
+    }
+    if (tab === "eventos" && !canEventos) {
+      setTab("exportaciones");
+      return;
+    }
+
     async function load() {
       setLoading(true);
       setError(null);
@@ -85,8 +99,8 @@ export default function AuditoriaExportacionesPage() {
       }
     }
 
-    if (user && canAccessAuditoriaExportaciones(user)) void load();
-  }, [filtrosEventos, filtrosExportaciones, tab, user]);
+    void load();
+  }, [canAuditoria, canEventos, canExportaciones, filtrosEventos, filtrosExportaciones, tab, user]);
 
   async function descargarEventos() {
     setError(null);
@@ -101,7 +115,7 @@ export default function AuditoriaExportacionesPage() {
 
   return (
     <AppShell>
-      {!user ? null : !canAccessAuditoriaExportaciones(user) ? (
+      {!user ? null : !canAuditoria ? (
         <ErrorMessage message="No tienes permiso para consultar la auditoría institucional." />
       ) : (
         <div className="space-y-5">
@@ -111,10 +125,12 @@ export default function AuditoriaExportacionesPage() {
             user={user}
           />
 
-          <div className="flex flex-wrap gap-2 border-b border-[#eadfce]">
-            <button type="button" onClick={() => setTab("exportaciones")} className={tabClass(tab === "exportaciones")}>Exportaciones</button>
-            <button type="button" onClick={() => setTab("eventos")} className={tabClass(tab === "eventos")}>Eventos críticos</button>
-          </div>
+          {showTabs ? (
+            <div className="flex flex-wrap gap-2 border-b border-[#eadfce]">
+              <button type="button" onClick={() => setTab("exportaciones")} className={tabClass(tab === "exportaciones")}>Exportaciones</button>
+              <button type="button" onClick={() => setTab("eventos")} className={tabClass(tab === "eventos")}>Eventos críticos</button>
+            </div>
+          ) : null}
 
           <section className="rounded-lg border border-[#eadfce] bg-white p-4 shadow-sm">
             <div className="grid gap-3 md:grid-cols-4">

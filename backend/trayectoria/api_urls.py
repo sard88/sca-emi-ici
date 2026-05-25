@@ -6,6 +6,7 @@ urlpatterns = [
     path("mi-historial/", api_views.mi_historial_view, name="api-mi-historial"),
     path("historial/", api_views.historial_list_view, name="api-historial-list"),
     path("historial/<int:discente_id>/", api_views.historial_detail_view, name="api-historial-detail"),
+    path("opciones/inscripciones-extraordinario/", api_views.opciones_inscripciones_extraordinario_view, name="api-opciones-inscripciones-extraordinario"),
     path("extraordinarios/", api_views.extraordinarios_list_view, name="api-extraordinarios-list"),
     path("extraordinarios/crear/", api_views.extraordinario_create_view, name="api-extraordinarios-create-alt"),
     path("extraordinarios/<int:pk>/", api_views.extraordinario_detail_view, name="api-extraordinarios-detail"),

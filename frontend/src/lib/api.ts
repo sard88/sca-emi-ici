@@ -24,6 +24,7 @@ import type {
   ExportacionRegistro,
   HistorialAcademicoDTO,
   HistorialSearchResponse,
+  InscripcionExtraordinarioOpcion,
   KardexExportable,
   MovimientoAcademicoDTO,
   MovimientoAcademicoPayload,
@@ -663,6 +664,10 @@ export async function getExtraordinarios(params: Record<string, string> = {}) {
 
 export async function getExtraordinario(id: number | string) {
   return apiGet<{ ok: true; item: ExtraordinarioDTO }>(`/api/trayectoria/extraordinarios/${encodeURIComponent(String(id))}/`);
+}
+
+export async function getOpcionesInscripcionesExtraordinario(params: Record<string, string> = {}) {
+  return apiGet<TrayectoriaListResponse<InscripcionExtraordinarioOpcion>>(`/api/trayectoria/opciones/inscripciones-extraordinario/${queryString(params)}`);
 }
 
 export async function crearExtraordinario(payload: ExtraordinarioPayload) {

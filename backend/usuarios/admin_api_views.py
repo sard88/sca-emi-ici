@@ -294,6 +294,9 @@ def usuarios_collection_view(request):
         estado = request.GET.get("estado_cuenta") or request.GET.get("estado")
         if estado:
             qs = qs.filter(estado_cuenta=estado)
+        activo = request.GET.get("activo")
+        if activo in {"true", "false"}:
+            qs = qs.filter(is_active=activo == "true", estado_cuenta=Usuario.ESTADO_ACTIVO if activo == "true" else Usuario.ESTADO_INACTIVO)
         rol = request.GET.get("rol")
         if rol:
             qs = qs.filter(groups__name=rol)
