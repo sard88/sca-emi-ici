@@ -14,6 +14,7 @@ import { canAccessReportesDesempeno } from "@/lib/dashboard";
 import { canAccessReporteDesempeno, cleanPerformanceFilters, emptyPerformanceFilters } from "@/lib/reportes-desempeno";
 import { useAuth } from "@/lib/auth";
 import type { DownloadResult, ReporteDesempenoConfig, ReporteDesempenoRespuesta } from "@/lib/types";
+import { PerformanceHonorRollPreview } from "./PerformanceHonorRollPreview";
 import { PerformanceReportBadge } from "./PerformanceReportBadge";
 import { PerformanceReportDownloadButton } from "./PerformanceReportDownloadButton";
 import { PerformanceReportFilters } from "./PerformanceReportFilters";
@@ -133,7 +134,11 @@ export function PerformanceReportPage({ config }: { config: ReporteDesempenoConf
             <EmptyExportsState title="No hay resultados para los filtros seleccionados." description="Ajusta los filtros para confirmar el reporte completo." />
           ) : null}
           {!loading && !error && data && data.items.length > 0 ? (
-            <PerformanceReportTable columns={data.columnas} items={data.items} />
+            config.slug === "cuadro-aprovechamiento" ? (
+              <PerformanceHonorRollPreview items={data.items} />
+            ) : (
+              <PerformanceReportTable columns={data.columnas} items={data.items} />
+            )
           ) : null}
         </div>
       )}
