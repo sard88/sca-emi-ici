@@ -1,14 +1,18 @@
 import type {
   ActividadRecienteItem,
+  ActaExportable,
   AuthMe,
   AuthenticatedUser,
   BusquedaResponse,
   CalendarioMes,
   DashboardResumen,
+  DownloadResult,
   EventoCalendario,
+  ExportacionRegistro,
   NotificacionesResponse,
   PerfilUsuario,
   PortalQuickAccess,
+  ReporteCatalogoItem,
 } from "./types";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
@@ -133,7 +137,97 @@ export async function eliminarAccesoRapido(id: number) {
   return apiMutate<{ ok: true }>(`/api/accesos-rapidos/${id}/`, "DELETE");
 }
 
+export async function getReportesCatalogo() {
+  return apiGet<{ items: ReporteCatalogoItem[] }>("/api/reportes/catalogo/");
+}
+
+export async function getExportaciones(params: Record<string, string> = {}) {
+  return apiGet<{ items: ExportacionRegistro[] }>(`/api/exportaciones/${queryString(params)}`);
+}
+
+export async function getAuditoriaExportaciones(params: Record<string, string> = {}) {
+  return apiGet<{ items: ExportacionRegistro[] }>(`/api/auditoria/exportaciones/${queryString(params)}`);
+}
+
+export async function getActasExportables() {
+  return apiGet<{ items: ActaExportable[] }>("/api/exportaciones/actas-disponibles/");
+}
+
+export async function descargarActaPdf(actaId: number) {
+  return downloadFile(`/api/exportaciones/actas/${actaId}/pdf/`);
+}
+
+export async function descargarActaXlsx(actaId: number) {
+  return downloadFile(`/api/exportaciones/actas/${actaId}/xlsx/`);
+}
+
+export async function descargarCalificacionFinalPdf(asignacionDocenteId: number) {
+  return downloadFile(`/api/exportaciones/asignaciones/${asignacionDocenteId}/calificacion-final/pdf/`);
+}
+
+export async function descargarCalificacionFinalXlsx(asignacionDocenteId: number) {
+  return downloadFile(`/api/exportaciones/asignaciones/${asignacionDocenteId}/calificacion-final/xlsx/`);
+}
+
 export function backendUrl(path: string) {
   if (path.startsWith("http")) return path;
   return apiUrl(path.startsWith("/") ? path : `/${path}`);
+}
+
+function queryString(params: Record<string, string>) {
+  const filtered = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) filtered.set(key, value);
+  });
+  const value = filtered.toString();
+  return value ? `?${value}` : "";
+}
+
+async function downloadFile(path: string): Promise<DownloadResult> {
+  const response = await fetch(apiUrl(path), {
+    method: "GET",
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(await readDownloadError(response));
+  }
+
+  const blob = await response.blob();
+  const filename = filenameFromDisposition(response.headers.get("Content-Disposition")) || "exportacion";
+  const registroExportacionId = response.headers.get("X-Registro-Exportacion-Id");
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(objectUrl);
+  return { filename, registroExportacionId };
+}
+
+async function readDownloadError(response: Response) {
+  const contentType = response.headers.get("Content-Type") || "";
+  if (contentType.includes("application/json")) {
+    try {
+      const data = (await response.json()) as { error?: unknown };
+      if (data.error) {
+        return typeof data.error === "string" ? data.error : JSON.stringify(data.error);
+      }
+    } catch {
+      return "La exportación falló. Intenta nuevamente o contacta soporte.";
+    }
+  }
+  const text = await response.text();
+  return text || "La exportación falló. Intenta nuevamente o contacta soporte.";
+}
+
+function filenameFromDisposition(disposition: string | null) {
+  if (!disposition) return null;
+  const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utfMatch?.[1]) return decodeURIComponent(utfMatch[1]);
+  const asciiMatch = disposition.match(/filename="?([^";]+)"?/i);
+  return asciiMatch?.[1] ?? null;
 }

@@ -322,18 +322,24 @@ def accesos_rapidos(user: Usuario):
     items = []
 
     def add(label, url, description="", backend=True, icono=""):
+        if any(item["label"] == label and item["url"] == url for item in items):
+            return
         items.append({"id": None, "label": label, "url": url, "description": description, "backend": backend, "icono": icono})
 
     if ctx.is_admin:
         add("Usuarios", "/admin/usuarios/usuario/", "Gestión técnica de usuarios.")
         add("Roles y cargos", "/admin/usuarios/asignacioncargo/", "Cargos y unidades.")
+        add("Reportes y exportaciones", "/reportes", "Catálogo documental del portal.", False)
+        add("Auditoría exportaciones", "/reportes/auditoria", "Trazabilidad institucional.", False)
         add("Django Admin", "/admin/", "Administración técnica.")
     if ctx.is_estadistica or ctx.is_admin:
         add("Periodos", "/actas/periodos/", "Cierre y apertura.")
         add("Kárdex institucional", "/trayectoria/kardex/", "Consulta institucional.")
+        add("Reportes y exportaciones", "/reportes", "Actas PDF/XLSX e historial.", False)
     if ctx.is_docente:
         add("Mis asignaciones", "/validacion/docente/asignaciones/", "Carga docente asignada.")
         add("Actas docente", "/evaluacion/actas/docente/", "Actas asociadas.")
+        add("Exportar mis actas", "/reportes/actas", "Descarga PDF/XLSX autorizada.", False)
     if ctx.is_discente:
         add("Mi carga académica", "/validacion/discente/carga/", "Asignaturas vigentes.")
         add("Mis actas", "/evaluacion/actas/discente/", "Actas publicadas.")
@@ -341,10 +347,13 @@ def accesos_rapidos(user: Usuario):
     if ctx.is_jefatura_carrera:
         add("Asignaciones docentes", "/validacion/jefatura/asignaciones-docentes/", "Asignaciones por grupo.")
         add("Actas por validar", "/evaluacion/actas/jefatura-carrera/pendientes/", "Validación de carrera.")
+        add("Actas exportables", "/reportes/actas", "Descarga documental autorizada.", False)
     if ctx.is_jefatura_academica:
         add("Actas por formalizar", "/evaluacion/actas/jefatura-academica/pendientes/", "Formalización académica.")
+        add("Reportes y exportaciones", "/reportes", "Catálogo documental.", False)
     if ctx.is_jefatura_pedagogica:
         add("Consulta académica", "/evaluacion/actas/planeacion-evaluacion/consulta/", "Seguimiento académico.")
+        add("Reportes y exportaciones", "/reportes", "Catálogo documental.", False)
 
     return {"persisted": False, "items": items[:12]}
 

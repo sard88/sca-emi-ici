@@ -1474,3 +1474,171 @@ No se implementa todavía:
 - almacenamiento permanente de archivos;
 - envío por correo;
 - pantallas React completas de reportes.
+
+## Bloque 10C-1 - Integración de exportaciones de actas en el portal
+
+Se integra el portal Next.js con las exportaciones reales de actas PDF/XLSX implementadas en Bloque 9B y con la auditoría documental del Bloque 9A.
+
+### Objetivo
+
+Permitir que usuarios autorizados consulten desde el portal:
+
+- catálogo de reportes/exportaciones;
+- actas exportables;
+- descargas PDF/XLSX de actas por corte;
+- descargas PDF/XLSX de acta de Calificación Final;
+- historial de exportaciones;
+- auditoría institucional de exportaciones para perfiles autorizados.
+
+El frontend no genera documentos. La generación sigue en Django mediante plantillas XLSX institucionales y conversión PDF con LibreOffice headless.
+
+### Rutas del portal
+
+- `http://localhost:3000/reportes`
+- `http://localhost:3000/reportes/actas`
+- `http://localhost:3000/reportes/exportaciones`
+- `http://localhost:3000/reportes/auditoria`
+
+### Endpoints backend consumidos
+
+- `GET /api/reportes/catalogo/`
+- `GET /api/exportaciones/`
+- `GET /api/auditoria/exportaciones/`
+- `GET /api/exportaciones/actas-disponibles/`
+- `GET /api/exportaciones/actas/<acta_id>/pdf/`
+- `GET /api/exportaciones/actas/<acta_id>/xlsx/`
+- `GET /api/exportaciones/asignaciones/<asignacion_docente_id>/calificacion-final/pdf/`
+- `GET /api/exportaciones/asignaciones/<asignacion_docente_id>/calificacion-final/xlsx/`
+
+### Descargas y trazabilidad
+
+Las descargas del portal usan sesión Django con cookies y `credentials: "include"`. Cada archivo descargado registra `RegistroExportacion` y el portal muestra el folio técnico cuando el backend entrega:
+
+- `X-Registro-Exportacion-Id`
+
+También se expone de forma controlada:
+
+- `Content-Disposition`
+
+Esto permite que el frontend recupere el nombre real del archivo y la trazabilidad sin relajar CORS.
+
+### Permisos
+
+El backend sigue siendo la autoridad.
+
+- Admin: catálogo, actas, historial y auditoría.
+- Estadística: catálogo, actas e historial/auditoría según permiso.
+- Docente: solo actas propias.
+- Jefatura de carrera: actas de su ámbito.
+- Jefatura académica/pedagógica: consulta documental autorizada.
+- Discente: no ve reportes globales, kárdex oficial ni actas completas de grupo en este bloque.
+
+### Qué queda fuera
+
+No se implementa todavía:
+
+- kárdex PDF;
+- reportes de desempeño;
+- reportes de situación académica;
+- cuadro de aprovechamiento;
+- importación desde Excel;
+- edición o formalización de actas desde React;
+- firma electrónica, QR o envío por correo.
+
+Resumen técnico:
+
+- `docs/resumen_bloque10c1_integracion_exportaciones_actas.md`
+
+## Bloque 9C - Kárdex oficial PDF
+
+Se implementa la exportación PDF del kárdex oficial institucional como documento derivado del `ServicioKardex` existente. El kárdex no se convierte en tabla transaccional y no modifica resultados oficiales, actas, historial ni inscripciones.
+
+### Objetivo
+
+Permitir que perfiles institucionales autorizados generen un PDF del kárdex oficial para consulta o revisión, usando:
+
+- `ServicioKardex` como fuente de verdad derivada;
+- plantilla XLSX productiva como fuente maestra del formato;
+- `openpyxl` para poblar valores cerrados;
+- LibreOffice headless para convertir XLSX a PDF;
+- `RegistroExportacion` para auditoría documental.
+
+### Ruta de descarga
+
+- `GET /api/exportaciones/kardex/<discente_id>/pdf/`
+
+La respuesta entrega:
+
+- `Content-Type: application/pdf`
+- `Content-Disposition: attachment`
+- `X-Registro-Exportacion-Id`
+
+### Permisos
+
+El backend valida permisos antes de generar el documento.
+
+- Admin/superusuario: puede exportar por soporte técnico.
+- Estadística: puede exportar kárdex oficial.
+- Jefatura académica: puede exportar según permisos institucionales.
+- Jefatura pedagógica: puede exportar según permisos institucionales.
+- Jefatura de carrera: puede exportar kárdex de discentes de su ámbito.
+- Docente: no puede exportar kárdex oficial en este bloque.
+- Discente: no puede exportar ni consultar el kárdex oficial.
+
+### Plantilla XLSX
+
+La plantilla productiva anonimizada queda en:
+
+- `backend/reportes/templates_xlsx/kardex/kardex_oficial_template.xlsx`
+
+El PDF se genera desde esa plantilla. No se usa HTML, ReportLab ni WeasyPrint como fuente principal del formato.
+
+### Datos incluidos
+
+El documento muestra:
+
+- datos generales del discente;
+- carrera, plan de estudios y antigüedad;
+- situación académica;
+- materias agrupadas por año de formación y semestre;
+- calificación numérica;
+- calificación con letra;
+- marca `EE` cuando aplica extraordinario;
+- resultados no numéricos como `ACREDITADA` o equivalentes;
+- promedio anual;
+- promedio general derivado si hay datos numéricos;
+- leyendas institucionales;
+- certificación y espacio de firma.
+
+### Auditoría
+
+Cada exportación crea o actualiza un `RegistroExportacion` con:
+
+- usuario solicitante;
+- tipo `KARDEX_OFICIAL`;
+- formato `PDF`;
+- objeto exportado;
+- nombre seguro de archivo;
+- IP y user agent cuando están disponibles;
+- estado `GENERADA` o `FALLIDA`;
+- tamaño y hash SHA-256 cuando la generación termina correctamente.
+
+El nombre del archivo no incluye nombre completo ni matrícula militar.
+
+### Qué queda fuera
+
+No se implementa todavía:
+
+- kárdex Excel descargable;
+- historial académico PDF/Excel;
+- reportes de desempeño;
+- reportes de situación académica;
+- cuadro de aprovechamiento;
+- integración visual completa del botón de kárdex en el portal;
+- firma electrónica;
+- QR o sello digital;
+- almacenamiento permanente del PDF generado.
+
+Resumen técnico:
+
+- `docs/resumen_bloque9c_kardex_pdf.md`
