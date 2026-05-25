@@ -370,3 +370,40 @@ M frontend/src/app/docente/actas/page.tsx
 ?? docs/respaldo_frontend/
 ```
 
+## Actualización de cierre: conformidad discente y comentarios al docente
+
+Fecha de actualización: 2026-05-25
+
+Commit incorporado:
+
+```text
+d8a0f9e Muestra comentarios de inconformidad al docente
+```
+
+Alcance del ajuste:
+
+- La conformidad discente queda limitada a las respuestas visibles "Conforme" e "Inconforme".
+- Los comentarios de inconformidad no se incorporan a las actas/documentos académicos.
+- El docente asignado al acta puede visualizar los comentarios de inconformidad desde el detalle del acta.
+- Si una inconformidad histórica no tiene comentario registrado, la interfaz muestra "Sin comentario registrado." para evitar ambigüedad.
+
+Validaciones ejecutadas para este ajuste:
+
+| Validación | Resultado |
+|---|---|
+| `docker compose exec -T backend python manage.py test evaluacion` | OK, 86 tests |
+| `docker compose exec -T frontend npm run build` | OK |
+| Reinicio de contenedor `frontend` posterior al build | OK |
+| Prueba HTTP `http://localhost:3000/docente/actas/4` | 200 |
+
+Estado posterior al commit del ajuste:
+
+```text
+?? docs/respaldo_frontend/
+```
+
+Nota operativa:
+
+- `docs/respaldo_frontend/` se mantiene fuera del repositorio y no forma parte de la versión final.
+- Después de ejecutar `npm run build` dentro del mismo contenedor usado por `next dev`, se reinició `frontend` para evitar manifiestos/chunks mezclados de Next en modo desarrollo.
+
