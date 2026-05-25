@@ -880,3 +880,426 @@ docker compose exec -T backend python manage.py makemigrations --check
 docker compose exec -T backend python manage.py test actas
 docker compose exec -T backend python manage.py test
 ```
+
+## Bloque 10A - Front institucional base
+
+Se crea la base del portal visual moderno del Sistema de Control Académico EMI - ICI con Next.js, React, TypeScript y Tailwind CSS. El backend Django continúa como fuente de verdad para reglas académicas, permisos, actas, historial, kárdex y cierre/apertura de periodo.
+
+### Arquitectura
+
+- Frontend Next.js: `http://localhost:3000`
+- Backend Django: `http://localhost:8000`
+- Django Admin: `http://localhost:8000/admin/`
+- PostgreSQL en Docker.
+
+Servicios Docker esperados:
+
+- `db`
+- `backend`
+- `frontend`
+
+### Frontend
+
+La carpeta `frontend/` contiene:
+
+- Next.js con App Router.
+- React y TypeScript.
+- Tailwind CSS.
+- Componentes base equivalentes compatibles: `Button`, `Card`, `Input`, `AppShell`, `Sidebar`, `Topbar`, `DashboardCard`, `StatusBadge`, `RoleBadge`, estados de carga/error/vacío y componentes de branding.
+- Rutas iniciales:
+  - `/`
+  - `/login`
+  - `/dashboard`
+  - `/discente`
+  - `/docente`
+  - `/jefatura-carrera`
+  - `/jefatura-academica`
+  - `/jefatura-pedagogica`
+  - `/estadistica`
+  - `/admin-soporte`
+
+### Variables de entorno frontend
+
+Crear archivo local:
+
+macOS/Linux:
+
+```bash
+cp frontend/.env.example frontend/.env.local
+```
+
+Windows PowerShell:
+
+```powershell
+Copy-Item frontend/.env.example frontend/.env.local
+```
+
+Variables:
+
+```bash
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+NEXT_PUBLIC_APP_NAME=Sistema de Control Académico EMI - ICI
+NEXT_PUBLIC_APP_ENV=MVP intranet
+```
+
+No se deben colocar secretos en variables `NEXT_PUBLIC_`, porque son visibles para el navegador.
+
+### Variables backend nuevas o ajustadas
+
+```bash
+CORS_ALLOWED_ORIGINS=http://localhost:3000
+CSRF_TRUSTED_ORIGINS=http://localhost:3000
+SESSION_COOKIE_NAME=sca_sessionid
+SESSION_COOKIE_SECURE=False
+SESSION_COOKIE_SAMESITE=Lax
+SESSION_COOKIE_AGE=28800
+SESSION_EXPIRE_AT_BROWSER_CLOSE=False
+SESSION_SAVE_EVERY_REQUEST=False
+CSRF_COOKIE_NAME=sca_csrftoken
+CSRF_COOKIE_SECURE=False
+CSRF_COOKIE_SAMESITE=Lax
+CSRF_COOKIE_HTTPONLY=True
+SECURE_SSL_REDIRECT=False
+SECURE_HSTS_SECONDS=0
+```
+
+En HTTPS real se debe activar `SESSION_COOKIE_SECURE=True` y `CSRF_COOKIE_SECURE=True`. No activar `SameSite=None` sin `Secure=True`. No activar HSTS en desarrollo local.
+
+### Autenticación
+
+El Bloque 10A usa sesiones Django con cookies y CSRF:
+
+- `GET /api/auth/csrf/`: genera/devuelve token CSRF y cookie CSRF.
+- `POST /api/auth/login/`: valida credenciales, crea sesión Django y devuelve usuario mínimo.
+- `POST /api/auth/logout/`: cierra sesión Django.
+- `GET /api/auth/me/`: devuelve `authenticated=false` o datos del usuario autenticado.
+
+Reglas de seguridad:
+
+- No JWT en esta fase.
+- No MFA/OTP en esta fase.
+- No tokens en `localStorage`.
+- Cookies de sesión `HttpOnly`.
+- CSRF activo; no se desactiva globalmente.
+- CORS usa orígenes explícitos y `credentials: include`.
+
+### Identidad visual
+
+Paleta aproximada hasta recibir lineamientos oficiales:
+
+- Guinda: `#611232`
+- Guinda acento: `#9F2241`
+- Verde institucional/militar: `#235B4E`
+- Verde olivo: `#3A4A32`
+- Dorado sobrio: `#D4AF37`
+- Dorado institucional: `#BC955C`
+- Fondo marfil: `#F8F4EA`
+- Gris carbón: `#1F2937`
+
+### Logos
+
+Se prepara la estructura:
+
+```text
+frontend/public/brand/
+  institutions/
+  careers/
+```
+
+Convenciones principales:
+
+- `frontend/public/brand/institutions/emi.svg` o `.png`
+- `frontend/public/brand/institutions/emi-escudo.png`
+- `frontend/public/brand/institutions/udefa.svg` o `.png`
+- `frontend/public/brand/institutions/sedena.png`
+- `frontend/public/brand/careers/ici.svg` o `.png`
+- `frontend/public/brand/careers/ice.svg` o `.png`
+- `frontend/public/brand/careers/ic.svg` o `.png`
+- `frontend/public/brand/careers/ii.svg` o `.png`
+
+No se descargan logos de internet. Si faltan logos, el portal muestra placeholders institucionales limpios mediante la ruta interna `/brand-logo/...`, evitando imagen rota y solicitudes 404 visibles.
+
+### Levantar con Docker
+
+```bash
+docker compose build
+docker compose up -d
+docker compose ps
+```
+
+Validaciones recomendadas:
+
+```bash
+docker compose exec -T backend python manage.py check
+docker compose exec -T backend python manage.py makemigrations --check
+docker compose exec -T backend python manage.py test
+docker compose exec -T frontend npm install
+docker compose exec -T frontend npm run lint
+docker compose exec -T frontend npm run build
+```
+
+### Alcance conservado
+
+- Django Admin se mantiene.
+- Las vistas Django existentes se mantienen como respaldo operativo.
+- El frontend enlaza a rutas actuales del backend para funciones aún no migradas.
+- No se implementa Bloque 9.
+- No se implementan PDF ni Excel.
+- No se duplican reglas académicas en React.
+
+## Bloque 10B - Portal con datos vivos
+
+Se implementa la primera capa de datos vivos del portal Next.js creado en el Bloque 10A. El frontend deja de depender solo de placeholders y consume APIs Django para mostrar informacion autorizada por rol/cargo, manteniendo a Django como fuente de verdad funcional y de permisos.
+
+### Alcance implementado
+
+- Dashboard con resumen calculado por usuario autenticado.
+- Campana de notificaciones con contador de no leidas, listado, marcar una como leida y marcar todas.
+- Actividad reciente basada en eventos existentes del backend, sin datos inventados.
+- Calendario institucional con eventos visibles por rol/cargo/carrera/grupo.
+- Eventos proximos derivados del calendario institucional.
+- Buscador superior con resultados agrupados y filtrados por permisos.
+- Ruta `/perfil` con informacion del usuario en solo lectura.
+- Accesos rapidos/favoritos por usuario, con fallback estatico por rol cuando no hay favoritos guardados.
+
+### Modelos agregados
+
+- `NotificacionUsuario`: avisos dirigidos a usuarios del portal.
+- `EventoCalendarioInstitucional`: eventos del calendario institucional, filtrables por periodo, carrera, grupo y roles destino.
+- `AccesoRapidoUsuario`: accesos rapidos persistentes por usuario.
+
+### Servicios agregados
+
+- `portal_context`: resuelve roles, cargos, perfil principal y ambito del usuario.
+- `dashboard_resumen`: arma tarjetas del dashboard con datos reales disponibles.
+- `actividad_reciente`: consolida eventos recientes desde actas, capturas y movimientos academicos.
+- `eventos_mes` y `eventos_proximos`: filtran calendario institucional por permisos.
+- `busqueda`: busca usuarios, discentes, grupos, programas, actas y periodos segun permisos.
+- `crear_notificacion_usuario`: punto simple para generar notificaciones desde backend.
+- `notificar_acta_publicada_para_discentes`: servicio preparado para avisar a discentes cuando un acta publicada aplique.
+
+### APIs nuevas
+
+- `GET /api/dashboard/resumen/`
+- `GET /api/dashboard/actividad-reciente/`
+- `GET /api/notificaciones/`
+- `POST /api/notificaciones/<id>/leer/`
+- `POST /api/notificaciones/leer-todas/`
+- `GET /api/calendario/mes/?year=YYYY&month=M`
+- `GET /api/calendario/proximos/`
+- `GET /api/busqueda/?q=texto`
+- `GET /api/perfil/me/`
+- `GET /api/accesos-rapidos/`
+- `POST /api/accesos-rapidos/crear/`
+- `DELETE /api/accesos-rapidos/<id>/`
+
+Todas las APIs anteriores requieren autenticacion. Las operaciones de escritura mantienen CSRF y sesiones Django.
+
+### Rutas frontend actualizadas
+
+- `/dashboard`: consume resumen vivo y accesos rapidos.
+- `/perfil`: muestra datos del usuario autenticado en solo lectura.
+- `Topbar`: integra busqueda, notificaciones y menu de usuario.
+- `DashboardSidePanel`: integra actividad reciente, calendario y eventos proximos.
+
+### Seguridad y permisos
+
+- No se implementa JWT.
+- No se usan tokens en `localStorage`.
+- Se mantienen sesiones Django, cookies y CSRF.
+- El backend filtra datos por usuario, rol/cargo y ambito institucional.
+- El discente no recibe kárdex oficial en dashboard ni busqueda.
+- Las notificaciones solo son visibles para su usuario dueño.
+- El calendario filtra eventos visibles y aplicables al contexto del usuario.
+
+### Estados vacios
+
+Cuando no existen registros vivos, el portal muestra mensajes controlados, por ejemplo:
+
+- No hay actividad reciente registrada.
+- No hay eventos en el mes.
+- No hay eventos proximos registrados.
+- No hay resultados para tu perfil.
+
+No se generan metricas ni eventos inventados en el frontend.
+
+### Validaciones ejecutadas
+
+```bash
+docker compose exec -T backend python manage.py check
+docker compose exec -T backend python manage.py makemigrations --check
+docker compose exec -T backend python manage.py test core
+docker compose exec -T backend python manage.py test
+docker compose exec -T frontend npm run lint
+docker compose exec -T frontend npm run build
+docker compose exec -T backend python manage.py migrate
+```
+
+### Fuera de este bloque
+
+No se implementa Bloque 9, PDF, Excel, WebSockets, JWT, MFA/OTP, IdP externo, migracion completa de actas a React, migracion completa de captura de calificaciones a React, migracion completa de kárdex a React ni cambio de reglas academicas.
+
+### Pendientes naturales para 10C
+
+- Conectar eventos automaticos completos desde actas, cierre/apertura de periodo y trayectoria hacia notificaciones.
+- Permitir administracion operativa del calendario institucional desde pantallas dedicadas.
+- Hacer favoritos editables desde el portal visual.
+- Implementar resultados de busqueda con rutas React propias conforme se migren modulos.
+- Mejorar auditoria fina de actividad reciente si se requiere una bitacora transversal formal.
+
+## Bloque 9A - Núcleo común de exportaciones y auditoría
+
+Se implementa la base común para registrar y auditar salidas documentales del sistema, sin generar todavía documentos PDF/Excel finales. Este bloque prepara la infraestructura para los subbloques posteriores de actas, kárdex y reportes operativos.
+
+### Objetivo
+
+Registrar toda exportación relevante como evidencia de auditoría, centralizar permisos base por rol/cargo y exponer APIs para que el portal pueda consultar catálogo e historial de exportaciones en fases posteriores.
+
+### Modelo principal
+
+Se agrega `RegistroExportacion` en la app `reportes`.
+
+Campos principales:
+
+- `usuario`
+- `tipo_documento`
+- `formato`
+- `nombre_documento`
+- `nombre_archivo`
+- `objeto_tipo`
+- `objeto_id`
+- `objeto_repr`
+- `filtros_json`
+- `parametros_json`
+- `rol_contexto`
+- `cargo_contexto`
+- `ip_origen`
+- `user_agent`
+- `estado`
+- `mensaje_error`
+- `tamano_bytes`
+- `hash_archivo`
+- `creado_en`
+- `finalizado_en`
+
+Estados soportados:
+
+- `SOLICITADA`
+- `GENERADA`
+- `FALLIDA`
+- `DESCARGADA`
+
+Formatos previstos:
+
+- `PDF`
+- `XLSX`
+- `CSV`
+
+### Catálogo de exportaciones
+
+Se crea un catálogo inicial en código con documentos y reportes previstos:
+
+- actas de evaluación parcial;
+- actas de evaluación final;
+- actas de calificación final;
+- kárdex oficial;
+- historial académico interno;
+- actas por estado;
+- actas pendientes de validación;
+- inconformidades y conformidades pendientes;
+- desempeño académico;
+- situación académica;
+- validaciones de acta;
+- exportaciones realizadas;
+- movimientos académicos;
+- auditoría de eventos.
+
+En 9A queda implementado el núcleo de catálogo/auditoría. La generación real de documentos queda marcada como pendiente para 9B, 9C, 9F, 9G y 9I.
+
+### Servicios creados
+
+- `CatalogoExportaciones`: expone el catálogo filtrado por permisos.
+- `ServicioPermisosExportacion`: define permisos base por rol/cargo.
+- `ServicioExportacion`: registra solicitudes, marca exportaciones generadas o fallidas y captura IP/user agent.
+- `construir_nombre_archivo`: normaliza nombres de archivo seguros.
+- `limpiar_json_seguro`: remueve llaves sensibles de filtros/parámetros antes de auditar.
+
+### APIs creadas
+
+- `GET /api/reportes/catalogo/`
+- `GET /api/exportaciones/`
+- `GET /api/auditoria/exportaciones/`
+- `POST /api/exportaciones/registrar-evento-prueba/`
+
+El endpoint de prueba es técnico, restringido a Admin/Estadística y sirve para validar auditoría sin generar documentos finales.
+
+### Reglas de permisos
+
+- Todas las APIs requieren autenticación.
+- Admin/superusuario puede consultar catálogo completo y auditoría.
+- Estadística puede consultar catálogo institucional y auditoría de exportaciones.
+- Jefatura de carrera ve actas y reportes operativos de su ámbito previsto.
+- Jefatura académica/pedagógica ve documentos institucionales autorizados.
+- Docente ve únicamente exportaciones potenciales de actas propias.
+- Discente no ve kárdex oficial ni reportes globales como exportables.
+- El backend valida permisos; el frontend no es fuente de autorización.
+
+### Admin Django
+
+`RegistroExportacion` queda registrado en Django Admin como consulta técnica:
+
+- campos en solo lectura;
+- sin alta manual desde admin;
+- sin edición ordinaria;
+- sin eliminación ordinaria;
+- sin acción masiva de borrado.
+
+### Seguridad documental
+
+- No se guardan archivos físicos en 9A.
+- No se almacenan payloads completos de documentos.
+- No se guardan contraseñas, tokens, cookies, CSRF ni credenciales en `filtros_json` o `parametros_json`.
+- El registro es evidencia append-only: si algo debe corregirse, se registra otro evento.
+- No se modifican actas formalizadas, kárdex ni reglas académicas.
+
+### Validación
+
+```bash
+docker compose exec -T backend python manage.py check
+docker compose exec -T backend python manage.py makemigrations reportes
+docker compose exec -T backend python manage.py migrate
+docker compose exec -T backend python manage.py makemigrations --check
+docker compose exec -T backend python manage.py test reportes
+docker compose exec -T backend python manage.py test
+```
+
+Resultados locales:
+
+- `check`: OK.
+- `migrate`: OK, `reportes.0001_initial` aplicado.
+- `makemigrations --check`: OK, sin cambios pendientes.
+- `test reportes`: 14 pruebas OK.
+- `test`: 314 pruebas OK.
+
+### Fuera de alcance
+
+No se implementa todavía:
+
+- PDF real de actas;
+- Excel real de actas;
+- kárdex PDF;
+- historial exportable;
+- reportes de desempeño reales;
+- reportes de situación académica reales;
+- importación desde Excel;
+- almacenamiento físico permanente de archivos;
+- firma electrónica;
+- QR o sello digital;
+- pantallas React de reportes.
+
+### Relación con siguientes bloques
+
+- 9B conectará generadores reales de actas PDF/Excel usando `ServicioExportacion`.
+- 9C podrá conectar kárdex PDF manteniendo la regla de no exposición al discente.
+- 9F/9G/9I podrán construir reportes operativos y académicos sobre el catálogo.
+- 10C podrá consumir las APIs para mostrar catálogo, historial y estados de exportación en el portal.
