@@ -1,5 +1,6 @@
 import hashlib
 from dataclasses import dataclass
+from io import BytesIO
 from decimal import Decimal, ROUND_HALF_UP
 from statistics import StatisticsError, mode
 
@@ -10,6 +11,8 @@ from django.utils.dateparse import parse_date
 
 from core.portal_services import portal_context
 from evaluacion.models import Acta, CalificacionComponente, ComponenteEvaluacion, DetalleActa
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from relaciones.models import InscripcionMateria
 from trayectoria.models import CatalogoResultadoAcademico
 
@@ -291,7 +294,10 @@ class ServicioReportesDesempeno:
         )
         try:
             data = self.vista_previa(slug, params)
-            contenido = generar_reporte_xlsx(titulo=config.nombre, filtros=filtros, sheets=data.sheets)
+            if slug == "cuadro-aprovechamiento":
+                contenido = _generar_cuadro_aprovechamiento_xlsx(filtros=filtros, rows=data.sheets[0].filas if data.sheets else [])
+            else:
+                contenido = generar_reporte_xlsx(titulo=config.nombre, filtros=filtros, sheets=data.sheets)
         except Exception as exc:
             self.servicio_exportacion.marcar_fallida(registro, exc)
             raise
@@ -998,6 +1004,168 @@ def _rango_aprovechamiento(promedio):
         if minimum <= promedio <= maximum:
             return label
     return ""
+
+
+def _generar_cuadro_aprovechamiento_xlsx(*, filtros, rows):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Cuadro"
+    thin = Side(style="thin", color="D8C5A7")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    green_fill = PatternFill("solid", fgColor="073F34")
+    burgundy_fill = PatternFill("solid", fgColor="611232")
+    beige_fill = PatternFill("solid", fgColor="FFF7E8")
+    header_fill = PatternFill("solid", fgColor="235B4E")
+    columns = [
+        ("grupo", "Grupo"),
+        ("lugar", "No."),
+        ("grado", "Grado y empleo"),
+        ("nombre_discente", "Nombre"),
+        ("promedio", "Promedio"),
+    ]
+    max_col = len(columns)
+
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max_col)
+    ws["A1"] = "Sistema de Control Académico EMI - ICI"
+    ws["A1"].font = Font(bold=True, size=14, color="FFFFFF")
+    ws["A1"].fill = burgundy_fill
+    ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
+
+    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=max_col)
+    ws["A2"] = "Cuadro de aprovechamiento académico"
+    ws["A2"].font = Font(bold=True, size=12, color="10372E")
+    ws["A2"].alignment = Alignment(horizontal="center", vertical="center")
+
+    ws.merge_cells(start_row=3, start_column=1, end_row=3, end_column=max_col)
+    ws["A3"] = "Relación de discentes agrupados por rango de aprovechamiento."
+    ws["A3"].font = Font(italic=True, color="5F6764")
+    ws["A3"].alignment = Alignment(horizontal="center", vertical="center")
+
+    filtros_texto = ", ".join(f"{key}: {value}" for key, value in filtros.items() if value not in ("", None, [])) or "Sin filtros"
+    ws.merge_cells(start_row=4, start_column=1, end_row=4, end_column=max_col)
+    ws["A4"] = f"Filtros aplicados: {filtros_texto}"
+    ws["A4"].font = Font(italic=True, color="5F6764")
+    ws["A4"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    current_row = 6
+    for rango, grouped_rows in _agrupar_cuadro_por_rango_y_grupo(rows):
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=max_col)
+        range_cell = ws.cell(row=current_row, column=1, value=rango)
+        range_cell.font = Font(bold=True, color="FFFFFF")
+        range_cell.fill = green_fill
+        range_cell.alignment = Alignment(horizontal="center", vertical="center")
+        current_row += 1
+
+        for col_idx, (_, label) in enumerate(columns, start=1):
+            cell = ws.cell(row=current_row, column=col_idx, value=label)
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = header_fill
+            cell.border = border
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        current_row += 1
+
+        for group, group_rows in grouped_rows:
+            group_start = current_row
+            for item in group_rows:
+                for col_idx, (key, _) in enumerate(columns, start=1):
+                    raw_value = item.get(key, "")
+                    value = _decimal_or_original(raw_value) if key == "promedio" else raw_value
+                    cell = ws.cell(row=current_row, column=col_idx, value=value)
+                    cell.border = border
+                    cell.alignment = Alignment(vertical="top", wrap_text=True)
+                    if key in {"grupo", "lugar", "promedio"}:
+                        cell.alignment = Alignment(horizontal="center", vertical="top", wrap_text=True)
+                    if key == "promedio":
+                        cell.number_format = "0.0"
+                        cell.font = Font(bold=True, color="611232")
+                current_row += 1
+            if current_row - group_start > 1:
+                ws.merge_cells(start_row=group_start, start_column=1, end_row=current_row - 1, end_column=1)
+                ws.cell(row=group_start, column=1).alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            ws.cell(row=group_start, column=1, value=group)
+
+        current_row += 1
+
+    if not rows:
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=max_col)
+        cell = ws.cell(row=current_row, column=1, value="Sin información disponible.")
+        cell.fill = beige_fill
+        cell.border = border
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    for column, width in {"A": 18, "B": 10, "C": 24, "D": 42, "E": 14}.items():
+        ws.column_dimensions[column].width = width
+
+    for row in range(1, current_row + 1):
+        ws.row_dimensions[row].height = 22
+
+    ws.freeze_panes = "A7"
+    ws.sheet_view.showGridLines = False
+    ws.page_setup.orientation = "portrait"
+    ws.page_setup.paperSize = ws.PAPERSIZE_LETTER
+    ws.page_margins.left = 0.35
+    ws.page_margins.right = 0.35
+    ws.page_margins.top = 0.45
+    ws.page_margins.bottom = 0.45
+    ws.print_title_rows = "1:6"
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+
+    _agregar_resumen_cuadro(wb, rows, border, header_fill)
+    stream = BytesIO()
+    wb.save(stream)
+    return stream.getvalue()
+
+
+def _agrupar_cuadro_por_rango_y_grupo(rows):
+    ranges = []
+    seen_ranges = {}
+    for item in rows:
+        rango = item.get("rango_aprovechamiento") or "Sin rango"
+        group = item.get("grupo") or "Sin grupo"
+        if rango not in seen_ranges:
+            seen_ranges[rango] = {}
+            ranges.append((rango, seen_ranges[rango]))
+        seen_ranges[rango].setdefault(group, []).append(item)
+    return [(rango, list(groups.items())) for rango, groups in ranges]
+
+
+def _agregar_resumen_cuadro(wb, rows, border, header_fill):
+    ws = wb.create_sheet("Resumen por rango")
+    resumen = {}
+    for item in rows:
+        rango = item.get("rango_aprovechamiento") or "Sin rango"
+        resumen[rango] = resumen.get(rango, 0) + 1
+
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=2)
+    ws["A1"] = "Resumen por rango"
+    ws["A1"].font = Font(bold=True, size=12, color="10372E")
+    ws["A1"].alignment = Alignment(horizontal="center")
+
+    for col_idx, label in enumerate(("Rango de aprovechamiento", "Total"), start=1):
+        cell = ws.cell(row=3, column=col_idx, value=label)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = header_fill
+        cell.border = border
+        cell.alignment = Alignment(horizontal="center")
+    for row_idx, (rango, total) in enumerate(resumen.items(), start=4):
+        ws.cell(row=row_idx, column=1, value=rango).border = border
+        ws.cell(row=row_idx, column=2, value=total).border = border
+        ws.cell(row=row_idx, column=2).alignment = Alignment(horizontal="center")
+
+    ws.column_dimensions["A"].width = 42
+    ws.column_dimensions["B"].width = 14
+    ws.sheet_view.showGridLines = False
+
+
+def _decimal_or_original(value):
+    if value in ("", None):
+        return value
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return value
 
 
 def _percent(value, total):
