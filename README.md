@@ -2928,3 +2928,48 @@ Comandos ejecutados durante el bloque:
 Resumen técnico:
 
 - `docs/resumen_bloque10d3_terminologia_microcopy_ui.md`
+
+## Bloque 10E - QA integral y demo final
+
+### Objetivo
+
+Se valida el MVP de punta a punta para dejar una version candidata de demostracion: Docker Compose, backend Django, frontend Next.js, rutas principales, permisos basicos, suites automaticas, documentacion de evidencia y guia de demo.
+
+### Cambios principales
+
+- Se crea `docs/qa_10e/` con resumen de cierre, evidencia de comandos, checklists por rol, checklists por modulo, matriz de defectos, backlog post-10E y guia de demo final.
+- Se valida Docker Compose con build/up/ps y salud interna de backend/frontend.
+- Se ejecutan suites backend por app y suite completa.
+- Se ejecutan lint/build frontend y validacion de rutas principales.
+- Se corrige un defecto P1 de ambiente demo: el frontend limpia el contenido del volumen `.next` antes de `next dev` para evitar chunks stale despues de rebuild/recreate.
+
+### Validacion
+
+Comandos ejecutados durante el bloque:
+
+- `docker compose ps`
+- `docker compose build`
+- `docker compose up -d`
+- `docker compose config --quiet`
+- `docker compose exec -T backend python manage.py check`
+- `docker compose exec -T backend python manage.py makemigrations --check`
+- `docker compose exec -T backend python manage.py showmigrations`
+- `docker compose exec -T backend python manage.py test usuarios`
+- `docker compose exec -T backend python manage.py test catalogos`
+- `docker compose exec -T backend python manage.py test relaciones`
+- `docker compose exec -T backend python manage.py test evaluacion`
+- `docker compose exec -T backend python manage.py test actas`
+- `docker compose exec -T backend python manage.py test trayectoria`
+- `docker compose exec -T backend python manage.py test reportes`
+- `docker compose exec -T backend python manage.py test auditoria`
+- `docker compose exec -T backend python manage.py test core`
+- `docker compose exec -T backend python manage.py test`
+- `docker compose exec -T frontend npm run lint`
+- `docker compose exec -T frontend npm run build`
+- `docker compose exec -T frontend npm test --if-present`
+
+Dictamen: aprobado con observaciones. No hay P0/P1 abiertos; los P2 quedan documentados en `docs/qa_10e/backlog_post_10e.md`.
+
+Resumen tecnico:
+
+- `docs/qa_10e/resumen_bloque10e_qa_integral.md`
