@@ -1,11 +1,17 @@
 import type { AuthenticatedUser, ReporteOperativoCodigo, ReporteOperativoConfig, ReporteOperativoFiltro } from "./types";
 
+const filtroPeriodo: ReporteOperativoFiltro = { key: "periodo", label: "Periodo académico", type: "relation", relation: { endpoint: "/api/catalogos/periodos/", valueKey: "id", labelKey: "label", search: true } };
+const filtroCarrera: ReporteOperativoFiltro = { key: "carrera", label: "Carrera", type: "relation", relation: { endpoint: "/api/catalogos/carreras/", valueKey: "id", labelKey: "label", activeOnly: true, search: true } };
+const filtroGrupo: ReporteOperativoFiltro = { key: "grupo", label: "Grupo", type: "relation", relation: { endpoint: "/api/catalogos/grupos/", valueKey: "id", labelKey: "label", activeOnly: true, search: true } };
+const filtroAsignatura: ReporteOperativoFiltro = { key: "asignatura", label: "Asignatura", type: "relation", relation: { endpoint: "/api/catalogos/materias/", valueKey: "clave", labelKey: "label", activeOnly: true, search: true } };
+const filtroDocente: ReporteOperativoFiltro = { key: "docente", label: "Docente", type: "relation", relation: { endpoint: "/api/admin/usuarios/", valueKey: "username", labelKey: "label", search: true, queryParams: { activo: true } } };
+
 const filtrosActas: ReporteOperativoFiltro[] = [
-  { key: "periodo", label: "Periodo académico", placeholder: "Ej. 2025-2026" },
-  { key: "carrera", label: "Carrera", placeholder: "Ej. ICI" },
-  { key: "grupo", label: "Grupo", placeholder: "Ej. ICI-4A" },
-  { key: "asignatura", label: "Asignatura", placeholder: "Unidad de aprendizaje" },
-  { key: "docente", label: "Docente", placeholder: "Nombre o usuario" },
+  filtroPeriodo,
+  filtroCarrera,
+  filtroGrupo,
+  filtroAsignatura,
+  filtroDocente,
   {
     key: "corte",
     label: "Corte",
@@ -50,10 +56,10 @@ const filtrosPendientes: ReporteOperativoFiltro[] = [
 ];
 
 const filtrosValidaciones: ReporteOperativoFiltro[] = [
-  { key: "periodo", label: "Periodo académico", placeholder: "Ej. 2025-2026" },
-  { key: "carrera", label: "Carrera", placeholder: "Ej. ICI" },
-  { key: "grupo", label: "Grupo", placeholder: "Ej. ICI-4A" },
-  { key: "usuario", label: "Usuario firmante", placeholder: "Nombre o usuario" },
+  filtroPeriodo,
+  filtroCarrera,
+  filtroGrupo,
+  { key: "usuario", label: "Usuario firmante", type: "relation", relation: { endpoint: "/api/admin/usuarios/", valueKey: "username", labelKey: "label", search: true, queryParams: { activo: true } } },
   {
     key: "etapa_validacion",
     label: "Etapa",
@@ -79,7 +85,7 @@ const filtrosValidaciones: ReporteOperativoFiltro[] = [
       { value: "ARCHIVA", label: "Archiva" },
     ],
   },
-  { key: "cargo", label: "Cargo", placeholder: "Código de cargo" },
+  { key: "cargo", label: "Cargo", placeholder: "Código de cargo o texto" },
   { key: "fecha_desde", label: "Desde", type: "date" },
   { key: "fecha_hasta", label: "Hasta", type: "date" },
 ];
@@ -88,7 +94,20 @@ const filtrosExportaciones: ReporteOperativoFiltro[] = [
   { key: "fecha_desde", label: "Desde", type: "date" },
   { key: "fecha_hasta", label: "Hasta", type: "date" },
   { key: "usuario", label: "Usuario", placeholder: "Nombre o usuario" },
-  { key: "tipo_documento", label: "Tipo documental", placeholder: "Ej. REPORTE_ACTAS_ESTADO" },
+  {
+    key: "tipo_documento",
+    label: "Tipo documental",
+    type: "select",
+    options: [
+      { value: "", label: "Todos" },
+      { value: "REPORTE_ACTAS_ESTADO", label: "Actas por estado" },
+      { value: "REPORTE_INCONFORMIDADES", label: "Inconformidades" },
+      { value: "REPORTE_EXPORTACIONES", label: "Exportaciones" },
+      { value: "ACTA_EVALUACION_PARCIAL", label: "Acta parcial" },
+      { value: "ACTA_EVALUACION_FINAL", label: "Acta final" },
+      { value: "KARDEX_OFICIAL", label: "Kárdex oficial" },
+    ],
+  },
   {
     key: "formato",
     label: "Formato",
@@ -151,7 +170,7 @@ export const reportesOperativos: ReporteOperativoConfig[] = [
     filtros: filtrosActas,
     columnasDestacadas: ["acta_id", "periodo", "carrera", "grupo", "asignatura", "nombre_discente", "fecha_inconformidad"],
     rolesSugeridos: ["ADMIN", "ENCARGADO_ESTADISTICA", "JEFE_CARRERA", "JEFE_ACADEMICO", "JEFE_PEDAGOGICA"],
-    ayuda: "El comentario se muestra solo a perfiles autorizados por el backend.",
+    ayuda: "La vista previa no muestra el comentario completo; el XLSX autorizado conserva el detalle según reglas institucionales.",
   },
   {
     slug: "sin-conformidad",

@@ -25,21 +25,14 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
     description: "Soporte técnico, usuarios, roles, cargos y estado institucional del sistema.",
     allowed: ["ADMIN", "ADMIN_SISTEMA"],
     cards: [
-      { title: "Usuarios", description: "Gestión técnica de usuarios y perfiles desde el portal.", href: "/administracion/usuarios" },
-      { title: "Administración", description: "Usuarios, grados, unidades, cargos y roles desde el portal.", href: "/administracion" },
+      { title: "Administración institucional", description: "Usuarios, grados, unidades, cargos y roles desde el portal.", href: "/administracion" },
       { title: "Catálogos académicos", description: "Carreras, planes, periodos, grupos, materias y esquemas.", href: "/catalogos" },
-      { title: "Actas y operación académica", description: "Consulta operativa de actas, estados y exportaciones.", href: "/estadistica/actas" },
-      { title: "Trayectoria y cierre", description: "Historiales, extraordinarios, movimientos y cierre/apertura de periodo.", href: "/trayectoria" },
+      { title: "Consulta institucional de actas", description: "Estados, cortes, validaciones y formalización desde el portal.", href: "/estadistica/actas" },
+      { title: "Consulta institucional de trayectoria", description: "Historiales, extraordinarios, movimientos y situaciones académicas.", href: "/trayectoria/historial" },
       { title: "Periodos operativos", description: "Diagnóstico, cierre, apertura y pendientes de asignación docente.", href: "/periodos" },
-      { title: "Roles y cargos", description: "Grupos, cargos y unidades organizacionales desde el portal.", href: "/administracion/cargos" },
-      { title: "Unidades organizacionales", description: "Secciones y subsecciones institucionales.", href: "/administracion/unidades" },
-      { title: "Reportes y exportaciones", description: "Catálogo, actas exportables e historial documental.", href: "/reportes" },
-      { title: "Reportes operativos y auditoría", description: "Actas, validaciones y exportaciones en XLSX.", href: "/reportes/operativos" },
-      { title: "Reportes de desempeño", description: "Aprobados, reprobados, promedios y aprovechamiento académico.", href: "/reportes/desempeno" },
-      { title: "Reportes de trayectoria", description: "Situación académica, movimientos e historial interno.", href: "/reportes/trayectoria" },
-      { title: "Kárdex oficial", description: "Exportación PDF institucional de kárdex.", href: "/reportes/kardex" },
-      { title: "Auditoría de exportaciones", description: "Trazabilidad institucional de documentos generados.", href: "/reportes/auditoria" },
-      { title: "Django Admin", description: "Administración técnica completa.", href: "/admin/", backend: true },
+      { title: "Reportes institucionales", description: "Documentos oficiales, reportes operativos, desempeño y trayectoria.", href: "/reportes" },
+      { title: "Auditoría institucional", description: "Eventos críticos y exportaciones auditadas con permisos separados.", href: "/reportes/auditoria" },
+      { title: "Django Admin", description: "Soporte técnico avanzado fuera del flujo operativo cotidiano.", href: "/admin/", backend: true },
       { title: "Estado técnico", description: "Health check del backend.", href: "/health/", backend: true },
     ],
   },
@@ -53,16 +46,10 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
       { title: "Usuarios académicos", description: "Consulta operativa de usuarios institucionales autorizados.", href: "/administracion/usuarios" },
       { title: "Consulta de actas", description: "Consulta operativa de estados, cortes y exportaciones.", href: "/estadistica/actas" },
       { title: "Trayectoria académica", description: "Historial institucional, extraordinarios, situaciones y movimientos.", href: "/trayectoria" },
-      { title: "Extraordinarios", description: "Registro y seguimiento de evaluaciones extraordinarias.", href: "/trayectoria/extraordinarios" },
-      { title: "Situaciones académicas", description: "Bajas temporales, definitivas y reingresos.", href: "/trayectoria/situaciones" },
       { title: "Movimientos académicos", description: "Cambios de grupo y movimientos operativos.", href: "/movimientos-academicos" },
       { title: "Cierre y apertura", description: "Diagnóstico, cierre, apertura y pendientes docentes.", href: "/periodos" },
-      { title: "Kárdex institucional", description: "Vista oficial derivada, no visible para discentes.", href: "/reportes/kardex" },
-      { title: "Reportes y exportaciones", description: "Actas PDF/XLSX, historial y catálogo de reportes.", href: "/reportes" },
-      { title: "Reportes operativos", description: "Actas, validaciones y exportaciones en XLSX.", href: "/reportes/operativos" },
-      { title: "Desempeño académico", description: "Aprobados, reprobados, promedios y aprovechamiento.", href: "/reportes/desempeno" },
-      { title: "Situación académica y trayectoria", description: "Extraordinarios, bajas, reingresos, movimientos e historial interno.", href: "/reportes/trayectoria" },
-      { title: "Kárdex oficial PDF", description: "Exportación institucional para perfiles autorizados.", href: "/reportes/kardex" },
+      { title: "Reportes institucionales", description: "Actas, desempeño, trayectoria, kárdex y exportaciones.", href: "/reportes" },
+      { title: "Auditoría institucional", description: "Eventos críticos y trazabilidad de exportaciones.", href: "/reportes/auditoria" },
     ],
   },
   docente: {
@@ -71,11 +58,9 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
     description: "Asignaciones docentes, captura preliminar y actas asociadas.",
     allowed: ["DOCENTE"],
     cards: [
-      { title: "Mis asignaciones", description: "Grupos, programas y accesos a captura preliminar.", href: "/docente/asignaciones" },
-      { title: "Captura de calificaciones", description: "Captura preliminar por corte desde el portal.", href: "/docente/asignaciones" },
+      { title: "Mis asignaciones y captura", description: "Consulta tus grupos, captura calificaciones por corte y revisa resúmenes.", href: "/docente/asignaciones" },
       { title: "Mis actas", description: "Borradores, publicación, remisión y exportación.", href: "/docente/actas" },
       { title: "Exportar mis actas", description: "Descarga PDF/XLSX de actas propias autorizadas.", href: "/reportes/actas" },
-      { title: "Resumen académico", description: "Resumen de cálculo por asignación.", badge: "Backend actual" },
     ],
   },
   discente: {
@@ -84,10 +69,9 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
     description: "Carga académica, actas publicadas e historial académico personal.",
     allowed: ["DISCENTE"],
     cards: [
+      { title: "Mi carga académica", description: "Asignaturas inscritas, docente, grupo y estado de actas visibles.", href: "/discente/carga-academica" },
       { title: "Mis actas publicadas", description: "Consulta de resultados y conformidad informativa.", href: "/discente/actas" },
-      { title: "Mis calificaciones publicadas", description: "Detalle individual de actas publicadas.", href: "/discente/actas" },
       { title: "Mi historial académico", description: "Trayectoria académica personal.", href: "/trayectoria/mi-historial" },
-      { title: "Situación académica", description: "Estado académico vigente.", href: "/trayectoria/mi-historial" },
     ],
   },
   jefaturaCarrera: {
@@ -98,12 +82,12 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
     cards: [
       { title: "Actas por validar", description: "Validación de actas remitidas por docentes.", href: "/jefatura-carrera/actas" },
       { title: "Pendientes de asignación docente", description: "Diagnóstico previo a cierre de periodo.", href: "/periodos/pendientes-asignacion-docente" },
-      { title: "Trayectoria de mi carrera", description: "Historiales, movimientos y pendientes en ámbito autorizado.", href: "/trayectoria" },
+      { title: "Trayectoria operativa de mi carrera", description: "Consulta historiales y seguimiento de discentes de tu ámbito.", href: "/trayectoria/historial" },
       { title: "Catálogos de mi ámbito", description: "Consulta de estructura académica autorizada.", href: "/catalogos" },
       { title: "Actas exportables", description: "Descarga documental de actas del ámbito autorizado.", href: "/reportes/actas" },
       { title: "Seguimiento de actas", description: "Reportes operativos filtrados por ámbito.", href: "/reportes/operativos" },
       { title: "Desempeño de mi carrera", description: "Indicadores académicos filtrados por ámbito.", href: "/reportes/desempeno" },
-      { title: "Trayectoria de mi carrera", description: "Situación, movimientos e historial interno del ámbito autorizado.", href: "/reportes/trayectoria" },
+      { title: "Reportes de trayectoria", description: "Reportes XLSX y vistas agregadas de situación, movimientos e historial interno.", href: "/reportes/trayectoria" },
       { title: "Kárdex oficial", description: "Exportación PDF de discentes del ámbito autorizado.", href: "/reportes/kardex" },
     ],
   },
@@ -115,13 +99,12 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
     cards: [
       { title: "Actas por formalizar", description: "Formalización de actas validadas por carrera.", href: "/jefatura-academica/actas" },
       { title: "Actas formalizadas", description: "Consulta institucional de actas.", href: "/estadistica/actas" },
-      { title: "Seguimiento de trayectoria", description: "Trayectoria, situaciones y procesos de periodo.", href: "/trayectoria" },
+      { title: "Seguimiento institucional de trayectoria", description: "Consulta historiales, situaciones y movimientos autorizados.", href: "/trayectoria/historial" },
       { title: "Catálogos académicos", description: "Consulta institucional de estructura académica.", href: "/catalogos" },
-      { title: "Cierres de periodo", description: "Consulta de diagnósticos, cierres y aperturas.", href: "/periodos" },
+      { title: "Procesos de cierre", description: "Consulta de diagnósticos, cierres y aperturas.", href: "/periodos/cierres" },
       { title: "Reportes y exportaciones", description: "Actas, historial de descargas y auditoría documental.", href: "/reportes" },
-      { title: "Reportes operativos", description: "Validaciones, pendientes y formalización de actas.", href: "/reportes/operativos" },
       { title: "Desempeño académico", description: "Indicadores institucionales y cuadro de aprovechamiento.", href: "/reportes/desempeno" },
-      { title: "Seguimiento de trayectoria", description: "Situación académica, bajas, reingresos e historial interno.", href: "/reportes/trayectoria" },
+      { title: "Reportes de trayectoria", description: "Situación académica, bajas, reingresos e historial interno.", href: "/reportes/trayectoria" },
       { title: "Kárdex oficial", description: "Consulta documental PDF de kárdex institucional.", href: "/reportes/kardex" },
     ],
   },
@@ -131,15 +114,11 @@ export const dashboardProfiles: Record<string, DashboardProfile> = {
     description: "Consulta académica, trayectoria y planeación/evaluación.",
     allowed: ["JEFE_PEDAGOGICA", "JEFE_SUB_PLAN_EVAL"],
     cards: [
-      { title: "Consulta académica operativa", description: "Reportes operativos autorizados desde el portal.", href: "/reportes/operativos" },
-      { title: "Historial y trayectoria", description: "Consulta de trayectoria académica.", href: "/trayectoria" },
-      { title: "Catálogos académicos", description: "Consulta autorizada de estructura académica.", href: "/catalogos" },
-      { title: "Indicadores futuros", description: "Pendiente de tableros analíticos.", badge: "Futuro" },
-      { title: "Reportes y exportaciones", description: "Catálogo documental y salidas disponibles.", href: "/reportes" },
-      { title: "Consulta institucional", description: "Reportes operativos autorizados en XLSX.", href: "/reportes/operativos" },
+      { title: "Reportes operativos", description: "Seguimiento autorizado de actas, validaciones y pendientes.", href: "/reportes/operativos" },
       { title: "Desempeño académico", description: "Reportes autorizados de resultados y aprovechamiento.", href: "/reportes/desempeno" },
-      { title: "Seguimiento de trayectoria", description: "Reportes autorizados de situación académica e historial interno.", href: "/reportes/trayectoria" },
-      { title: "Kárdex oficial", description: "Exportación PDF autorizada de kárdex.", href: "/reportes/kardex" },
+      { title: "Reportes de trayectoria", description: "Situación académica, movimientos e historial interno autorizado.", href: "/reportes/trayectoria" },
+      { title: "Auditoría de eventos críticos", description: "Consulta de eventos institucionales permitidos por perfil.", href: "/reportes/auditoria" },
+      { title: "Catálogos académicos", description: "Consulta autorizada de estructura académica.", href: "/catalogos" },
     ],
   },
 };
@@ -151,7 +130,7 @@ function roleValues(user: AuthenticatedUser) {
 export function getProfilesForUser(user: AuthenticatedUser) {
   const values = roleValues(user);
   if (user.roles.includes("ADMIN") || user.roles.includes("ADMIN_SISTEMA") || user.perfil_principal === "ADMIN") {
-    return Object.values(dashboardProfiles);
+    return [dashboardProfiles.admin];
   }
   return Object.values(dashboardProfiles).filter((profile) => profile.allowed.some((role) => values.has(role)));
 }
@@ -272,6 +251,11 @@ export function canAccessDocenteOperacion(user: AuthenticatedUser) {
 }
 
 export function canAccessDiscenteActas(user: AuthenticatedUser) {
+  const values = roleValues(user);
+  return values.has("DISCENTE");
+}
+
+export function canAccessDiscenteCargaAcademica(user: AuthenticatedUser) {
   const values = roleValues(user);
   return values.has("DISCENTE");
 }

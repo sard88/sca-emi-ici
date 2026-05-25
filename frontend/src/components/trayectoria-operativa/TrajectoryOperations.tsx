@@ -95,6 +95,15 @@ export function TrajectoryHomeCards() {
       allowed={canAccessTrayectoriaOperativa}
     >
       {(user) => {
+        if (canAccessMiHistorialAcademico(user) && !canAccessTrayectoriaInstitucional(user)) {
+          return (
+            <div className="grid gap-4 xl:grid-cols-2">
+              <ModuleCard title="Mi historial académico" href="/trayectoria/mi-historial" description="Consulta personal de resultados, eventos y movimientos visibles. No es kárdex oficial." tone="verde" />
+              <ModuleCard title="Mi carga académica" href="/discente/carga-academica" description="Asignaturas inscritas, docente, grupo y estado de actas visibles para tu perfil." />
+              <ModuleCard title="Mis actas publicadas" href="/discente/actas" description="Resultados publicados y conformidad informativa por acta." tone="dorado" />
+            </div>
+          );
+        }
         const institutional = canAccessTrayectoriaInstitucional(user);
         const operator = canOperateTrayectoria(user);
         return (

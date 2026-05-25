@@ -1,12 +1,19 @@
 import type { AuthenticatedUser, ReporteDesempenoCodigo, ReporteDesempenoConfig, ReporteDesempenoFiltro } from "./types";
 
+const filtroPeriodo: ReporteDesempenoFiltro = { key: "periodo", label: "Periodo", type: "relation", relation: { endpoint: "/api/catalogos/periodos/", valueKey: "id", labelKey: "label", search: true } };
+const filtroCarrera: ReporteDesempenoFiltro = { key: "carrera", label: "Carrera", type: "relation", relation: { endpoint: "/api/catalogos/carreras/", valueKey: "id", labelKey: "label", activeOnly: true, search: true } };
+const filtroGrupo: ReporteDesempenoFiltro = { key: "grupo", label: "Grupo", type: "relation", relation: { endpoint: "/api/catalogos/grupos/", valueKey: "id", labelKey: "label", activeOnly: true, search: true } };
+const filtroAsignatura: ReporteDesempenoFiltro = { key: "asignatura", label: "Asignatura", type: "relation", relation: { endpoint: "/api/catalogos/materias/", valueKey: "clave", labelKey: "label", activeOnly: true, search: true } };
+const filtroDocente: ReporteDesempenoFiltro = { key: "docente", label: "Docente", type: "relation", relation: { endpoint: "/api/admin/usuarios/", valueKey: "username", labelKey: "label", search: true, queryParams: { activo: true } } };
+const filtroAntiguedad: ReporteDesempenoFiltro = { key: "antiguedad", label: "Antigüedad", type: "relation", relation: { endpoint: "/api/catalogos/antiguedades/", valueKey: "id", labelKey: "label", activeOnly: true, search: true } };
+
 const filtrosBase: ReporteDesempenoFiltro[] = [
-  { key: "periodo", label: "Periodo", placeholder: "Ej. 2025-2026" },
-  { key: "carrera", label: "Carrera", placeholder: "Ej. ICI" },
-  { key: "grupo", label: "Grupo", placeholder: "Ej. ICI-4A" },
-  { key: "asignatura", label: "Asignatura", placeholder: "Unidad de aprendizaje" },
-  { key: "docente", label: "Docente", placeholder: "Nombre o usuario" },
-  { key: "antiguedad", label: "Antigüedad", placeholder: "Ej. 2025" },
+  filtroPeriodo,
+  filtroCarrera,
+  filtroGrupo,
+  filtroAsignatura,
+  filtroDocente,
+  filtroAntiguedad,
   { key: "anio_formacion", label: "Año de formación", type: "select", options: numericOptions("Todos", 1, 6) },
   { key: "semestre", label: "Semestre", type: "select", options: numericOptions("Todos", 1, 12) },
   { key: "fecha_desde", label: "Desde", type: "date" },

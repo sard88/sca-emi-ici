@@ -14,6 +14,7 @@ import type {
   CambioGrupoPayload,
   DashboardResumen,
   DiagnosticoCierrePeriodoDTO,
+  DiscenteCargaAcademicaResponse,
   DiscenteActaDetalle,
   DiscenteActasResponse,
   DownloadResult,
@@ -604,6 +605,10 @@ export async function remitirActaDocente(actaId: number | string) {
 
 export async function getDiscenteActas() {
   return apiGet<DiscenteActasResponse>("/api/discente/actas/");
+}
+
+export async function getDiscenteCargaAcademica() {
+  return apiGet<DiscenteCargaAcademicaResponse>("/api/discente/carga-academica/");
 }
 
 export async function getDiscenteActaDetalle(detalleId: number | string) {

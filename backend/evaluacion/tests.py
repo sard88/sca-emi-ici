@@ -1812,6 +1812,40 @@ class ActaFormalBloque6Tests(CapturaCalificacionPreliminarBaseTests):
         self.assertEqual(response.json()["items"][0]["acta_id"], acta.id)
         self.assertNotIn("CAP0001", response.content.decode())
 
+    def test_api_discente_carga_academica_solo_propia_y_no_muestra_matricula(self):
+        self.publicar_acta_p1()
+        usuario_model = get_user_model()
+        otro_usuario = usuario_model.objects.create_user(username="otro_discente_carga", password="segura123")
+        otro_usuario.groups.add(self.grupo_discente)
+        otro_discente = Discente.objects.create(
+            usuario=otro_usuario,
+            matricula="CAP9999",
+            plan_estudios=self.plan,
+            antiguedad=self.antiguedad,
+        )
+        AdscripcionGrupo.objects.create(discente=otro_discente, grupo_academico=self.grupo)
+        InscripcionMateria.objects.get_or_create(discente=otro_discente, asignacion_docente=self.asignacion)
+        self.client.force_login(self.usuario_discente)
+
+        response = self.client.get("/api/discente/carga-academica/")
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["total"], 1)
+        self.assertEqual(data["items"][0]["inscripcion_id"], self.inscripcion.id)
+        contenido = response.content.decode()
+        self.assertNotIn("CAP0001", contenido)
+        self.assertNotIn("CAP9999", contenido)
+
+    def test_api_discente_carga_academica_bloquea_perfiles_no_discentes(self):
+        anonimo = self.client.get("/api/discente/carga-academica/")
+        self.assertEqual(anonimo.status_code, 401)
+
+        self.client.force_login(self.usuario_docente)
+        docente = self.client.get("/api/discente/carga-academica/")
+
+        self.assertEqual(docente.status_code, 403)
+
     def test_api_discente_inconformidad_sin_comentario_se_rechaza(self):
         acta = self.publicar_acta_p1()
         detalle = acta.detalles.get()

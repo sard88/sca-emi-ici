@@ -6,7 +6,7 @@ const legacyRouteMap: Record<string, string | null> = {
   "/admin/usuarios/usuario/": "/administracion/usuarios",
   "/admin/usuarios/asignacioncargo/": "/administracion/cargos",
   "/admin/usuarios/unidadorganizacional/": "/administracion/unidades",
-  "/validacion/discente/carga/": "/trayectoria/mi-historial",
+  "/validacion/discente/carga/": "/discente/carga-academica",
   "/evaluacion/actas/planeacion-evaluacion/consulta/": "/reportes/operativos",
 };
 

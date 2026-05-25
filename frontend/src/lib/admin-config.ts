@@ -49,7 +49,7 @@ export const adminResources: AdminCatalogResourceConfig[] = [
           { value: "bloqueado", label: "Bloqueado" },
         ],
       },
-      { key: "password", label: "Contraseña temporal", type: "password", help: "Solo se usa al crear usuario; no se muestra después." },
+      { key: "password", label: "Contraseña temporal", type: "password", createOnly: true, help: "Solo se usa para crear la cuenta. No se mostrará después." },
     ],
     filters: [{ key: "q", label: "Buscar", placeholder: "Usuario, nombre o correo" }],
     ayuda: "No se exponen hashes ni contraseñas. La edición de contraseña queda fuera salvo password temporal al crear.",

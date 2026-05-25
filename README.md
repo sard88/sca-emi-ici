@@ -2823,3 +2823,35 @@ Comandos ejecutados durante el bloque:
 Resumen técnico:
 
 - `docs/resumen_bloque10d1_estabilizacion_ux_funcional.md`
+
+## Bloque 10D-2 - Organización de navegación, dashboards y reportes
+
+### Objetivo
+
+Se corrigen los hallazgos P2 del diagnóstico UX funcional 10D-0 sin cambiar reglas académicas ni rediseñar el portal. El bloque ordena sidebar, dashboards por perfil, reportes, filtros y experiencia personal del discente.
+
+### Cambios principales
+
+- Sidebar desktop y navegación móvil se organizan por intención: Inicio, Mi espacio, Operación académica, Gestión institucional, Reportes y auditoría, Soporte técnico.
+- Dashboards por perfil eliminan duplicidades relevantes y aclaran operación institucional vs espacios personales.
+- Se implementa `/discente/carga-academica` con endpoint read-only `GET /api/discente/carga-academica/`.
+- `/reportes` queda agrupado en documentos oficiales, reportes institucionales, exportaciones y auditoría.
+- Reportes operativos, desempeño y trayectoria usan selectores graduales para filtros comunes.
+- Comentarios de inconformidad se truncan en vista previa web.
+- Contraseña temporal en usuarios aparece solo al crear, no en edición.
+
+### Validación
+
+Comandos ejecutados durante el bloque:
+
+- `docker compose exec -T frontend npm run lint`
+- `docker compose exec -T frontend npm run build`
+- `docker compose exec -T backend python manage.py check`
+- `docker compose exec -T backend python manage.py makemigrations --check`
+- `docker compose exec -T backend python manage.py test evaluacion`
+- `docker compose exec -T backend python manage.py test usuarios`
+- `docker compose exec -T backend python manage.py test`
+
+Resumen técnico:
+
+- `docs/resumen_bloque10d2_navegacion_dashboards_reportes.md`
