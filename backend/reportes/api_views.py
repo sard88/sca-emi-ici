@@ -15,6 +15,7 @@ from relaciones.models import Discente
 from .actas_services import ServicioExportacionActa
 from .kardex_services import ServicioExportacionKardex
 from .models import RegistroExportacion
+from .reportes_desempeno import ServicioReportesDesempeno
 from .reportes_operativos import ServicioReportesOperativos
 from .services import CatalogoExportaciones, ServicioExportacion, ServicioPermisosExportacion
 from trayectoria.permisos import filtrar_discentes_por_ambito, puede_consultar_kardex
@@ -242,6 +243,102 @@ def exportar_reporte_exportaciones_realizadas_xlsx_view(request):
     return _exportar_reporte_operativo_xlsx(request, "exportaciones-realizadas")
 
 
+@require_GET
+@api_login_required
+def reporte_aprobados_reprobados_view(request):
+    return _reporte_desempeno_json(request, "aprobados-reprobados")
+
+
+@require_GET
+@api_login_required
+def reporte_promedios_view(request):
+    return _reporte_desempeno_json(request, "promedios")
+
+
+@require_GET
+@api_login_required
+def reporte_distribucion_view(request):
+    return _reporte_desempeno_json(request, "distribucion")
+
+
+@require_GET
+@api_login_required
+def reporte_exentos_view(request):
+    return _reporte_desempeno_json(request, "exentos")
+
+
+@require_GET
+@api_login_required
+def reporte_desempeno_docente_view(request):
+    return _reporte_desempeno_json(request, "docentes")
+
+
+@require_GET
+@api_login_required
+def reporte_desempeno_cohorte_view(request):
+    return _reporte_desempeno_json(request, "cohorte")
+
+
+@require_GET
+@api_login_required
+def reporte_reprobados_nominal_view(request):
+    return _reporte_desempeno_json(request, "reprobados-nominal")
+
+
+@require_GET
+@api_login_required
+def reporte_cuadro_aprovechamiento_view(request):
+    return _reporte_desempeno_json(request, "cuadro-aprovechamiento")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_aprobados_reprobados_xlsx_view(request):
+    return _exportar_reporte_desempeno_xlsx(request, "aprobados-reprobados")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_promedios_xlsx_view(request):
+    return _exportar_reporte_desempeno_xlsx(request, "promedios")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_distribucion_xlsx_view(request):
+    return _exportar_reporte_desempeno_xlsx(request, "distribucion")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_exentos_xlsx_view(request):
+    return _exportar_reporte_desempeno_xlsx(request, "exentos")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_desempeno_docente_xlsx_view(request):
+    return _exportar_reporte_desempeno_xlsx(request, "docentes")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_desempeno_cohorte_xlsx_view(request):
+    return _exportar_reporte_desempeno_xlsx(request, "cohorte")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_reprobados_nominal_xlsx_view(request):
+    return _exportar_reporte_desempeno_xlsx(request, "reprobados-nominal")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_cuadro_aprovechamiento_xlsx_view(request):
+    return _exportar_reporte_desempeno_xlsx(request, "cuadro-aprovechamiento")
+
+
 def _reporte_operativo_json(request, slug):
     try:
         data = ServicioReportesOperativos(request.user, request=request).vista_previa(slug, request.GET)
@@ -279,6 +376,47 @@ def _exportar_reporte_operativo_xlsx(request, slug):
         return _error_response(exc)
     except Exception:
         return JsonResponse({"ok": False, "error": "No fue posible generar el reporte operativo."}, status=500)
+    return _archivo_response(resultado)
+
+
+def _reporte_desempeno_json(request, slug):
+    try:
+        data = ServicioReportesDesempeno(request.user, request=request).vista_previa(slug, request.GET)
+    except (PermissionDenied, ValidationError) as exc:
+        return _error_response(exc)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "No fue posible consultar el reporte de desempeño."}, status=500)
+
+    limit = normalizar_limit(request.GET.get("limit"), default=100, maximum=500)
+    return JsonResponse(
+        {
+            "ok": True,
+            "slug": data.slug,
+            "nombre": data.nombre,
+            "total": len(data.filas),
+            "filtros": data.filtros,
+            "columnas": data.columnas,
+            "items": data.filas[:limit],
+            "resumen": data.resumen,
+            "sheets": [
+                {
+                    "titulo": sheet.titulo,
+                    "total": len(sheet.filas),
+                    "columnas": sheet.columnas,
+                }
+                for sheet in data.sheets
+            ],
+        }
+    )
+
+
+def _exportar_reporte_desempeno_xlsx(request, slug):
+    try:
+        resultado = ServicioReportesDesempeno(request.user, request=request).exportar_xlsx(slug, request.GET)
+    except (PermissionDenied, ValidationError) as exc:
+        return _error_response(exc)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "No fue posible generar el reporte de desempeño."}, status=500)
     return _archivo_response(resultado)
 
 

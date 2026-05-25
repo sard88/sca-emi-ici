@@ -1232,3 +1232,135 @@ class ReportesBloque9BActasTests(TestCase):
         self.assertNotIn(" ", filename)
         self.assertNotIn(self.discentes[0].matricula, filename)
         self.assertEqual(registro.filtros_json, {"periodo": self.periodo.clave, "carrera": self.carrera.clave})
+
+    def marcar_exento_final(self):
+        detalle = self.acta_final.detalles.order_by("id").first()
+        detalle.exencion_aplica = True
+        detalle.promedio_parciales = Decimal("9.4")
+        detalle.promedio_parciales_visible = Decimal("9.4")
+        detalle.save(update_fields=["exencion_aplica", "promedio_parciales", "promedio_parciales_visible"])
+        componente = detalle.calificaciones_componentes.filter(componente_es_examen_snapshot=True).first()
+        componente.sustituido_por_exencion = True
+        componente.valor_calculado = Decimal("6.58")
+        componente.save(update_fields=["sustituido_por_exencion", "valor_calculado"])
+
+    def assert_xlsx_response_desempeno(self, response):
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertTrue(response.content.startswith(b"PK"))
+        self.assertIn("X-Registro-Exportacion-Id", response)
+
+    def test_reportes_desempeno_json_y_xlsx_como_estadistica(self):
+        self.marcar_exento_final()
+        endpoints = [
+            ("aprobados-reprobados", "/api/reportes/desempeno/aprobados-reprobados/", "/api/exportaciones/reportes/aprobados-reprobados/xlsx/"),
+            ("promedios", "/api/reportes/desempeno/promedios/", "/api/exportaciones/reportes/promedios/xlsx/"),
+            ("distribucion", "/api/reportes/desempeno/distribucion/", "/api/exportaciones/reportes/distribucion/xlsx/"),
+            ("exentos", "/api/reportes/desempeno/exentos/", "/api/exportaciones/reportes/exentos/xlsx/"),
+            ("docentes", "/api/reportes/desempeno/docentes/", "/api/exportaciones/reportes/desempeno-docente/xlsx/"),
+            ("cohorte", "/api/reportes/desempeno/cohorte/", "/api/exportaciones/reportes/desempeno-cohorte/xlsx/"),
+            ("reprobados-nominal", "/api/reportes/desempeno/reprobados-nominal/", "/api/exportaciones/reportes/reprobados-nominal/xlsx/"),
+            ("cuadro-aprovechamiento", "/api/reportes/desempeno/cuadro-aprovechamiento/", "/api/exportaciones/reportes/cuadro-aprovechamiento/xlsx/"),
+        ]
+
+        self.client.force_login(self.estadistica)
+        for slug, json_url, xlsx_url in endpoints:
+            json_response = self.client.get(json_url)
+            self.assertEqual(json_response.status_code, 200, slug)
+            self.assertIn("total", json_response.json(), slug)
+            self.assertIn("columnas", json_response.json(), slug)
+            self.assertIn("resumen", json_response.json(), slug)
+
+            xlsx_response = self.client.get(xlsx_url)
+            self.assert_xlsx_response_desempeno(xlsx_response)
+            registro = RegistroExportacion.objects.get(id=xlsx_response["X-Registro-Exportacion-Id"])
+            self.assertEqual(registro.estado, RegistroExportacion.ESTADO_GENERADA)
+            self.assertEqual(registro.formato, RegistroExportacion.FORMATO_XLSX)
+
+    def test_reportes_desempeno_bloquean_anonimo_discente_y_docente(self):
+        anonimo = self.client.get("/api/reportes/desempeno/aprobados-reprobados/")
+        self.assertEqual(anonimo.status_code, 401)
+
+        self.client.force_login(self.discentes[0].usuario)
+        discente_json = self.client.get("/api/reportes/desempeno/aprobados-reprobados/")
+        discente_xlsx = self.client.get("/api/exportaciones/reportes/aprobados-reprobados/xlsx/")
+        self.assertEqual(discente_json.status_code, 403)
+        self.assertEqual(discente_xlsx.status_code, 403)
+
+        self.client.force_login(self.docente)
+        docente_json = self.client.get("/api/reportes/desempeno/aprobados-reprobados/")
+        docente_xlsx = self.client.get("/api/exportaciones/reportes/aprobados-reprobados/xlsx/")
+        self.assertEqual(docente_json.status_code, 403)
+        self.assertEqual(docente_xlsx.status_code, 403)
+
+    def test_reportes_desempeno_jefatura_carrera_filtra_por_ambito(self):
+        self.client.force_login(self.jefe_carrera)
+        response = self.client.get("/api/reportes/desempeno/aprobados-reprobados/")
+
+        self.assertEqual(response.status_code, 200)
+        carreras = {item["carrera"] for item in response.json()["items"]}
+        self.assertEqual(carreras, {self.carrera.clave})
+
+    def test_reportes_nominales_no_exponen_matricula(self):
+        self.client.force_login(self.estadistica)
+        response = self.client.get("/api/reportes/desempeno/reprobados-nominal/")
+
+        self.assertEqual(response.status_code, 200)
+        serializado = json.dumps(response.json(), ensure_ascii=False)
+        self.assertIn("Discente 3", serializado)
+        self.assertNotIn(self.discentes[2].matricula, serializado)
+        self.assertNotIn("matricula", serializado.lower())
+
+    def test_reporte_exentos_usa_exencion_de_examen_final(self):
+        self.marcar_exento_final()
+
+        self.client.force_login(self.estadistica)
+        response = self.client.get("/api/reportes/desempeno/exentos/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.dumps(response.json(), ensure_ascii=False)
+        self.assertIn("Examen final", payload)
+        self.assertIn("6.6", payload)
+
+    def test_cuadro_aprovechamiento_clasifica_rangos(self):
+        for inscripcion, calificacion in zip(self.inscripciones, [Decimal("9.80"), Decimal("9.30"), Decimal("8.50")]):
+            inscripcion.calificacion_final = calificacion
+            inscripcion.codigo_resultado_oficial = CatalogoResultadoAcademico.CLAVE_APROBADO
+            inscripcion.save(update_fields=["calificacion_final", "codigo_resultado_oficial"])
+
+        self.client.force_login(self.estadistica)
+        response = self.client.get("/api/reportes/desempeno/cuadro-aprovechamiento/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = json.dumps(response.json(), ensure_ascii=False)
+        self.assertIn("Excelente aprovechamiento", payload)
+        self.assertIn("Alto aprovechamiento academico", payload)
+        self.assertIn("Buen aprovechamiento academico", payload)
+
+    def test_exportacion_reporte_desempeno_fallida_registra_fallida(self):
+        self.client.force_login(self.estadistica)
+        with patch("reportes.reportes_desempeno.generar_reporte_xlsx", side_effect=RuntimeError("fallo desempeno")):
+            response = self.client.get("/api/exportaciones/reportes/aprobados-reprobados/xlsx/")
+
+        self.assertEqual(response.status_code, 500)
+        registro = RegistroExportacion.objects.latest("id")
+        self.assertEqual(registro.tipo_documento, RegistroExportacion.TIPO_REPORTE_APROBADOS_REPROBADOS)
+        self.assertEqual(registro.estado, RegistroExportacion.ESTADO_FALLIDA)
+        self.assertIn("fallo desempeno", registro.mensaje_error)
+
+    def test_exportacion_reporte_desempeno_nombre_seguro_y_filtros_sanitizados(self):
+        self.client.force_login(self.estadistica)
+        response = self.client.get(
+            "/api/exportaciones/reportes/aprobados-reprobados/xlsx/",
+            {"periodo": self.periodo.clave, "carrera": self.carrera.clave, "password": "secreto"},
+        )
+
+        self.assert_xlsx_response_desempeno(response)
+        filename = response["Content-Disposition"].split('filename="', 1)[1].rstrip('"')
+        registro = RegistroExportacion.objects.get(id=response["X-Registro-Exportacion-Id"])
+        self.assertNotIn(" ", filename)
+        self.assertNotIn(self.discentes[0].matricula, filename)
+        self.assertEqual(registro.filtros_json, {"periodo": self.periodo.clave, "carrera": self.carrera.clave})

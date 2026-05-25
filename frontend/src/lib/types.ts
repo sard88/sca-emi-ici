@@ -242,3 +242,58 @@ export type DownloadResult = {
   contentType: string;
   size: number;
 };
+
+export type ReporteOperativoCodigo =
+  | "actas-estado"
+  | "actas-pendientes"
+  | "inconformidades"
+  | "sin-conformidad"
+  | "actas-formalizadas"
+  | "validaciones-acta"
+  | "exportaciones-realizadas";
+
+export type ReporteOperativoColumna = {
+  key: string;
+  label: string;
+};
+
+export type ReporteOperativoItem = Record<string, unknown>;
+
+export type ReporteOperativoSheet = {
+  titulo: string;
+  total: number;
+  columnas: ReporteOperativoColumna[];
+};
+
+export type ReporteOperativoRespuesta = {
+  ok: boolean;
+  slug: ReporteOperativoCodigo;
+  nombre: string;
+  total: number;
+  filtros: Record<string, string>;
+  columnas: ReporteOperativoColumna[];
+  items: ReporteOperativoItem[];
+  sheets?: ReporteOperativoSheet[];
+};
+
+export type ReporteOperativoFiltro = {
+  key: string;
+  label: string;
+  type?: "text" | "select" | "date";
+  placeholder?: string;
+  options?: Array<{ value: string; label: string }>;
+};
+
+export type ReporteOperativoConfig = {
+  slug: ReporteOperativoCodigo;
+  titulo: string;
+  descripcion: string;
+  ruta: string;
+  tipoDocumento: string;
+  endpointVistaPrevia: string;
+  endpointDescarga: string;
+  filtros: ReporteOperativoFiltro[];
+  columnasDestacadas: string[];
+  rolesSugeridos: string[];
+  ayuda: string;
+};

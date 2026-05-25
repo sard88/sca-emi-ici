@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import type { AuthenticatedUser } from "@/lib/types";
-import { canAccessKardexPdf, canAccessReportes, getProfilesForUser } from "@/lib/dashboard";
+import { canAccessKardexPdf, canAccessReportes, canAccessReportesOperativos, getProfilesForUser } from "@/lib/dashboard";
 
 const routeByProfile: Record<string, string> = {
   ADMIN: "/admin-soporte",
@@ -22,6 +22,7 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
   const profiles = getProfilesForUser(user);
   const showReportes = canAccessReportes(user);
   const showKardex = canAccessKardexPdf(user);
+  const showReportesOperativos = canAccessReportesOperativos(user);
 
   return (
     <aside className="hidden min-h-screen w-[292px] shrink-0 border-r border-[#eadfce] bg-[#fffaf1]/92 p-4 shadow-[18px_0_44px_rgba(87,70,45,0.08)] backdrop-blur-xl lg:sticky lg:top-0 lg:flex lg:flex-col">
@@ -93,7 +94,7 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
                   href="/reportes"
                   className={clsx(
                     "group flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition",
-                    pathname === "/reportes" || pathname === "/reportes/actas" || pathname === "/reportes/exportaciones" || pathname === "/reportes/auditoria"
+                    pathname.startsWith("/reportes")
                       ? "bg-[#f6ead7] text-[#7a123d]"
                       : "text-[#1f2f2a] hover:bg-[#f7efe2]",
                   )}
@@ -104,6 +105,18 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
                   </span>
                   <span className="text-lg leading-none text-[#7b6b58]">›</span>
                 </Link>
+                {showReportesOperativos ? (
+                  <Link
+                    href="/reportes/operativos"
+                    className={clsx(
+                      "ml-7 flex items-center justify-between rounded-2xl px-3 py-2 text-xs font-black transition",
+                      pathname.startsWith("/reportes/operativos") ? "bg-[#fff4df] text-[#7a4b0d]" : "text-[#46534e] hover:bg-[#f7efe2]",
+                    )}
+                  >
+                    Reportes operativos
+                    <span className="text-base leading-none text-[#7b6b58]">›</span>
+                  </Link>
+                ) : null}
                 {showKardex ? (
                   <Link
                     href="/reportes/kardex"
@@ -142,6 +155,7 @@ export function MobileModuleNav({ user }: { user: AuthenticatedUser }) {
   const profiles = getProfilesForUser(user);
   const showReportes = canAccessReportes(user);
   const showKardex = canAccessKardexPdf(user);
+  const showReportesOperativos = canAccessReportesOperativos(user);
 
   return (
     <div className="lg:hidden">
@@ -156,6 +170,7 @@ export function MobileModuleNav({ user }: { user: AuthenticatedUser }) {
           />
         ))}
         {showReportes ? <MobilePill href="/reportes" active={pathname.startsWith("/reportes")} label="Reportes" /> : null}
+        {showReportesOperativos ? <MobilePill href="/reportes/operativos" active={pathname.startsWith("/reportes/operativos")} label="Operativos" /> : null}
         {showKardex ? <MobilePill href="/reportes/kardex" active={pathname === "/reportes/kardex"} label="Kárdex" /> : null}
       </div>
     </div>

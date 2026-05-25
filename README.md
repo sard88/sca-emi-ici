@@ -1819,3 +1819,198 @@ No se implementa todavía:
 Resumen técnico:
 
 - `docs/resumen_bloque9f_j_l_reportes_operativos.md`
+
+## Bloque 10C-3A - Integración visual de reportes operativos
+
+Se integra en el portal Next.js la consulta visual de los reportes operativos implementados en el Bloque 9F-J-L. El frontend no genera Excel ni recalcula reportes; consume APIs Django, muestra vistas previas autorizadas y dispara descargas XLSX auditadas.
+
+### Rutas frontend nuevas
+
+- `http://localhost:3000/reportes/operativos`
+- `http://localhost:3000/reportes/operativos/actas-estado`
+- `http://localhost:3000/reportes/operativos/actas-pendientes`
+- `http://localhost:3000/reportes/operativos/inconformidades`
+- `http://localhost:3000/reportes/operativos/sin-conformidad`
+- `http://localhost:3000/reportes/operativos/actas-formalizadas`
+- `http://localhost:3000/reportes/operativos/validaciones-acta`
+- `http://localhost:3000/reportes/operativos/exportaciones-realizadas`
+
+### Reportes incluidos
+
+- Actas por estado.
+- Actas pendientes de validación.
+- Actas con inconformidades.
+- Actas sin conformidad de discentes.
+- Actas formalizadas.
+- Historial de validaciones de acta.
+- Exportaciones realizadas.
+
+### APIs backend consumidas
+
+Vista previa JSON:
+
+- `GET /api/reportes/operativos/actas-estado/`
+- `GET /api/reportes/operativos/actas-pendientes/`
+- `GET /api/reportes/operativos/inconformidades/`
+- `GET /api/reportes/operativos/sin-conformidad/`
+- `GET /api/reportes/operativos/actas-formalizadas/`
+- `GET /api/reportes/operativos/validaciones-acta/`
+- `GET /api/reportes/operativos/exportaciones-realizadas/`
+
+Descarga XLSX:
+
+- `GET /api/exportaciones/reportes/actas-estado/xlsx/`
+- `GET /api/exportaciones/reportes/actas-pendientes/xlsx/`
+- `GET /api/exportaciones/reportes/inconformidades/xlsx/`
+- `GET /api/exportaciones/reportes/sin-conformidad/xlsx/`
+- `GET /api/exportaciones/reportes/actas-formalizadas/xlsx/`
+- `GET /api/exportaciones/reportes/validaciones-acta/xlsx/`
+- `GET /api/exportaciones/reportes/exportaciones-realizadas/xlsx/`
+
+La descarga lee `Content-Disposition` y `X-Registro-Exportacion-Id`, muestra el folio técnico y deja la exportación disponible en el historial.
+
+### Filtros disponibles
+
+Se agregan filtros visuales compatibles con backend:
+
+- periodo;
+- carrera;
+- grupo;
+- asignatura/programa;
+- docente;
+- corte;
+- estado del acta;
+- tipo de pendiente;
+- etapa de validación;
+- acción;
+- usuario;
+- cargo;
+- formato;
+- tipo documental;
+- estado de exportación;
+- fecha desde/hasta.
+
+Los filtros vacíos no se envían. La descarga XLSX usa los mismos filtros aplicados en pantalla.
+
+### Permisos visuales
+
+- Admin, Estadística, Jefatura de carrera, Jefatura académica y Jefatura pedagógica ven Reportes operativos.
+- Docente conserva actas propias en `/reportes/actas`, pero no ve reportes operativos globales.
+- Discente no ve reportes operativos.
+- El backend sigue siendo la autoridad real de permisos.
+
+### Integración con navegación
+
+Se agrega acceso a Reportes operativos en:
+
+- `/reportes`;
+- sidebar de Reportes y exportaciones;
+- dashboards de Admin, Estadística y Jefaturas autorizadas.
+
+### Qué queda fuera
+
+No se implementa todavía:
+
+- PDF de reportes operativos;
+- reportes de desempeño académico;
+- reportes de situación académica;
+- cuadro de aprovechamiento;
+- kárdex Excel;
+- importación Excel;
+- gráficas;
+- edición de datos desde React;
+- generación XLSX en frontend.
+
+Resumen técnico:
+
+- `docs/resumen_bloque10c3a_reportes_operativos_portal.md`
+
+## Bloque 9G-H - Reportes de desempeño académico y cuadro de aprovechamiento
+
+Se implementan reportes institucionales de desempeño académico y cuadro de aprovechamiento en backend, usando resultados oficiales consolidados y actas FINAL formalizadas como fuente de verdad.
+
+### Reportes implementados
+
+- Aprobados y reprobados.
+- Promedios académicos.
+- Distribución de calificaciones.
+- Exentos por asignatura.
+- Desempeño por docente.
+- Desempeño por carrera, antigüedad y año de formación.
+- Reprobados nominal.
+- Cuadro de aprovechamiento académico.
+
+### Endpoints JSON
+
+- `GET /api/reportes/desempeno/aprobados-reprobados/`
+- `GET /api/reportes/desempeno/promedios/`
+- `GET /api/reportes/desempeno/distribucion/`
+- `GET /api/reportes/desempeno/exentos/`
+- `GET /api/reportes/desempeno/docentes/`
+- `GET /api/reportes/desempeno/cohorte/`
+- `GET /api/reportes/desempeno/reprobados-nominal/`
+- `GET /api/reportes/desempeno/cuadro-aprovechamiento/`
+
+### Endpoints XLSX
+
+- `GET /api/exportaciones/reportes/aprobados-reprobados/xlsx/`
+- `GET /api/exportaciones/reportes/promedios/xlsx/`
+- `GET /api/exportaciones/reportes/distribucion/xlsx/`
+- `GET /api/exportaciones/reportes/exentos/xlsx/`
+- `GET /api/exportaciones/reportes/desempeno-docente/xlsx/`
+- `GET /api/exportaciones/reportes/desempeno-cohorte/xlsx/`
+- `GET /api/exportaciones/reportes/reprobados-nominal/xlsx/`
+- `GET /api/exportaciones/reportes/cuadro-aprovechamiento/xlsx/`
+
+Cada descarga XLSX registra auditoría en `RegistroExportacion` y devuelve `X-Registro-Exportacion-Id`.
+
+### Métricas
+
+Los reportes calculan, según aplique:
+
+- total evaluados;
+- aprobados;
+- reprobados;
+- porcentajes;
+- promedio;
+- máxima;
+- mínima;
+- moda;
+- desviación estándar poblacional;
+- distribución por rangos;
+- exentos de examen final.
+
+### Filtros
+
+Se soportan filtros por periodo, carrera, grupo, asignatura/programa, docente, antigüedad/generación, año de formación, semestre, fechas y opciones específicas del cuadro de aprovechamiento.
+
+### Permisos y privacidad
+
+- Admin y Estadística pueden consultar/exportar todos los reportes.
+- Jefaturas autorizadas consultan/exportan según ámbito institucional.
+- Jefatura de carrera queda filtrada por su carrera/ámbito.
+- Docente no accede a reportes globales en este bloque.
+- Discente no accede.
+- No se muestra matrícula militar por defecto.
+- Los reportes nominales se restringen a perfiles autorizados.
+
+### Auditoría
+
+Toda exportación registra usuario, tipo documental, formato, filtros sanitizados, nombre de archivo seguro, IP, user agent, estado, tamaño y hash SHA-256.
+
+### Qué queda fuera
+
+No se implementa todavía:
+
+- PDF del cuadro de aprovechamiento;
+- integración visual completa en Next.js;
+- reportes de situación académica;
+- historial académico exportable;
+- kárdex Excel;
+- importación Excel;
+- gráficas;
+- edición de datos.
+
+Resumen técnico:
+
+- `docs/resumen_bloque9g_h_reportes_desempeno.md`
