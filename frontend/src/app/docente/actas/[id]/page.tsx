@@ -11,7 +11,7 @@ import { ActaReadonlyNotice, ActaStatusBadge } from "@/components/operacion-acta
 import { AuditTrailPanel, OfficialStatusNotice } from "@/components/trazabilidad";
 import { ErrorMessage } from "@/components/states/ErrorMessage";
 import { LoadingState } from "@/components/states/LoadingState";
-import { getDocenteActaDetalle } from "@/lib/api";
+import { descargarActaPdf, descargarActaXlsx, getDocenteActaDetalle } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { canAccessAuditoriaEventos, canAccessDocenteOperacion } from "@/lib/dashboard";
 import type { ActaDetalle, ActaFilaDetalle, ValidacionActaDTO } from "@/lib/types";
@@ -22,6 +22,8 @@ export default function DocenteActaDetallePage() {
   const [data, setData] = useState<ActaDetalle | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<"pdf" | "xlsx" | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -99,32 +101,37 @@ export default function DocenteActaDetallePage() {
                 <p className="mt-1 text-xs text-[#5f6764]">Los documentos disponibles corresponden al estado académico registrado.</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {data.acta.url_pdf ? (
-                    <a
-                      href={data.acta.url_pdf}
+                    <button
+                      type="button"
+                      disabled={downloading !== null}
+                      onClick={() => void downloadActaDocument(data.acta.acta_id, "pdf", setDownloading, setDownloadError)}
                       className="rounded-lg border border-[#7a123d] bg-[#7a123d] px-3 py-1.5 text-xs font-black text-white hover:bg-[#671033]"
                     >
-                      Descargar PDF
-                    </a>
+                      {downloading === "pdf" ? "Descargando..." : "Descargar PDF"}
+                    </button>
                   ) : (
                     <span className="rounded-lg border border-[#d8c5a7] bg-[#fffaf1] px-3 py-1.5 text-xs font-black text-[#7b6b58]">PDF no disponible</span>
                   )}
                   {data.acta.url_xlsx ? (
-                    <a
-                      href={data.acta.url_xlsx}
+                    <button
+                      type="button"
+                      disabled={downloading !== null}
+                      onClick={() => void downloadActaDocument(data.acta.acta_id, "xlsx", setDownloading, setDownloadError)}
                       className="rounded-lg border border-[#0b4a3d] bg-[#0b4a3d] px-3 py-1.5 text-xs font-black text-white hover:bg-[#083d33]"
                     >
-                      Descargar XLSX
-                    </a>
+                      {downloading === "xlsx" ? "Descargando..." : "Descargar XLSX"}
+                    </button>
                   ) : (
                     <span className="rounded-lg border border-[#d8c5a7] bg-[#fffaf1] px-3 py-1.5 text-xs font-black text-[#7b6b58]">XLSX no disponible</span>
                   )}
                 </div>
+                {downloadError ? <p className="mt-3 text-xs font-bold text-[#7a123d]">{downloadError}</p> : null}
               </section>
 
               <CompactConformityPanel filas={data.filas} />
 
               <ActaComponentsTable componentes={data.componentes} />
-              <ActaDetailTable filas={data.filas} componentes={data.componentes} />
+              <ActaDetailTable filas={data.filas} componentes={data.componentes} showConformityComment />
 
               <CompactValidationTimeline validaciones={data.validaciones} />
 
@@ -141,20 +148,18 @@ function CompactConformityPanel({ filas }: { filas: ActaFilaDetalle[] }) {
   const summary = filas.reduce(
     (acc, fila) => {
       const estado = fila.conformidad_vigente?.estado_conformidad;
-      if (estado === "CONFORME") acc.conformes += 1;
+      if (estado === "CONFORME" || estado === "ACUSE") acc.conformes += 1;
       else if (estado === "INCONFORME") acc.inconformes += 1;
-      else if (estado === "ACUSE") acc.acuses += 1;
       else acc.pendientes += 1;
       return acc;
     },
-    { conformes: 0, inconformes: 0, acuses: 0, pendientes: 0 },
+    { conformes: 0, inconformes: 0, pendientes: 0 },
   );
 
   const chips = [
     { label: "Total", value: filas.length },
     { label: "Conformes", value: summary.conformes },
     { label: "Inconformes", value: summary.inconformes },
-    { label: "Acuses", value: summary.acuses },
     { label: "Pendientes", value: summary.pendientes },
   ];
 
@@ -172,6 +177,24 @@ function CompactConformityPanel({ filas }: { filas: ActaFilaDetalle[] }) {
       </div>
     </section>
   );
+}
+
+async function downloadActaDocument(
+  actaId: number,
+  format: "pdf" | "xlsx",
+  setDownloading: (format: "pdf" | "xlsx" | null) => void,
+  setDownloadError: (message: string | null) => void,
+) {
+  setDownloading(format);
+  setDownloadError(null);
+  try {
+    if (format === "pdf") await descargarActaPdf(actaId);
+    else await descargarActaXlsx(actaId);
+  } catch (err) {
+    setDownloadError(err instanceof Error ? err.message : "No fue posible descargar el documento.");
+  } finally {
+    setDownloading(null);
+  }
 }
 
 function CompactValidationTimeline({ validaciones }: { validaciones: ValidacionActaDTO[] }) {

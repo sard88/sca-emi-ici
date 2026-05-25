@@ -693,6 +693,8 @@ def registrar_conformidad_discente(detalle, usuario, estado_conformidad, comenta
         raise ValidationError("Solo el discente titular puede registrar conformidad.")
 
     comentario = (comentario or "").strip()
+    if estado_conformidad not in {ConformidadDiscente.ESTADO_CONFORME, ConformidadDiscente.ESTADO_INCONFORME}:
+        raise ValidationError("Selecciona conforme o inconforme para registrar tu respuesta.")
     if estado_conformidad == ConformidadDiscente.ESTADO_INCONFORME and not comentario:
         registrar_evento_fallido(
             usuario=usuario,
@@ -721,10 +723,9 @@ def registrar_conformidad_discente(detalle, usuario, estado_conformidad, comenta
         comentario=comentario,
     )
     evento_codigo = {
-        ConformidadDiscente.ESTADO_ACUSE: "CONFORMIDAD_ACUSE_REGISTRADO",
         ConformidadDiscente.ESTADO_CONFORME: "CONFORMIDAD_CONFORME_REGISTRADA",
         ConformidadDiscente.ESTADO_INCONFORME: "CONFORMIDAD_INCONFORME_REGISTRADA",
-    }.get(estado_conformidad, "CONFORMIDAD_ACUSE_REGISTRADO")
+    }.get(estado_conformidad, "CONFORMIDAD_CONFORME_REGISTRADA")
     registrar_evento_exitoso(
         usuario=usuario,
         modulo=MODULO_CONFORMIDAD,

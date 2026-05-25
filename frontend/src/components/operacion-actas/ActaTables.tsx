@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { ActaComponente, ActaFilaDetalle, ValidacionActaDTO } from "@/lib/types";
 import { ValidationTimeline } from "@/components/trazabilidad";
 
-export function ActaDetailTable({ filas, componentes = [] }: { filas: ActaFilaDetalle[]; componentes?: ActaComponente[] }) {
+export function ActaDetailTable({ filas, componentes = [], showConformityComment = false }: { filas: ActaFilaDetalle[]; componentes?: ActaComponente[]; showConformityComment?: boolean }) {
   const orderedComponents = [...componentes].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
 
   return (
@@ -58,7 +58,16 @@ export function ActaDetailTable({ filas, componentes = [] }: { filas: ActaFilaDe
                   })}
                   <Cell className="text-center">{formatValue(fila.resultado_corte)}</Cell>
                   <Cell className="text-center">{fila.completo ? fila.resultado_preliminar : "Incompleto"}</Cell>
-                  <Cell className="text-center">{fila.conformidad_vigente?.estado_conformidad_label || "Sin registro"}</Cell>
+                  <Cell className="text-center">
+                    <div className="space-y-1">
+                      <p>{fila.conformidad_vigente?.estado_conformidad_label || "Sin registro"}</p>
+                      {showConformityComment && fila.conformidad_vigente?.estado_conformidad === "INCONFORME" && fila.conformidad_vigente.comentario ? (
+                        <p className="rounded-lg border border-[#eadfce] bg-[#fffaf1] px-2 py-1 text-left text-[11px] font-semibold text-[#5a3b2a]">
+                          {fila.conformidad_vigente.comentario}
+                        </p>
+                      ) : null}
+                    </div>
+                  </Cell>
                 </tr>
               );
             })}

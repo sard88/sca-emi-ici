@@ -424,6 +424,7 @@ def _serialize_validacion(validacion):
 
 def _serialize_acta_detalle(acta, user, include_all_rows=True):
     detalles = list(acta.detalles.all())
+    include_conformity_comments = user.groups.filter(name="DOCENTE").exists()
     componentes = []
     seen = set()
     for detalle in detalles:
@@ -444,7 +445,10 @@ def _serialize_acta_detalle(acta, user, include_all_rows=True):
         "ok": True,
         "acta": _serialize_acta_resumen(acta, user=user),
         "componentes": componentes,
-        "filas": [_serialize_detalle_acta(detalle, include_discente=include_all_rows) for detalle in detalles],
+        "filas": [
+            _serialize_detalle_acta(detalle, include_discente=include_all_rows, include_comment=include_conformity_comments)
+            for detalle in detalles
+        ],
         "validaciones": [_serialize_validacion(validacion) for validacion in acta.validaciones.all()],
         "acciones": _acta_actions(acta, user),
         "exportaciones": {

@@ -181,13 +181,12 @@ export function ConformitySummaryPanel({ filas }: { filas: ActaFilaDetalle[] }) 
   const summary = filas.reduce(
     (acc, fila) => {
       const estado = fila.conformidad_vigente?.estado_conformidad;
-      if (estado === "CONFORME") acc.conformes += 1;
+      if (estado === "CONFORME" || estado === "ACUSE") acc.conformes += 1;
       else if (estado === "INCONFORME") acc.inconformes += 1;
-      else if (estado === "ACUSE") acc.acuses += 1;
       else acc.pendientes += 1;
       return acc;
     },
-    { conformes: 0, inconformes: 0, acuses: 0, pendientes: 0 },
+    { conformes: 0, inconformes: 0, pendientes: 0 },
   );
   const total = filas.length;
   return (
@@ -203,7 +202,6 @@ export function ConformitySummaryPanel({ filas }: { filas: ActaFilaDetalle[] }) 
         <TraceMetric label="Total" value={total} />
         <TraceMetric label="Conformes" value={summary.conformes} />
         <TraceMetric label="Inconformes" value={summary.inconformes} />
-        <TraceMetric label="Acuses" value={summary.acuses} />
         <TraceMetric label="Pendientes" value={summary.pendientes} />
       </div>
     </section>

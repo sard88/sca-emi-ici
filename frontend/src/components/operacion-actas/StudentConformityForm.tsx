@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { ErrorMessage } from "@/components/states/ErrorMessage";
 
 export function StudentConformityForm({ detalleId, disabled, onDone }: { detalleId: number; disabled?: boolean; onDone: () => void }) {
-  const [tipo, setTipo] = useState("ACUSE");
+  const [tipo, setTipo] = useState("CONFORME");
   const [comentario, setComentario] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,10 +40,9 @@ export function StudentConformityForm({ detalleId, disabled, onDone }: { detalle
     <section className="space-y-4 rounded-[1.5rem] border border-[#eadfce] bg-white/90 p-4 shadow-sm">
       <div>
         <h3 className="text-base font-black text-[#101b18]">Conformidad informativa</h3>
-        <p className="text-sm text-[#5f6764]">Si registras inconformidad, el comentario es obligatorio.</p>
+        <p className="text-sm text-[#5f6764]">Selecciona si estÃ¡s conforme o inconforme con el resultado publicado.</p>
       </div>
       <select className="w-full rounded-xl border border-[#e7dcc9] bg-white px-3 py-2.5 text-sm font-semibold text-[#152b25]" value={tipo} onChange={(event) => setTipo(event.target.value)}>
-        <option value="ACUSE">Acuse de recibo</option>
         <option value="CONFORME">Conforme</option>
         <option value="INCONFORME">Inconforme</option>
       </select>

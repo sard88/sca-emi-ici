@@ -118,7 +118,10 @@ class CapturaCalificacionesCorteForm(forms.Form):
 
 class ConformidadDiscenteForm(forms.Form):
     estado_conformidad = forms.ChoiceField(
-        choices=ConformidadDiscente.ESTADO_CONFORMIDAD_CHOICES,
+        choices=[
+            (ConformidadDiscente.ESTADO_CONFORME, "Conforme"),
+            (ConformidadDiscente.ESTADO_INCONFORME, "Inconforme"),
+        ],
         label="Conformidad informativa",
     )
     comentario = forms.CharField(
