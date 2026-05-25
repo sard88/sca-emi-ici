@@ -7,7 +7,7 @@ from django.contrib.auth.signals import user_logged_in
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.forms import modelform_factory
-from django.test import RequestFactory, TestCase
+from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -1464,3 +1464,124 @@ class UsuarioRolUnicoAdminTests(TestCase):
 
         self.assertIn("DOCENTE", html)
         self.assertIn("usuarios.view_usuario", html)
+
+
+class AuthApiTests(TestCase):
+    def setUp(self):
+        self.grupo_docente, _ = Group.objects.get_or_create(name=AsignacionCargo.ROL_DOCENTE)
+        self.usuario = Usuario.objects.create_user(
+            username="docente_api",
+            password="segura123XYZ",
+            nombre_completo="Docente API",
+            correo="docente.api@example.com",
+        )
+        self.usuario.groups.add(self.grupo_docente)
+        AsignacionCargo.objects.create(
+            usuario=self.usuario,
+            cargo_codigo=AsignacionCargo.CARGO_DOCENTE,
+            tipo_designacion=AsignacionCargo.DESIGNACION_TITULAR,
+        )
+
+    def _csrf_client(self):
+        client = Client(enforce_csrf_checks=True)
+        response = client.get("/api/auth/csrf/")
+        return client, response.json()["csrfToken"]
+
+    def test_me_sin_sesion_devuelve_authenticated_false(self):
+        response = self.client.get("/api/auth/me/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"authenticated": False})
+
+    def test_csrf_devuelve_token_y_cookie(self):
+        response = self.client.get("/api/auth/csrf/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("csrfToken", response.json())
+        self.assertIn("sca_csrftoken", response.cookies)
+
+    def test_login_valido_crea_sesion(self):
+        client, csrf_token = self._csrf_client()
+
+        response = client.post(
+            "/api/auth/login/",
+            data={"username": "docente_api", "password": "segura123XYZ"},
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf_token,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["user"]["username"], "docente_api")
+        self.assertIn(AsignacionCargo.ROL_DOCENTE, body["user"]["roles"])
+        self.assertIn("cargos_vigentes", body["user"])
+        self.assertIn("sca_sessionid", response.cookies)
+
+    def test_login_invalido_devuelve_error_controlado(self):
+        client, csrf_token = self._csrf_client()
+
+        response = client.post(
+            "/api/auth/login/",
+            data={"username": "docente_api", "password": "incorrecta"},
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf_token,
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()["ok"])
+        self.assertIn("Usuario o contraseña incorrectos", response.json()["error"])
+
+    def test_logout_cierra_sesion(self):
+        client, csrf_token = self._csrf_client()
+        login_response = client.post(
+            "/api/auth/login/",
+            data={"username": "docente_api", "password": "segura123XYZ"},
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf_token,
+        )
+        csrf_token = login_response.json()["csrfToken"]
+
+        response = client.post(
+            "/api/auth/logout/",
+            data={},
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf_token,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+        self.assertFalse(client.get("/api/auth/me/").json()["authenticated"])
+
+    def test_me_autenticado_devuelve_roles_y_cargos(self):
+        self.client.force_login(self.usuario)
+
+        response = self.client.get("/api/auth/me/")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["authenticated"])
+        self.assertEqual(body["perfil_principal"], AsignacionCargo.ROL_DOCENTE)
+        self.assertIn(AsignacionCargo.ROL_DOCENTE, body["roles"])
+        self.assertEqual(body["cargos_vigentes"][0]["cargo_codigo"], AsignacionCargo.CARGO_DOCENTE)
+
+    def test_login_logout_requieren_csrf(self):
+        client = Client(enforce_csrf_checks=True)
+
+        login_response = client.post(
+            "/api/auth/login/",
+            data={"username": "docente_api", "password": "segura123XYZ"},
+            content_type="application/json",
+        )
+        logout_response = client.post("/api/auth/logout/", data={}, content_type="application/json")
+
+        self.assertEqual(login_response.status_code, 403)
+        self.assertEqual(logout_response.status_code, 403)
+
+    @override_settings(CORS_ALLOWED_ORIGINS=["http://localhost:3000"])
+    def test_cors_permite_solo_origen_configurado(self):
+        permitido = self.client.get("/api/auth/me/", HTTP_ORIGIN="http://localhost:3000")
+        no_permitido = self.client.get("/api/auth/me/", HTTP_ORIGIN="http://intruso.local")
+
+        self.assertEqual(permitido["Access-Control-Allow-Origin"], "http://localhost:3000")
+        self.assertNotIn("Access-Control-Allow-Origin", no_permitido)

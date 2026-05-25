@@ -1,3 +1,4 @@
+import json
 from datetime import date
 
 from django.contrib import admin as django_admin
@@ -774,3 +775,41 @@ class AsignacionDocenteAdminPermisosTests(RelacionesBaseTestCase):
         self.assertTrue(self.model_admin.has_add_permission(request))
         self.assertTrue(self.model_admin.has_change_permission(request, self.asignacion))
         self.assertIn("sincronizar_carga_academica", self.model_admin.get_actions(request))
+
+
+class RelacionesPortalApi10C6Tests(RelacionesBaseTestCase):
+    def test_api_estadistica_crea_cambio_grupo_sin_exponer_matricula(self):
+        usuario = self.crear_usuario_estadistica("estadistica_api_mov")
+        self.client.force_login(usuario)
+
+        response = self.client.post(
+            "/api/relaciones/movimientos/cambio-grupo/",
+            data=json.dumps({
+                "discente_id": self.discente.pk,
+                "periodo_id": self.periodo.pk,
+                "grupo_origen_id": self.grupo.pk,
+                "grupo_destino_id": self.grupo_destino.pk,
+                "fecha_movimiento": date.today().isoformat(),
+                "observaciones": "Cambio operativo de prueba",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 201, response.content.decode())
+        self.adscripcion.refresh_from_db()
+        self.assertFalse(self.adscripcion.activo)
+        self.assertTrue(
+            AdscripcionGrupo.objects.filter(
+                discente=self.discente,
+                grupo_academico=self.grupo_destino,
+                activo=True,
+            ).exists()
+        )
+        self.assertNotIn("REL0001", response.content.decode())
+
+    def test_api_docente_no_consulta_movimientos_globales(self):
+        self.client.force_login(self.usuario_docente)
+
+        response = self.client.get("/api/relaciones/movimientos/")
+
+        self.assertEqual(response.status_code, 403)
