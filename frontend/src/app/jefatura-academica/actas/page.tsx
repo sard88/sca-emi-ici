@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -15,6 +15,14 @@ import { canAccessJefaturaAcademicaActas } from "@/lib/dashboard";
 import type { ActaResumen, ReporteOperativoRespuesta } from "@/lib/types";
 
 export default function JefaturaAcademicaActasPage() {
+  return (
+    <Suspense fallback={<LoadingState label="Cargando actas..." />}>
+      <JefaturaAcademicaActasContent />
+    </Suspense>
+  );
+}
+
+function JefaturaAcademicaActasContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const estado = (searchParams.get("estado") || "").toLowerCase();
@@ -39,7 +47,7 @@ export default function JefaturaAcademicaActasPage() {
           setItems(response.items);
           setFormalizadasReport(null);
         }
-      } catch (err) {
+      } catch {
         const fallback = showFormalizadas
           ? "No fue posible cargar las actas formalizadas desde esta vista."
           : "No fue posible cargar actas para revisión académica.";
@@ -175,22 +183,6 @@ export default function JefaturaAcademicaActasPage() {
 function isEstadoFormalizado(estado: string) {
   const normalized = normalizeToken(estado);
   return normalized.includes("FORMALIZADO") || normalized.includes("FORMALIZADA");
-}
-
-function isActaFormalizada(acta: ActaResumen) {
-  const candidate = acta as ActaResumen & Record<string, unknown>;
-  const fields = [
-    acta.estado_acta,
-    acta.estado_acta_label,
-    String(candidate.estado || ""),
-    String(candidate.estado_codigo || ""),
-    String(candidate.estado_display || ""),
-    String(candidate.fase || ""),
-    String(candidate.situacion || ""),
-    String(candidate.estado_nombre || ""),
-    String(candidate.estadoActual || ""),
-  ];
-  return fields.some((value) => isEstadoFormalizado(value || ""));
 }
 
 function isOperativeRowFormalizada(row: Record<string, unknown>) {

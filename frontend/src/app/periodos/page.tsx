@@ -62,7 +62,7 @@ export default function PeriodosPage() {
                       <td className="px-4 py-3 text-[#263b34]">{periodo.estado_label || periodo.estado || "Sin información"}</td>
                       <td className="px-4 py-3 text-[#263b34]">{formatDate(periodo.fecha_inicio)}</td>
                       <td className="px-4 py-3 text-[#263b34]">{formatDate(periodo.fecha_fin)}</td>
-                      <td className="px-4 py-3 text-[#263b34]">{periodo.observaciones || "Sin información"}</td>
+                      <td className="px-4 py-3 text-[#263b34]">{formatText(periodo.observaciones)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -82,4 +82,10 @@ function formatDate(value?: string | null) {
   } catch {
     return "Sin información";
   }
+}
+
+function formatText(value: unknown) {
+  if (typeof value === "string" && value.trim()) return value;
+  if (typeof value === "number") return String(value);
+  return "Sin información";
 }

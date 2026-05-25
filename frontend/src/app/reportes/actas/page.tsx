@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -17,6 +17,14 @@ import { useAuth } from "@/lib/auth";
 import type { ActaExportable, DownloadResult } from "@/lib/types";
 
 export default function ActasExportablesPage() {
+  return (
+    <Suspense fallback={<LoadingState label="Cargando actas exportables..." />}>
+      <ActasExportablesContent />
+    </Suspense>
+  );
+}
+
+function ActasExportablesContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const tipoVista = (searchParams.get("tipo") || "").toLowerCase();

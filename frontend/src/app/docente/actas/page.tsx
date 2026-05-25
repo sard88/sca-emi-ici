@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ActasFilters } from "@/components/operacion-actas/ActasFilters";
@@ -15,6 +15,14 @@ import { canAccessDocenteOperacion } from "@/lib/dashboard";
 import type { ActaResumen } from "@/lib/types";
 
 export default function DocenteActasPage() {
+  return (
+    <Suspense fallback={<LoadingState label="Cargando actas..." />}>
+      <DocenteActasContent />
+    </Suspense>
+  );
+}
+
+function DocenteActasContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const estado = (searchParams.get("estado") || "").toLowerCase();
