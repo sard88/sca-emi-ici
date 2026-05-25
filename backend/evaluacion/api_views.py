@@ -424,7 +424,7 @@ def _serialize_validacion(validacion):
 
 def _serialize_acta_detalle(acta, user, include_all_rows=True):
     detalles = list(acta.detalles.all())
-    include_conformity_comments = user.groups.filter(name="DOCENTE").exists()
+    include_conformity_comments = acta.asignacion_docente.usuario_docente_id == user.id
     componentes = []
     seen = set()
     for detalle in detalles:

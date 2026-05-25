@@ -145,6 +145,7 @@ export default function DocenteActaDetallePage() {
 }
 
 function CompactConformityPanel({ filas }: { filas: ActaFilaDetalle[] }) {
+  const inconformes = filas.filter((fila) => fila.conformidad_vigente?.estado_conformidad === "INCONFORME");
   const summary = filas.reduce(
     (acc, fila) => {
       const estado = fila.conformidad_vigente?.estado_conformidad;
@@ -175,6 +176,21 @@ function CompactConformityPanel({ filas }: { filas: ActaFilaDetalle[] }) {
           </span>
         ))}
       </div>
+      {inconformes.length > 0 ? (
+        <div className="mt-3 rounded-xl border border-[#eadfce] bg-[#fffaf1] p-3">
+          <p className="text-xs font-black uppercase tracking-[0.08em] text-[#7a123d]">Comentarios de inconformidad</p>
+          <div className="mt-2 space-y-2">
+            {inconformes.map((fila, index) => (
+              <div key={fila.detalle_id} className="rounded-lg border border-[#eadfce] bg-white/80 px-3 py-2 text-xs text-[#263b34]">
+                <p className="font-black">
+                  {index + 1}. {fila.discente?.nombre_institucional || fila.discente?.nombre || "Discente"}
+                </p>
+                <p className="mt-1 text-[#5a3b2a]">{fila.conformidad_vigente?.comentario || "Sin comentario registrado."}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
