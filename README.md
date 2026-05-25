@@ -2213,3 +2213,580 @@ No se implementa en este bloque:
 Resumen técnico:
 
 - `docs/resumen_bloque9i_m_e_reportes_situacion_historial.md`
+
+## Bloque 10C-3C - Integración visual de reportes de trayectoria y situación académica
+
+Se integra en el portal Next.js la consulta y descarga de los reportes implementados en el Bloque 9I-M-E.
+
+### Objetivo
+
+Permitir que perfiles institucionales autorizados consulten vista previa, apliquen filtros y descarguen XLSX auditados de situación académica, movimientos académicos e historial interno.
+
+El frontend no genera XLSX, no calcula reportes, no genera PDF y no modifica historial ni movimientos. Solo consume APIs Django y dispara descargas auditadas.
+
+### Rutas frontend
+
+- `/reportes/trayectoria`
+- `/reportes/trayectoria/extraordinarios`
+- `/reportes/trayectoria/situacion-actual`
+- `/reportes/trayectoria/bajas-temporales`
+- `/reportes/trayectoria/bajas-definitivas`
+- `/reportes/trayectoria/reingresos`
+- `/reportes/trayectoria/egresables`
+- `/reportes/trayectoria/situacion-agregado`
+- `/reportes/trayectoria/movimientos-academicos`
+- `/reportes/trayectoria/cambios-grupo`
+- `/reportes/trayectoria/historial-interno`
+- `/reportes/trayectoria/historial-interno-discente`
+
+La ruta específica usa pantalla dinámica:
+
+- `/reportes/trayectoria/[slug]`
+
+### Reportes integrados
+
+- Extraordinarios registrados.
+- Situación académica actual.
+- Bajas temporales.
+- Bajas definitivas.
+- Reingresos.
+- Egresables / egresados.
+- Situación académica agregada.
+- Movimientos académicos.
+- Cambios de grupo.
+- Historial académico interno institucional.
+- Historial interno por discente.
+
+### Endpoints backend consumidos
+
+Vista previa JSON:
+
+- `GET /api/reportes/situacion/extraordinarios/`
+- `GET /api/reportes/situacion/actual/`
+- `GET /api/reportes/situacion/bajas-temporales/`
+- `GET /api/reportes/situacion/bajas-definitivas/`
+- `GET /api/reportes/situacion/reingresos/`
+- `GET /api/reportes/situacion/egresables/`
+- `GET /api/reportes/situacion/agregado/`
+- `GET /api/reportes/movimientos/`
+- `GET /api/reportes/movimientos/cambios-grupo/`
+- `GET /api/reportes/historial-interno/`
+- `GET /api/reportes/historial-interno/<discente_id>/`
+
+Descarga XLSX:
+
+- `GET /api/exportaciones/reportes/extraordinarios/xlsx/`
+- `GET /api/exportaciones/reportes/situacion-actual/xlsx/`
+- `GET /api/exportaciones/reportes/bajas-temporales/xlsx/`
+- `GET /api/exportaciones/reportes/bajas-definitivas/xlsx/`
+- `GET /api/exportaciones/reportes/reingresos/xlsx/`
+- `GET /api/exportaciones/reportes/egresables/xlsx/`
+- `GET /api/exportaciones/reportes/situacion-agregado/xlsx/`
+- `GET /api/exportaciones/reportes/movimientos-academicos/xlsx/`
+- `GET /api/exportaciones/reportes/cambios-grupo/xlsx/`
+- `GET /api/exportaciones/reportes/historial-interno/xlsx/`
+- `GET /api/exportaciones/reportes/historial-interno/<discente_id>/xlsx/`
+
+La descarga usa `credentials: "include"`, lee `Content-Disposition` y muestra `X-Registro-Exportacion-Id` cuando el backend lo devuelve.
+
+### Filtros visuales
+
+Se integran filtros compatibles con backend:
+
+- periodo;
+- carrera;
+- grupo;
+- plan;
+- antigüedad;
+- año de formación;
+- semestre;
+- asignatura;
+- docente;
+- discente;
+- discente_id;
+- situación;
+- tipo de movimiento;
+- grupo origen;
+- grupo destino;
+- aprobado;
+- baja abierta;
+- fecha desde/hasta;
+- incluir extraordinarios;
+- incluir eventos;
+- incluir movimientos.
+
+Los filtros vacíos se eliminan antes de consultar. La descarga XLSX usa los mismos filtros aplicados en pantalla.
+
+### Historial interno por discente
+
+`/reportes/trayectoria/historial-interno-discente` requiere capturar `discente_id` antes de consultar o descargar.
+
+El portal muestra aviso explícito:
+
+- el historial interno no es kárdex oficial;
+- no se debe usar matrícula militar como identificador principal;
+- la exportación está reservada para perfiles institucionales autorizados.
+
+### Permisos
+
+Pueden ver reportes de trayectoria:
+
+- Admin;
+- Estadística;
+- Jefatura académica;
+- Jefatura pedagógica;
+- Jefatura de carrera.
+
+No ven reportes de trayectoria:
+
+- Docente;
+- Discente.
+
+El frontend solo oculta opciones. El backend sigue validando permisos y ámbito institucional.
+
+### Qué queda fuera
+
+No se implementa en este bloque:
+
+- nuevos reportes backend;
+- generación XLSX en frontend;
+- PDF de situación o historial;
+- kárdex Excel;
+- importación Excel;
+- bitácora transversal completa;
+- edición de eventos, movimientos o trayectoria;
+- gráficas o dashboards BI.
+
+Resumen técnico:
+
+- `docs/resumen_bloque10c3c_reportes_trayectoria_portal.md`
+
+## Bloque 10C-4 - Interfaces administrativas y catálogos académicos
+
+Se integra en el portal Next.js una primera interfaz operativa para administración institucional y catálogos académicos, manteniendo Django Admin como respaldo técnico.
+
+### Objetivo
+
+Permitir que Admin, Estadística y jefaturas autorizadas consulten y operen registros base desde el portal moderno, con backend Django como fuente de verdad para permisos y validaciones.
+
+El frontend no accede directamente a base de datos, no duplica reglas críticas, no elimina físicamente registros y no reemplaza Django Admin.
+
+### Rutas frontend nuevas
+
+Administración institucional:
+
+- `/administracion`
+- `/administracion/usuarios`
+- `/administracion/usuarios/[id]`
+- `/administracion/grados-empleos`
+- `/administracion/unidades`
+- `/administracion/cargos`
+- `/administracion/roles`
+
+Catálogos académicos:
+
+- `/catalogos`
+- `/catalogos/carreras`
+- `/catalogos/planes`
+- `/catalogos/antiguedades`
+- `/catalogos/periodos`
+- `/catalogos/grupos`
+- `/catalogos/materias`
+- `/catalogos/programas-asignatura`
+- `/catalogos/esquemas-evaluacion`
+- `/catalogos/esquemas-evaluacion/[id]`
+- `/catalogos/situaciones-academicas`
+- `/catalogos/resultados-academicos`
+
+Las pantallas usan configuración centralizada y componentes reutilizables para tablas, filtros, formularios, errores backend y acciones de activación/inactivación.
+
+### APIs backend creadas
+
+Administración:
+
+- `GET|POST /api/admin/usuarios/`
+- `GET|PATCH /api/admin/usuarios/<id>/`
+- `POST /api/admin/usuarios/<id>/activar/`
+- `POST /api/admin/usuarios/<id>/inactivar/`
+- `GET|POST /api/admin/grados-empleos/`
+- `GET|PATCH /api/admin/grados-empleos/<id>/`
+- `POST /api/admin/grados-empleos/<id>/activar/`
+- `POST /api/admin/grados-empleos/<id>/inactivar/`
+- `GET|POST /api/admin/unidades-organizacionales/`
+- `GET|PATCH /api/admin/unidades-organizacionales/<id>/`
+- `POST /api/admin/unidades-organizacionales/<id>/activar/`
+- `POST /api/admin/unidades-organizacionales/<id>/inactivar/`
+- `GET|POST /api/admin/asignaciones-cargo/`
+- `GET|PATCH /api/admin/asignaciones-cargo/<id>/`
+- `POST /api/admin/asignaciones-cargo/<id>/cerrar/`
+- `POST /api/admin/asignaciones-cargo/<id>/activar/`
+- `POST /api/admin/asignaciones-cargo/<id>/inactivar/`
+- `GET /api/admin/roles/`
+
+Catálogos:
+
+- `GET|POST /api/catalogos/carreras/`
+- `GET|PATCH /api/catalogos/carreras/<id>/`
+- `GET|POST /api/catalogos/planes/`
+- `GET|PATCH /api/catalogos/planes/<id>/`
+- `GET|POST /api/catalogos/antiguedades/`
+- `GET|PATCH /api/catalogos/antiguedades/<id>/`
+- `GET|POST /api/catalogos/periodos/`
+- `GET|PATCH /api/catalogos/periodos/<id>/`
+- `GET|POST /api/catalogos/grupos/`
+- `GET|PATCH /api/catalogos/grupos/<id>/`
+- `GET|POST /api/catalogos/materias/`
+- `GET|PATCH /api/catalogos/materias/<id>/`
+- `GET|POST /api/catalogos/programas-asignatura/`
+- `GET|PATCH /api/catalogos/programas-asignatura/<id>/`
+- `GET|POST /api/catalogos/esquemas-evaluacion/`
+- `GET|PATCH /api/catalogos/esquemas-evaluacion/<id>/`
+- `GET|POST /api/catalogos/esquemas-evaluacion/<id>/componentes/`
+- `GET|PATCH /api/catalogos/esquemas-evaluacion/<id>/componentes/<componente_id>/`
+- `GET|POST /api/catalogos/situaciones-academicas/`
+- `GET|PATCH /api/catalogos/situaciones-academicas/<id>/`
+- `GET|POST /api/catalogos/resultados-academicos/`
+- `GET|PATCH /api/catalogos/resultados-academicos/<id>/`
+
+Todos los recursos que soportan estado exponen acciones `activar/` e `inactivar/`.
+
+### Perfiles autorizados
+
+- Admin/superusuario: lectura y escritura completa en administración y catálogos.
+- Estadística: lectura de administración operativa y escritura de catálogos académicos.
+- Jefatura académica/pedagógica: consulta autorizada.
+- Jefatura de carrera: consulta filtrada por ámbito cuando puede inferirse carrera.
+- Docente y Discente: sin acceso visual ni backend a administración/catálogos en este bloque.
+
+### Seguridad
+
+- Mutaciones con sesión Django, cookies y CSRF.
+- No se usan JWT ni `localStorage` para tokens.
+- No se expone contraseña ni hash.
+- No se implementa eliminación física desde portal.
+- Las validaciones reales quedan en backend/modelos/servicios.
+- Los errores de validación se devuelven como JSON y se muestran por campo en el portal.
+
+### Qué queda fuera
+
+No se implementa en este bloque:
+
+- captura docente de calificaciones;
+- flujo de actas en React;
+- cierre/apertura de periodo en React;
+- importación Excel;
+- reportes nuevos;
+- bitácora transversal completa;
+- cambios en cálculo académico;
+- eliminación de Django Admin.
+
+### Validación
+
+Comandos ejecutados durante el cierre del bloque:
+
+- `docker compose exec -T backend python manage.py check`
+- `docker compose exec -T backend python manage.py makemigrations --check`
+- `docker compose exec -T backend python manage.py test catalogos usuarios`
+- `docker compose exec -T backend python manage.py test relaciones evaluacion trayectoria`
+- `docker compose exec -T backend python manage.py test`
+- `docker compose exec -T frontend npm run lint`
+- `docker compose exec -T frontend npm run build`
+
+Resumen técnico:
+
+- `docs/resumen_bloque10c4_admin_catalogos_portal.md`
+
+## Bloque 10C-5 – Interfaces operativas de calificaciones y actas
+
+### Objetivo
+
+Migrar al portal Next.js las pantallas operativas principales de captura preliminar, resumen académico, gestión de actas, conformidad del discente, validación por jefatura de carrera, formalización por jefatura académica y consulta operativa de Estadística/Admin.
+
+El backend Django sigue siendo la fuente de verdad. El frontend solo consume APIs, muestra datos autorizados y dispara acciones existentes.
+
+### Rutas frontend nuevas
+
+Docente:
+
+- `/docente/asignaciones`
+- `/docente/asignaciones/[id]`
+- `/docente/asignaciones/[id]/captura/[corte]`
+- `/docente/asignaciones/[id]/resumen`
+- `/docente/actas`
+- `/docente/actas/[id]`
+
+Discente:
+
+- `/discente/actas`
+- `/discente/actas/[detalleId]`
+
+Jefaturas:
+
+- `/jefatura-carrera/actas`
+- `/jefatura-carrera/actas/[id]`
+- `/jefatura-academica/actas`
+- `/jefatura-academica/actas/[id]`
+
+Estadística/Admin:
+
+- `/estadistica/actas`
+- `/estadistica/actas/[id]`
+
+### APIs backend creadas
+
+Docente:
+
+- `GET /api/docente/asignaciones/`
+- `GET /api/docente/asignaciones/<id>/`
+- `GET|POST /api/docente/asignaciones/<id>/captura/<corte>/`
+- `GET /api/docente/asignaciones/<id>/resumen/`
+- `POST /api/docente/asignaciones/<id>/actas/generar/`
+- `GET /api/docente/actas/`
+- `GET /api/docente/actas/<acta_id>/`
+- `POST /api/docente/actas/<acta_id>/regenerar/`
+- `POST /api/docente/actas/<acta_id>/publicar/`
+- `POST /api/docente/actas/<acta_id>/remitir/`
+
+Discente:
+
+- `GET /api/discente/actas/`
+- `GET /api/discente/actas/<detalle_id>/`
+- `POST /api/discente/actas/<detalle_id>/conformidad/`
+
+Jefaturas y Estadística:
+
+- `GET /api/jefatura-carrera/actas/pendientes/`
+- `GET /api/jefatura-carrera/actas/<acta_id>/`
+- `POST /api/jefatura-carrera/actas/<acta_id>/validar/`
+- `GET /api/jefatura-academica/actas/pendientes/`
+- `GET /api/jefatura-academica/actas/<acta_id>/`
+- `POST /api/jefatura-academica/actas/<acta_id>/formalizar/`
+- `GET /api/estadistica/actas/`
+- `GET /api/estadistica/actas/<acta_id>/`
+
+### Reglas de operación
+
+- La captura preliminar acepta valores de 0.0 a 10.0 y vacío para limpiar captura.
+- La captura queda bloqueada si existe acta publicada, remitida, validada, formalizada o archivada del mismo corte/asignación.
+- Regenerar acta solo está disponible en `BORRADOR_DOCENTE`.
+- Publicar, remitir, validar y formalizar llaman a servicios Django existentes.
+- Discente solo ve su detalle individual y puede registrar conformidad únicamente en `PUBLICADO_DISCENTE`.
+- Inconformidad requiere comentario obligatorio.
+- Estadística consulta actas en solo lectura; no valida ni formaliza.
+- Las descargas PDF/XLSX de actas reutilizan endpoints existentes y auditoría de exportaciones.
+
+### Permisos
+
+- Docente: solo asignaciones y actas propias.
+- Discente: solo actas publicadas donde tiene detalle propio.
+- Jefatura de carrera: actas remitidas de su ámbito.
+- Jefatura académica: actas validadas pendientes de formalización.
+- Estadística/Admin: consulta operativa y exportación autorizada.
+- Backend valida permisos aunque el frontend oculte rutas.
+
+### Seguridad y privacidad
+
+- No se muestra matrícula militar por defecto.
+- No se usan JWT ni `localStorage`.
+- Mutaciones con sesión Django, cookies y CSRF.
+- No se editan actas formalizadas.
+- No se modifican reglas de cálculo académico, estados de acta, kárdex, historial ni reportes.
+
+### Qué queda fuera
+
+No se implementa en este bloque:
+
+- rectificación posterior a formalización;
+- reapertura/devolución/rechazo formal de acta;
+- importación Excel de calificaciones;
+- cierre/apertura de periodo en React;
+- kárdex, historial o reportes nuevos;
+- bitácora transversal completa.
+
+### Validación
+
+Comandos ejecutados durante el cierre del bloque:
+
+- `docker compose exec -T backend python manage.py check`
+- `docker compose exec -T backend python manage.py makemigrations`
+- `docker compose exec -T backend python manage.py migrate`
+- `docker compose exec -T backend python manage.py makemigrations --check`
+- `docker compose exec -T backend python manage.py test evaluacion`
+- `docker compose exec -T backend python manage.py test usuarios relaciones`
+- `docker compose exec -T backend python manage.py test`
+- `docker compose exec -T frontend npm run lint`
+- `docker compose exec -T frontend npm run build`
+
+Resumen técnico:
+
+- `docs/resumen_bloque10c5_calificaciones_actas_portal.md`
+
+## Bloque 10C-6 – Interfaces de trayectoria, movimientos y cierre/apertura
+
+### Objetivo
+
+Integrar en el portal Next.js la operación diaria de trayectoria académica, movimientos académicos y cierre/apertura de periodo, consumiendo APIs Django y reutilizando los servicios existentes del Bloque 7 y 8.5.
+
+### Rutas frontend
+
+Trayectoria:
+
+- `/trayectoria`
+- `/trayectoria/mi-historial`
+- `/trayectoria/historial`
+- `/trayectoria/historial/[discenteId]`
+- `/trayectoria/extraordinarios`
+- `/trayectoria/extraordinarios/nuevo`
+- `/trayectoria/extraordinarios/[id]`
+- `/trayectoria/situaciones`
+- `/trayectoria/situaciones/nuevo`
+- `/trayectoria/situaciones/[id]`
+
+Movimientos:
+
+- `/movimientos-academicos`
+- `/movimientos-academicos/nuevo`
+- `/movimientos-academicos/[id]`
+- `/movimientos-academicos/cambio-grupo`
+
+Periodos:
+
+- `/periodos`
+- `/periodos/[id]/diagnostico`
+- `/periodos/cierres`
+- `/periodos/cierres/[id]`
+- `/periodos/apertura`
+- `/periodos/aperturas`
+- `/periodos/aperturas/[id]`
+- `/periodos/pendientes-asignacion-docente`
+
+### APIs backend
+
+Trayectoria:
+
+- `GET /api/trayectoria/mi-historial/`
+- `GET /api/trayectoria/historial/`
+- `GET /api/trayectoria/historial/<discente_id>/`
+- `GET|POST /api/trayectoria/extraordinarios/`
+- `GET /api/trayectoria/extraordinarios/<id>/`
+- `GET|POST /api/trayectoria/situaciones/`
+- `GET /api/trayectoria/situaciones/<id>/`
+
+Movimientos:
+
+- `GET|POST /api/relaciones/movimientos/`
+- `GET /api/relaciones/movimientos/<id>/`
+- `POST /api/relaciones/movimientos/cambio-grupo/`
+
+Cierre/apertura:
+
+- `GET /api/periodos/`
+- `GET /api/periodos/<id>/diagnostico-cierre/`
+- `POST /api/periodos/<id>/cerrar/`
+- `GET /api/cierres/`
+- `GET /api/cierres/<id>/`
+- `POST /api/aperturas/crear/`
+- `GET /api/aperturas/`
+- `GET /api/aperturas/<id>/`
+- `GET /api/pendientes-asignacion-docente/`
+
+### Perfiles
+
+- Discente consulta solo `/trayectoria/mi-historial`.
+- Estadística/Admin consultan y operan trayectoria, extraordinarios, situaciones, movimientos, cierre y apertura.
+- Jefatura de carrera consulta historiales, movimientos y pendientes dentro de su ámbito cuando backend puede inferirlo.
+- Jefatura académica/pedagógica consulta trayectoria/procesos según permisos backend.
+- Docente no accede a módulos globales de trayectoria/cierre y conserva calificaciones/actas.
+
+### Restricciones
+
+- No se muestran matrículas por defecto en APIs nuevas.
+- No se genera PDF/XLSX nuevo en frontend.
+- No se implementa bitácora transversal completa.
+- No se modifican reglas de extraordinarios, situaciones, movimientos, cierre/apertura, kárdex ni actas formalizadas.
+- El cambio de grupo usa la lógica transaccional existente de `MovimientoAcademico`.
+- El diagnóstico de cierre no modifica datos.
+
+### Validación
+
+Comandos ejecutados durante el cierre del bloque:
+
+- `docker compose exec -T backend python manage.py check`
+- `docker compose exec -T backend python manage.py makemigrations`
+- `docker compose exec -T backend python manage.py migrate`
+- `docker compose exec -T backend python manage.py makemigrations --check`
+- `docker compose exec -T backend python manage.py test trayectoria`
+- `docker compose exec -T backend python manage.py test relaciones`
+- `docker compose exec -T backend python manage.py test evaluacion`
+- `docker compose exec -T backend python manage.py test usuarios`
+- `docker compose exec -T backend python manage.py test`
+- `docker compose exec -T frontend npm run lint`
+- `docker compose exec -T frontend npm run build`
+
+Resumen técnico:
+
+- `docs/resumen_bloque10c6_trayectoria_cierre_apertura_portal.md`
+
+## Bloque 9K - Bitácora transversal de eventos críticos
+
+### Objetivo
+
+Se implementa una auditoría institucional append-only para registrar eventos críticos de operación académica, administrativa y de control. La bitácora no reemplaza `RegistroExportacion`: las exportaciones siguen auditándose ahí con detalle documental, mientras que `BitacoraEventoCritico` guarda evidencia transversal resumida de mutaciones, transiciones de estado, bloqueos y exportaciones relevantes.
+
+### Modelo y servicio
+
+- Nueva entidad `BitacoraEventoCritico` en `auditoria`.
+- Registro append-only: no se editan ni eliminan eventos en operación ordinaria.
+- Admin Django de solo lectura, sin alta manual, cambio, eliminación ni acciones masivas.
+- Servicio central `auditoria.services` con sanitización, extracción de contexto de request, snapshots de usuario, rol/cargo, IP, user agent, ruta y método.
+- `AUDITORIA_STRICT=False` por defecto para que un fallo de auditoría no rompa el flujo académico normal.
+
+### Eventos cubiertos
+
+- Autenticación: login exitoso, login fallido y logout.
+- Administración: usuarios, grados/empleos, unidades organizacionales y asignaciones de cargo.
+- Catálogos: creación, actualización, activación/inactivación, esquemas y componentes de evaluación.
+- Evaluación y actas: captura preliminar guardada/eliminada/bloqueada, generación/regeneración de borradores, publicación, remisión, validación, formalización y acciones bloqueadas.
+- Conformidad: acuse, conforme, inconforme, rechazo sin comentario y bloqueo posterior a remisión.
+- Trayectoria y movimientos: extraordinarios, situaciones académicas, bajas/reingresos y cambios de grupo/movimientos.
+- Periodos: diagnóstico, cierre/apertura ejecutada y bloqueada.
+- Exportaciones: solicitud, generación y fallo resumidos, vinculados a `RegistroExportacion`.
+
+### APIs
+
+- `GET /api/auditoria/eventos/`
+- `GET /api/auditoria/eventos/<id>/`
+- `GET /api/auditoria/eventos/resumen/`
+- `GET /api/exportaciones/auditoria/eventos/xlsx/`
+
+Los endpoints requieren autenticación y permisos institucionales. Docentes y discentes no consultan la bitácora general.
+
+### Privacidad y sanitización
+
+La bitácora no guarda contraseñas, tokens, cookies, sesiones, CSRF, llaves privadas, firmas ni payloads completos de calificaciones, actas, historiales o reportes. Para capturas, actas, conformidad, movimientos y periodos se guardan IDs, estados, conteos y resúmenes.
+
+### Portal
+
+`/reportes/auditoria` incorpora dos pestañas:
+
+- Exportaciones.
+- Eventos críticos.
+
+La pestaña de eventos consume la API de bitácora, ofrece filtros básicos y descarga XLSX con folio técnico de `RegistroExportacion`.
+
+### Validación
+
+Comandos ejecutados durante el bloque:
+
+- `docker compose exec -T backend python manage.py check`
+- `docker compose exec -T backend python manage.py migrate`
+- `docker compose exec -T backend python manage.py makemigrations --check`
+- `docker compose exec -T backend python manage.py test auditoria`
+- `docker compose exec -T backend python manage.py test usuarios catalogos evaluacion actas trayectoria relaciones reportes`
+- `docker compose exec -T backend python manage.py test`
+- `docker compose exec -T frontend npm run lint`
+- `docker compose exec -T frontend npm run build`
+
+Resumen técnico:
+
+- `docs/resumen_bloque9k_bitacora_eventos_criticos.md`

@@ -6,6 +6,8 @@ import unicodedata
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.utils import timezone
 
+from auditoria.eventos import MODULO_EXPORTACIONES, SEVERIDAD_ADVERTENCIA, SEVERIDAD_INFO
+from auditoria.services import registrar_evento_exitoso, registrar_evento_fallido
 from core.portal_services import portal_context
 
 from .catalogo import CATALOGO_EXPORTACIONES, CATALOGO_POR_CODIGO
@@ -339,16 +341,66 @@ class ServicioExportacion:
             user_agent=obtener_user_agent(self.request),
             estado=RegistroExportacion.ESTADO_SOLICITADA,
         )
+        registrar_evento_exitoso(
+            request=self.request,
+            usuario=self.user,
+            modulo=MODULO_EXPORTACIONES,
+            evento_codigo="EXPORTACION_SOLICITADA",
+            severidad=SEVERIDAD_INFO,
+            objeto=registro,
+            resumen="Exportacion solicitada.",
+            metadatos={
+                "registro_exportacion_id": registro.id,
+                "tipo_documento": registro.tipo_documento,
+                "formato": registro.formato,
+                "nombre_archivo": registro.nombre_archivo,
+                "estado": registro.estado,
+            },
+        )
         return registro
 
     def marcar_generada(self, registro: RegistroExportacion, *, tamano_bytes=None, hash_archivo=""):
         self._validar_dueno_o_auditor(registro)
         registro.marcar_generada(tamano_bytes=tamano_bytes, hash_archivo=hash_archivo)
+        registrar_evento_exitoso(
+            request=self.request,
+            usuario=self.user,
+            modulo=MODULO_EXPORTACIONES,
+            evento_codigo="EXPORTACION_GENERADA",
+            severidad=SEVERIDAD_INFO,
+            objeto=registro,
+            resumen="Exportacion generada.",
+            metadatos={
+                "registro_exportacion_id": registro.id,
+                "tipo_documento": registro.tipo_documento,
+                "formato": registro.formato,
+                "nombre_archivo": registro.nombre_archivo,
+                "estado": registro.estado,
+                "tamano_bytes": registro.tamano_bytes,
+            },
+        )
         return registro
 
     def marcar_fallida(self, registro: RegistroExportacion, mensaje_error):
         self._validar_dueno_o_auditor(registro)
         registro.marcar_fallida(mensaje_error)
+        registrar_evento_fallido(
+            request=self.request,
+            usuario=self.user,
+            modulo=MODULO_EXPORTACIONES,
+            evento_codigo="EXPORTACION_FALLIDA",
+            severidad=SEVERIDAD_ADVERTENCIA,
+            objeto=registro,
+            resumen="Exportacion fallida.",
+            metadatos={
+                "registro_exportacion_id": registro.id,
+                "tipo_documento": registro.tipo_documento,
+                "formato": registro.formato,
+                "nombre_archivo": registro.nombre_archivo,
+                "estado": registro.estado,
+                "mensaje_error": registro.mensaje_error,
+            },
+        )
         return registro
 
     def registrar_evento_prueba(self, *, formato=RegistroExportacion.FORMATO_PDF, filtros=None, parametros=None):

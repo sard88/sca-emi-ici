@@ -1,3 +1,4 @@
+import json
 from datetime import date
 from decimal import Decimal
 
@@ -627,3 +628,84 @@ class TrayectoriaBloque7Tests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotIn("PDF", contenido)
         self.assertNotIn("Excel", contenido)
+
+
+class TrayectoriaPortalApi10C6Tests(TrayectoriaBloque7Tests):
+    def test_api_mi_historial_discente_no_expone_matricula(self):
+        self.formalizar_final(calificacion=Decimal("8.0"))
+        self.client.force_login(self.usuario_discente)
+
+        response = self.client.get("/api/trayectoria/mi-historial/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
+        self.assertNotIn("A-100", response.content.decode())
+        self.assertFalse(response.json()["es_kardex_oficial"])
+
+    def test_api_estadistica_busca_historiales(self):
+        self.client.force_login(self.usuario_estadistica)
+
+        response = self.client.get("/api/trayectoria/historial/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["total"], 2)
+
+    def test_api_docente_no_accede_trayectoria_global(self):
+        self.client.force_login(self.usuario_docente)
+
+        response = self.client.get("/api/trayectoria/historial/")
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_api_estadistica_registra_situacion_academica(self):
+        CatalogoSituacionAcademica.objects.get_or_create(
+            clave=CatalogoSituacionAcademica.CLAVE_BAJA_TEMPORAL,
+            defaults={"nombre": "Baja temporal", "activo": True},
+        )
+        self.client.force_login(self.usuario_estadistica)
+
+        response = self.client.post(
+            "/api/trayectoria/situaciones/",
+            data=json.dumps({
+                "discente_id": self.discente.pk,
+                "situacion_codigo": CatalogoSituacionAcademica.CLAVE_BAJA_TEMPORAL,
+                "periodo_id": self.periodo.pk,
+                "fecha_inicio": "2024-09-01",
+                "motivo": "Prueba API 10C-6",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.discente.refresh_from_db()
+        self.assertEqual(self.discente.situacion_actual, Discente.SITUACION_BAJA_TEMPORAL)
+
+    def test_api_discente_no_registra_situacion(self):
+        self.client.force_login(self.usuario_discente)
+
+        response = self.client.post(
+            "/api/trayectoria/situaciones/",
+            data=json.dumps({"discente_id": self.discente.pk, "situacion_codigo": "BAJA_TEMPORAL"}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_api_estadistica_registra_extraordinario(self):
+        self.formalizar_final(calificacion=Decimal("5.0"))
+        self.client.force_login(self.usuario_estadistica)
+
+        response = self.client.post(
+            "/api/trayectoria/extraordinarios/",
+            data=json.dumps({
+                "inscripcion_materia_id": self.inscripcion.pk,
+                "fecha_aplicacion": "2024-10-01",
+                "calificacion": "8.0",
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.inscripcion.refresh_from_db()
+        self.assertEqual(self.inscripcion.codigo_marca, CatalogoResultadoAcademico.CLAVE_EE)
+        self.assertNotIn("A-100", response.content.decode())

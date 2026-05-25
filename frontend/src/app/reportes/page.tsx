@@ -10,9 +10,10 @@ import { LoadingState } from "@/components/states/LoadingState";
 import { ReportCatalogCard } from "@/components/reportes/ReportCatalogCard";
 import { ExportHistoryTable } from "@/components/reportes/ExportHistoryTable";
 import { getExportaciones, getReportesCatalogo } from "@/lib/api";
-import { canAccessAuditoriaExportaciones, canAccessKardexPdf, canAccessReportes, canAccessReportesDesempeno, canAccessReportesOperativos } from "@/lib/dashboard";
+import { canAccessAuditoriaExportaciones, canAccessKardexPdf, canAccessReportes, canAccessReportesDesempeno, canAccessReportesOperativos, canAccessReportesTrayectoria } from "@/lib/dashboard";
 import { canAccessReporteDesempeno, reportesDesempeno } from "@/lib/reportes-desempeno";
 import { canAccessReporteOperativo, reportesOperativos } from "@/lib/reportes-operativos";
+import { canAccessReporteTrayectoria, reportesTrayectoria } from "@/lib/reportes-trayectoria";
 import { useAuth } from "@/lib/auth";
 import type { AuthenticatedUser, ExportacionRegistro, ReporteCatalogoItem } from "@/lib/types";
 
@@ -63,6 +64,9 @@ export default function ReportesPage() {
             ) : null}
             {canAccessReportesDesempeno(user) ? (
               <QuickLink title="Reportes de desempeño académico" description="Resultados oficiales, promedios y cuadro de aprovechamiento en XLSX." href="/reportes/desempeno" />
+            ) : null}
+            {canAccessReportesTrayectoria(user) ? (
+              <QuickLink title="Reportes de trayectoria y situación académica" description="Extraordinarios, bajas, reingresos, movimientos e historial interno en XLSX." href="/reportes/trayectoria" />
             ) : null}
             {canAccessKardexPdf(user) ? (
               <QuickLink title="Kárdex oficial" description="PDF institucional desde ServicioKardex, con auditoría documental." href="/reportes/kardex" />
@@ -129,6 +133,8 @@ function actionHrefForCatalogItem(item: ReporteCatalogoItem, user: Authenticated
   if (item.codigo === "KARDEX_OFICIAL" && canAccessKardexPdf(user)) return "/reportes/kardex";
   const desempeno = reportesDesempeno.find((config) => config.tipoDocumento === item.codigo && canAccessReporteDesempeno(user, config));
   if (desempeno) return desempeno.ruta;
+  const trayectoria = reportesTrayectoria.find((config) => config.tipoDocumento === item.codigo && canAccessReporteTrayectoria(user, config));
+  if (trayectoria) return trayectoria.ruta;
   if (!canAccessReportesOperativos(user)) return undefined;
   return reportesOperativos.find((config) => config.tipoDocumento === item.codigo && canAccessReporteOperativo(user, config))?.ruta;
 }
@@ -136,6 +142,7 @@ function actionHrefForCatalogItem(item: ReporteCatalogoItem, user: Authenticated
 function actionLabelForCatalogItem(item: ReporteCatalogoItem) {
   if (item.codigo === "KARDEX_OFICIAL") return "Exportar kárdex PDF";
   if (reportesDesempeno.some((config) => config.tipoDocumento === item.codigo)) return "Ver reporte de desempeño";
+  if (reportesTrayectoria.some((config) => config.tipoDocumento === item.codigo)) return "Ver reporte de trayectoria";
   if (reportesOperativos.some((config) => config.tipoDocumento === item.codigo)) return "Ver reporte operativo";
   return "Abrir módulo";
 }

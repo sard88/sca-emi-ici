@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import type { AuthenticatedUser } from "@/lib/types";
-import { canAccessKardexPdf, canAccessReportes, canAccessReportesDesempeno, canAccessReportesOperativos, getProfilesForUser } from "@/lib/dashboard";
+import { canAccessAdministracionPortal, canAccessCatalogosPortal, canAccessDiscenteActas, canAccessDocenteOperacion, canAccessEstadisticaActas, canAccessJefaturaAcademicaActas, canAccessJefaturaCarreraActas, canAccessKardexPdf, canAccessMiHistorialAcademico, canAccessPeriodosOperativos, canAccessReportes, canAccessReportesDesempeno, canAccessReportesOperativos, canAccessReportesTrayectoria, canAccessTrayectoriaOperativa, getProfilesForUser } from "@/lib/dashboard";
 
 const routeByProfile: Record<string, string> = {
   ADMIN: "/admin-soporte",
@@ -24,6 +24,17 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
   const showKardex = canAccessKardexPdf(user);
   const showReportesOperativos = canAccessReportesOperativos(user);
   const showReportesDesempeno = canAccessReportesDesempeno(user);
+  const showReportesTrayectoria = canAccessReportesTrayectoria(user);
+  const showAdministracion = canAccessAdministracionPortal(user);
+  const showCatalogos = canAccessCatalogosPortal(user);
+  const showDocenteOperacion = canAccessDocenteOperacion(user);
+  const showDiscenteActas = canAccessDiscenteActas(user);
+  const showJefaturaCarreraActas = canAccessJefaturaCarreraActas(user);
+  const showJefaturaAcademicaActas = canAccessJefaturaAcademicaActas(user);
+  const showEstadisticaActas = canAccessEstadisticaActas(user);
+  const showTrayectoriaOperativa = canAccessTrayectoriaOperativa(user);
+  const showMiHistorial = canAccessMiHistorialAcademico(user);
+  const showPeriodosOperativos = canAccessPeriodosOperativos(user);
 
   return (
     <aside className="hidden min-h-screen w-[292px] shrink-0 border-r border-[#eadfce] bg-[#fffaf1]/92 p-4 shadow-[18px_0_44px_rgba(87,70,45,0.08)] backdrop-blur-xl lg:sticky lg:top-0 lg:flex lg:flex-col">
@@ -130,6 +141,18 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
                     <span className="text-base leading-none text-[#7b6b58]">›</span>
                   </Link>
                 ) : null}
+                {showReportesTrayectoria ? (
+                  <Link
+                    href="/reportes/trayectoria"
+                    className={clsx(
+                      "ml-7 flex items-center justify-between rounded-2xl px-3 py-2 text-xs font-black transition",
+                      pathname.startsWith("/reportes/trayectoria") ? "bg-[#fff4df] text-[#7a4b0d]" : "text-[#46534e] hover:bg-[#f7efe2]",
+                    )}
+                  >
+                    Reportes de trayectoria
+                    <span className="text-base leading-none text-[#7b6b58]">›</span>
+                  </Link>
+                ) : null}
                 {showKardex ? (
                   <Link
                     href="/reportes/kardex"
@@ -143,6 +166,67 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
                   </Link>
                 ) : null}
               </>
+            ) : null}
+            {showDocenteOperacion ? (
+              <>
+                <SidebarLink href="/docente/asignaciones" active={pathname.startsWith("/docente/asignaciones")} icon="DOCENTE" label="Mis asignaciones" />
+                <SidebarLink href="/docente/actas" active={pathname.startsWith("/docente/actas")} icon="ACTAS" label="Mis actas" />
+              </>
+            ) : null}
+            {showDiscenteActas ? (
+              <SidebarLink href="/discente/actas" active={pathname.startsWith("/discente/actas")} icon="ACTAS" label="Mis actas publicadas" />
+            ) : null}
+            {showMiHistorial ? (
+              <SidebarLink href="/trayectoria/mi-historial" active={pathname.startsWith("/trayectoria/mi-historial")} icon="TRAYECTORIA" label="Mi historial académico" />
+            ) : null}
+            {showTrayectoriaOperativa ? (
+              <SidebarLink href="/trayectoria" active={pathname === "/trayectoria" || pathname.startsWith("/trayectoria/")} icon="TRAYECTORIA" label="Trayectoria académica" />
+            ) : null}
+            {showPeriodosOperativos ? (
+              <SidebarLink href="/periodos" active={pathname.startsWith("/periodos")} icon="PERIODOS" label="Cierre y apertura" />
+            ) : null}
+            {showJefaturaCarreraActas ? (
+              <SidebarLink href="/jefatura-carrera/actas" active={pathname.startsWith("/jefatura-carrera/actas")} icon="ACTAS" label="Actas por validar" />
+            ) : null}
+            {showJefaturaAcademicaActas ? (
+              <SidebarLink href="/jefatura-academica/actas" active={pathname.startsWith("/jefatura-academica/actas")} icon="ACTAS" label="Actas por formalizar" />
+            ) : null}
+            {showEstadisticaActas ? (
+              <SidebarLink href="/estadistica/actas" active={pathname.startsWith("/estadistica/actas")} icon="ACTAS" label="Consulta de actas" />
+            ) : null}
+            {showAdministracion ? (
+              <Link
+                href="/administracion"
+                className={clsx(
+                  "group flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition",
+                  pathname.startsWith("/administracion")
+                    ? "bg-[#f6ead7] text-[#7a123d]"
+                    : "text-[#1f2f2a] hover:bg-[#f7efe2]",
+                )}
+              >
+                <span className="flex items-center gap-3">
+                  <ModuleIcon name="ADMINISTRACION" className="h-5 w-5 text-[#46534e] group-hover:text-[#7a123d]" />
+                  Administración
+                </span>
+                <span className="text-lg leading-none text-[#7b6b58]">›</span>
+              </Link>
+            ) : null}
+            {showCatalogos ? (
+              <Link
+                href="/catalogos"
+                className={clsx(
+                  "group flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition",
+                  pathname.startsWith("/catalogos")
+                    ? "bg-[#f6ead7] text-[#7a123d]"
+                    : "text-[#1f2f2a] hover:bg-[#f7efe2]",
+                )}
+              >
+                <span className="flex items-center gap-3">
+                  <ModuleIcon name="CATALOGOS" className="h-5 w-5 text-[#46534e] group-hover:text-[#7a123d]" />
+                  Catálogos académicos
+                </span>
+                <span className="text-lg leading-none text-[#7b6b58]">›</span>
+              </Link>
             ) : null}
           </div>
         </div>
@@ -170,6 +254,17 @@ export function MobileModuleNav({ user }: { user: AuthenticatedUser }) {
   const showKardex = canAccessKardexPdf(user);
   const showReportesOperativos = canAccessReportesOperativos(user);
   const showReportesDesempeno = canAccessReportesDesempeno(user);
+  const showReportesTrayectoria = canAccessReportesTrayectoria(user);
+  const showAdministracion = canAccessAdministracionPortal(user);
+  const showCatalogos = canAccessCatalogosPortal(user);
+  const showDocenteOperacion = canAccessDocenteOperacion(user);
+  const showDiscenteActas = canAccessDiscenteActas(user);
+  const showJefaturaCarreraActas = canAccessJefaturaCarreraActas(user);
+  const showJefaturaAcademicaActas = canAccessJefaturaAcademicaActas(user);
+  const showEstadisticaActas = canAccessEstadisticaActas(user);
+  const showTrayectoriaOperativa = canAccessTrayectoriaOperativa(user);
+  const showMiHistorial = canAccessMiHistorialAcademico(user);
+  const showPeriodosOperativos = canAccessPeriodosOperativos(user);
 
   return (
     <div className="lg:hidden">
@@ -186,7 +281,19 @@ export function MobileModuleNav({ user }: { user: AuthenticatedUser }) {
         {showReportes ? <MobilePill href="/reportes" active={pathname.startsWith("/reportes")} label="Reportes" /> : null}
         {showReportesOperativos ? <MobilePill href="/reportes/operativos" active={pathname.startsWith("/reportes/operativos")} label="Operativos" /> : null}
         {showReportesDesempeno ? <MobilePill href="/reportes/desempeno" active={pathname.startsWith("/reportes/desempeno")} label="Desempeño" /> : null}
+        {showReportesTrayectoria ? <MobilePill href="/reportes/trayectoria" active={pathname.startsWith("/reportes/trayectoria")} label="Trayectoria" /> : null}
         {showKardex ? <MobilePill href="/reportes/kardex" active={pathname === "/reportes/kardex"} label="Kárdex" /> : null}
+        {showDocenteOperacion ? <MobilePill href="/docente/asignaciones" active={pathname.startsWith("/docente/asignaciones")} label="Asignaciones" /> : null}
+        {showDocenteOperacion ? <MobilePill href="/docente/actas" active={pathname.startsWith("/docente/actas")} label="Mis actas" /> : null}
+        {showDiscenteActas ? <MobilePill href="/discente/actas" active={pathname.startsWith("/discente/actas")} label="Mis actas" /> : null}
+        {showMiHistorial ? <MobilePill href="/trayectoria/mi-historial" active={pathname.startsWith("/trayectoria/mi-historial")} label="Historial" /> : null}
+        {showTrayectoriaOperativa ? <MobilePill href="/trayectoria" active={pathname === "/trayectoria" || pathname.startsWith("/trayectoria/")} label="Trayectoria" /> : null}
+        {showPeriodosOperativos ? <MobilePill href="/periodos" active={pathname.startsWith("/periodos")} label="Periodos" /> : null}
+        {showJefaturaCarreraActas ? <MobilePill href="/jefatura-carrera/actas" active={pathname.startsWith("/jefatura-carrera/actas")} label="Validar actas" /> : null}
+        {showJefaturaAcademicaActas ? <MobilePill href="/jefatura-academica/actas" active={pathname.startsWith("/jefatura-academica/actas")} label="Formalizar" /> : null}
+        {showEstadisticaActas ? <MobilePill href="/estadistica/actas" active={pathname.startsWith("/estadistica/actas")} label="Actas" /> : null}
+        {showAdministracion ? <MobilePill href="/administracion" active={pathname.startsWith("/administracion")} label="Admin" /> : null}
+        {showCatalogos ? <MobilePill href="/catalogos" active={pathname.startsWith("/catalogos")} label="Catálogos" /> : null}
       </div>
     </div>
   );
@@ -214,14 +321,33 @@ function MobilePill({ href, active, label }: { href: string; active: boolean; la
   );
 }
 
+function SidebarLink({ href, active, icon, label }: { href: string; active: boolean; icon: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className={clsx(
+        "group flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition",
+        active ? "bg-[#f6ead7] text-[#7a123d]" : "text-[#1f2f2a] hover:bg-[#f7efe2]",
+      )}
+    >
+      <span className="flex items-center gap-3">
+        <ModuleIcon name={icon} className="h-5 w-5 text-[#46534e] group-hover:text-[#7a123d]" />
+        {label}
+      </span>
+      <span className="text-lg leading-none text-[#7b6b58]">›</span>
+    </Link>
+  );
+}
+
 export function ModuleIcon({ name, className }: { name: string; className?: string }) {
   const normalized = name.toUpperCase();
 
   if (normalized.includes("ESTADISTICA")) return <ChartIcon className={className} />;
   if (normalized.includes("DOCENTE")) return <UsersIcon className={className} />;
   if (normalized.includes("DISCENTE")) return <IdIcon className={className} />;
+  if (normalized.includes("TRAYECTORIA") || normalized.includes("PERIODO")) return <AcademicIcon className={className} />;
   if (normalized.includes("JEFE") || normalized.includes("JEFATURA")) return <AcademicIcon className={className} />;
-  if (normalized.includes("REPORTE")) return <DocumentIcon className={className} />;
+  if (normalized.includes("REPORTE") || normalized.includes("ACTA")) return <DocumentIcon className={className} />;
   if (normalized.includes("SEGURIDAD")) return <ShieldIcon className={className} />;
   if (normalized.includes("PANEL")) return <HomeIcon className={className} />;
   return <SettingsIcon className={className} />;

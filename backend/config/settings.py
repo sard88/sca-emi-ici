@@ -155,3 +155,7 @@ SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", False)
 SECURE_HSTS_SECONDS = env_int("SECURE_HSTS_SECONDS", 0)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", False)
 SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD", False)
+
+# Bloque 9K: por defecto la bitacora no debe romper el flujo funcional si falla
+# el registro tecnico; en pruebas puede activarse para verificar errores.
+AUDITORIA_STRICT = env_bool("AUDITORIA_STRICT", False)

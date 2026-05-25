@@ -1,23 +1,52 @@
 import type {
   ActividadRecienteItem,
   ActaExportable,
+  ActaDetalle,
+  ActasListResponse,
+  AsignacionesListResponse,
   AuthMe,
   AuthenticatedUser,
+  BitacoraEventosResponse,
   BusquedaResponse,
   CalendarioMes,
+  CapturaPreliminarCorte,
+  CapturaPreliminarPayload,
+  CambioGrupoPayload,
   DashboardResumen,
+  DiagnosticoCierrePeriodoDTO,
+  DiscenteActaDetalle,
+  DiscenteActasResponse,
   DownloadResult,
+  DocenteAsignacionDetalle,
   EventoCalendario,
+  ExtraordinarioDTO,
+  ExtraordinarioPayload,
   ExportacionRegistro,
+  HistorialAcademicoDTO,
+  HistorialSearchResponse,
   KardexExportable,
+  MovimientoAcademicoDTO,
+  MovimientoAcademicoPayload,
   NotificacionesResponse,
   PerfilUsuario,
+  PendienteAsignacionDocenteDTO,
+  PeriodoOperativoDTO,
   PortalQuickAccess,
+  ProcesoAperturaPeriodoDTO,
+  ProcesoCierrePeriodoDTO,
+  ResumenCalculoAcademico,
   ReporteDesempenoCodigo,
   ReporteDesempenoRespuesta,
   ReporteOperativoCodigo,
   ReporteOperativoRespuesta,
+  ReporteTrayectoriaCodigo,
+  ReporteTrayectoriaRespuesta,
   ReporteCatalogoItem,
+  ResourceDetailResponse,
+  ResourceListResponse,
+  SituacionAcademicaDTO,
+  SituacionAcademicaPayload,
+  TrayectoriaListResponse,
 } from "./types";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
@@ -30,10 +59,14 @@ function apiUrl(path: string) {
 async function parseJson<T>(response: Response): Promise<T> {
   const data = (await response.json()) as T;
   if (!response.ok) {
-    const message = typeof data === "object" && data && "error" in data
-      ? String((data as { error?: unknown }).error)
+    const message = typeof data === "object" && data
+      ? String((data as { error?: unknown; message?: unknown }).error ?? (data as { message?: unknown }).message ?? "No fue posible completar la solicitud.")
       : "No fue posible completar la solicitud.";
-    throw new Error(message);
+    const error = new Error(message) as Error & { errors?: Record<string, string[]> };
+    if (typeof data === "object" && data && "errors" in data) {
+      error.errors = (data as { errors?: Record<string, string[]> }).errors;
+    }
+    throw error;
   }
   return data;
 }
@@ -152,6 +185,17 @@ export async function getExportaciones(params: Record<string, string> = {}) {
 
 export async function getAuditoriaExportaciones(params: Record<string, string> = {}) {
   return apiGet<{ items: ExportacionRegistro[] }>(`/api/auditoria/exportaciones/${queryString(params)}`);
+}
+
+export async function getAuditoriaEventos(params: Record<string, string> = {}) {
+  return apiGet<BitacoraEventosResponse>(`/api/auditoria/eventos/${queryString(params)}`);
+}
+
+export async function descargarAuditoriaEventosXlsx(params: Record<string, string> = {}) {
+  return downloadFile(`/api/exportaciones/auditoria/eventos/xlsx/${queryString(params)}`, {
+    forbidden: "No tienes permiso para exportar la bitácora de eventos.",
+    fallback: "La descarga de la bitácora falló. Intenta nuevamente o contacta soporte.",
+  });
 }
 
 export async function getActasExportables() {
@@ -339,9 +383,363 @@ export async function descargarReporteCuadroAprovechamientoXlsx(params: Record<s
   return descargarReporteDesempenoXlsx("cuadro-aprovechamiento", params);
 }
 
+const trayectoriaPreviewEndpoint: Record<ReporteTrayectoriaCodigo, string> = {
+  extraordinarios: "/api/reportes/situacion/extraordinarios/",
+  "situacion-actual": "/api/reportes/situacion/actual/",
+  "bajas-temporales": "/api/reportes/situacion/bajas-temporales/",
+  "bajas-definitivas": "/api/reportes/situacion/bajas-definitivas/",
+  reingresos: "/api/reportes/situacion/reingresos/",
+  egresables: "/api/reportes/situacion/egresables/",
+  "situacion-agregado": "/api/reportes/situacion/agregado/",
+  "movimientos-academicos": "/api/reportes/movimientos/",
+  "cambios-grupo": "/api/reportes/movimientos/cambios-grupo/",
+  "historial-interno": "/api/reportes/historial-interno/",
+  "historial-interno-discente": "/api/reportes/historial-interno/",
+};
+
+const trayectoriaDownloadEndpoint: Record<ReporteTrayectoriaCodigo, string> = {
+  extraordinarios: "/api/exportaciones/reportes/extraordinarios/xlsx/",
+  "situacion-actual": "/api/exportaciones/reportes/situacion-actual/xlsx/",
+  "bajas-temporales": "/api/exportaciones/reportes/bajas-temporales/xlsx/",
+  "bajas-definitivas": "/api/exportaciones/reportes/bajas-definitivas/xlsx/",
+  reingresos: "/api/exportaciones/reportes/reingresos/xlsx/",
+  egresables: "/api/exportaciones/reportes/egresables/xlsx/",
+  "situacion-agregado": "/api/exportaciones/reportes/situacion-agregado/xlsx/",
+  "movimientos-academicos": "/api/exportaciones/reportes/movimientos-academicos/xlsx/",
+  "cambios-grupo": "/api/exportaciones/reportes/cambios-grupo/xlsx/",
+  "historial-interno": "/api/exportaciones/reportes/historial-interno/xlsx/",
+  "historial-interno-discente": "/api/exportaciones/reportes/historial-interno/",
+};
+
+export async function getReporteTrayectoria(slug: ReporteTrayectoriaCodigo, params: Record<string, string> = {}) {
+  if (slug === "historial-interno-discente") {
+    const discenteId = params.discente_id;
+    if (!discenteId) throw new Error("Captura un ID de discente válido para consultar el historial interno por discente.");
+    const rest = { ...params };
+    delete rest.discente_id;
+    return getReporteHistorialInternoDiscente(discenteId, rest);
+  }
+  return apiGet<ReporteTrayectoriaRespuesta>(`${trayectoriaPreviewEndpoint[slug]}${queryString(params)}`);
+}
+
+export async function getReporteSituacionExtraordinarios(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("extraordinarios", params);
+}
+
+export async function getReporteSituacionActual(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("situacion-actual", params);
+}
+
+export async function getReporteBajasTemporales(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("bajas-temporales", params);
+}
+
+export async function getReporteBajasDefinitivas(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("bajas-definitivas", params);
+}
+
+export async function getReporteReingresos(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("reingresos", params);
+}
+
+export async function getReporteEgresables(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("egresables", params);
+}
+
+export async function getReporteSituacionAgregado(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("situacion-agregado", params);
+}
+
+export async function getReporteMovimientosAcademicos(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("movimientos-academicos", params);
+}
+
+export async function getReporteCambiosGrupo(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("cambios-grupo", params);
+}
+
+export async function getReporteHistorialInterno(params: Record<string, string> = {}) {
+  return getReporteTrayectoria("historial-interno", params);
+}
+
+export async function getReporteHistorialInternoDiscente(discenteId: string | number, params: Record<string, string> = {}) {
+  return apiGet<ReporteTrayectoriaRespuesta>(`/api/reportes/historial-interno/${encodeURIComponent(String(discenteId))}/${queryString(params)}`);
+}
+
+export async function descargarReporteTrayectoriaXlsx(slug: ReporteTrayectoriaCodigo, params: Record<string, string> = {}) {
+  if (slug === "historial-interno-discente") {
+    const discenteId = params.discente_id;
+    if (!discenteId) throw new Error("Captura un ID de discente válido para descargar el historial interno por discente.");
+    const rest = { ...params };
+    delete rest.discente_id;
+    return descargarReporteHistorialInternoDiscenteXlsx(discenteId, rest);
+  }
+  return downloadFile(`${trayectoriaDownloadEndpoint[slug]}${queryString(params)}`, {
+    forbidden: "No tienes permiso para exportar este reporte de trayectoria.",
+    notFound: "No se encontró información suficiente para generar este reporte.",
+    fallback: "La descarga del reporte falló. Intenta nuevamente o contacta soporte.",
+  });
+}
+
+export async function descargarReporteExtraordinariosXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("extraordinarios", params);
+}
+
+export async function descargarReporteSituacionActualXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("situacion-actual", params);
+}
+
+export async function descargarReporteBajasTemporalesXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("bajas-temporales", params);
+}
+
+export async function descargarReporteBajasDefinitivasXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("bajas-definitivas", params);
+}
+
+export async function descargarReporteReingresosXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("reingresos", params);
+}
+
+export async function descargarReporteEgresablesXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("egresables", params);
+}
+
+export async function descargarReporteSituacionAgregadoXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("situacion-agregado", params);
+}
+
+export async function descargarReporteMovimientosAcademicosXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("movimientos-academicos", params);
+}
+
+export async function descargarReporteCambiosGrupoXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("cambios-grupo", params);
+}
+
+export async function descargarReporteHistorialInternoXlsx(params: Record<string, string> = {}) {
+  return descargarReporteTrayectoriaXlsx("historial-interno", params);
+}
+
+export async function descargarReporteHistorialInternoDiscenteXlsx(discenteId: string | number, params: Record<string, string> = {}) {
+  return downloadFile(`/api/exportaciones/reportes/historial-interno/${encodeURIComponent(String(discenteId))}/xlsx/${queryString(params)}`, {
+    forbidden: "No tienes permiso para exportar este historial interno.",
+    notFound: "No se encontró el discente o no existe información suficiente para generar el historial interno.",
+    fallback: "No fue posible descargar el historial interno. Intenta nuevamente o contacta soporte.",
+  });
+}
+
+export async function listResource(endpoint: string, params: Record<string, string> = {}) {
+  return apiGet<ResourceListResponse>(`${ensureTrailingSlash(endpoint)}${queryString(params)}`);
+}
+
+export async function getResource(endpoint: string, id: number | string) {
+  return apiGet<ResourceDetailResponse>(`${ensureTrailingSlash(endpoint)}${encodeURIComponent(String(id))}/`);
+}
+
+export async function createResource(endpoint: string, payload: Record<string, unknown>) {
+  return apiMutate<ResourceDetailResponse>(ensureTrailingSlash(endpoint), "POST", payload);
+}
+
+export async function updateResource(endpoint: string, id: number | string, payload: Record<string, unknown>) {
+  return apiMutate<ResourceDetailResponse>(`${ensureTrailingSlash(endpoint)}${encodeURIComponent(String(id))}/`, "PATCH", payload);
+}
+
+export async function activateResource(endpoint: string, id: number | string) {
+  return apiMutate<ResourceDetailResponse>(`${ensureTrailingSlash(endpoint)}${encodeURIComponent(String(id))}/activar/`);
+}
+
+export async function deactivateResource(endpoint: string, id: number | string) {
+  return apiMutate<ResourceDetailResponse>(`${ensureTrailingSlash(endpoint)}${encodeURIComponent(String(id))}/inactivar/`);
+}
+
+export async function closeResource(endpoint: string, id: number | string, payload: Record<string, unknown> = {}) {
+  return apiMutate<ResourceDetailResponse>(`${ensureTrailingSlash(endpoint)}${encodeURIComponent(String(id))}/cerrar/`, "POST", payload);
+}
+
+export async function getDocenteAsignaciones(params: Record<string, string> = {}) {
+  return apiGet<AsignacionesListResponse>(`/api/docente/asignaciones/${queryString(params)}`);
+}
+
+export async function getDocenteAsignacionDetalle(id: number | string) {
+  return apiGet<DocenteAsignacionDetalle>(`/api/docente/asignaciones/${encodeURIComponent(String(id))}/`);
+}
+
+export async function getDocenteCaptura(asignacionId: number | string, corte: string) {
+  return apiGet<CapturaPreliminarCorte>(`/api/docente/asignaciones/${encodeURIComponent(String(asignacionId))}/captura/${encodeURIComponent(corte)}/`);
+}
+
+export async function guardarDocenteCaptura(asignacionId: number | string, corte: string, payload: CapturaPreliminarPayload) {
+  return apiMutate<CapturaPreliminarCorte>(`/api/docente/asignaciones/${encodeURIComponent(String(asignacionId))}/captura/${encodeURIComponent(corte)}/`, "POST", payload);
+}
+
+export async function getDocenteResumen(asignacionId: number | string) {
+  return apiGet<ResumenCalculoAcademico>(`/api/docente/asignaciones/${encodeURIComponent(String(asignacionId))}/resumen/`);
+}
+
+export async function getDocenteActas(params: Record<string, string> = {}) {
+  return apiGet<ActasListResponse>(`/api/docente/actas/${queryString(params)}`);
+}
+
+export async function getDocenteActaDetalle(actaId: number | string) {
+  return apiGet<ActaDetalle>(`/api/docente/actas/${encodeURIComponent(String(actaId))}/`);
+}
+
+export async function generarActaDocente(asignacionId: number | string, corte: string) {
+  return apiMutate<{ ok: true; item: unknown; detalle: ActaDetalle }>(`/api/docente/asignaciones/${encodeURIComponent(String(asignacionId))}/actas/generar/`, "POST", { corte_codigo: corte });
+}
+
+export async function regenerarActaDocente(actaId: number | string) {
+  return apiMutate<{ ok: true; item: unknown }>(`/api/docente/actas/${encodeURIComponent(String(actaId))}/regenerar/`);
+}
+
+export async function publicarActaDocente(actaId: number | string) {
+  return apiMutate<{ ok: true; item: unknown; detalle: ActaDetalle }>(`/api/docente/actas/${encodeURIComponent(String(actaId))}/publicar/`);
+}
+
+export async function remitirActaDocente(actaId: number | string) {
+  return apiMutate<{ ok: true; item: unknown; detalle: ActaDetalle }>(`/api/docente/actas/${encodeURIComponent(String(actaId))}/remitir/`);
+}
+
+export async function getDiscenteActas() {
+  return apiGet<DiscenteActasResponse>("/api/discente/actas/");
+}
+
+export async function getDiscenteActaDetalle(detalleId: number | string) {
+  return apiGet<DiscenteActaDetalle>(`/api/discente/actas/${encodeURIComponent(String(detalleId))}/`);
+}
+
+export async function registrarConformidadDiscente(detalleId: number | string, payload: { tipo_conformidad: string; comentario?: string }) {
+  return apiMutate<{ ok: true; item: unknown }>(`/api/discente/actas/${encodeURIComponent(String(detalleId))}/conformidad/`, "POST", payload);
+}
+
+export async function getJefaturaCarreraActasPendientes(params: Record<string, string> = {}) {
+  return apiGet<ActasListResponse>(`/api/jefatura-carrera/actas/pendientes/${queryString(params)}`);
+}
+
+export async function getJefaturaCarreraActaDetalle(actaId: number | string) {
+  return apiGet<ActaDetalle>(`/api/jefatura-carrera/actas/${encodeURIComponent(String(actaId))}/`);
+}
+
+export async function validarActaJefaturaCarrera(actaId: number | string, payload: { observacion?: string } = {}) {
+  return apiMutate<{ ok: true; item: unknown; detalle: ActaDetalle }>(`/api/jefatura-carrera/actas/${encodeURIComponent(String(actaId))}/validar/`, "POST", payload);
+}
+
+export async function getJefaturaAcademicaActasPendientes(params: Record<string, string> = {}) {
+  return apiGet<ActasListResponse>(`/api/jefatura-academica/actas/pendientes/${queryString(params)}`);
+}
+
+export async function getJefaturaAcademicaActaDetalle(actaId: number | string) {
+  return apiGet<ActaDetalle>(`/api/jefatura-academica/actas/${encodeURIComponent(String(actaId))}/`);
+}
+
+export async function formalizarActaJefaturaAcademica(actaId: number | string, payload: { observacion?: string } = {}) {
+  return apiMutate<{ ok: true; item: unknown; detalle: ActaDetalle }>(`/api/jefatura-academica/actas/${encodeURIComponent(String(actaId))}/formalizar/`, "POST", payload);
+}
+
+export async function getEstadisticaActas(params: Record<string, string> = {}) {
+  return apiGet<ActasListResponse>(`/api/estadistica/actas/${queryString(params)}`);
+}
+
+export async function getEstadisticaActaDetalle(actaId: number | string) {
+  return apiGet<ActaDetalle>(`/api/estadistica/actas/${encodeURIComponent(String(actaId))}/`);
+}
+
+export async function getMiHistorial() {
+  return apiGet<HistorialAcademicoDTO>("/api/trayectoria/mi-historial/");
+}
+
+export async function buscarHistoriales(params: Record<string, string> = {}) {
+  return apiGet<HistorialSearchResponse>(`/api/trayectoria/historial/${queryString(params)}`);
+}
+
+export async function getHistorialDiscente(discenteId: number | string) {
+  return apiGet<HistorialAcademicoDTO>(`/api/trayectoria/historial/${encodeURIComponent(String(discenteId))}/`);
+}
+
+export async function getExtraordinarios(params: Record<string, string> = {}) {
+  return apiGet<TrayectoriaListResponse<ExtraordinarioDTO>>(`/api/trayectoria/extraordinarios/${queryString(params)}`);
+}
+
+export async function getExtraordinario(id: number | string) {
+  return apiGet<{ ok: true; item: ExtraordinarioDTO }>(`/api/trayectoria/extraordinarios/${encodeURIComponent(String(id))}/`);
+}
+
+export async function crearExtraordinario(payload: ExtraordinarioPayload) {
+  return apiMutate<{ ok: true; item: ExtraordinarioDTO }>("/api/trayectoria/extraordinarios/", "POST", payload);
+}
+
+export async function getSituaciones(params: Record<string, string> = {}) {
+  return apiGet<TrayectoriaListResponse<SituacionAcademicaDTO>>(`/api/trayectoria/situaciones/${queryString(params)}`);
+}
+
+export async function getSituacion(id: number | string) {
+  return apiGet<{ ok: true; item: SituacionAcademicaDTO }>(`/api/trayectoria/situaciones/${encodeURIComponent(String(id))}/`);
+}
+
+export async function crearSituacionAcademica(payload: SituacionAcademicaPayload) {
+  return apiMutate<{ ok: true; item: SituacionAcademicaDTO }>("/api/trayectoria/situaciones/", "POST", payload);
+}
+
+export async function getMovimientosAcademicos(params: Record<string, string> = {}) {
+  return apiGet<TrayectoriaListResponse<MovimientoAcademicoDTO>>(`/api/relaciones/movimientos/${queryString(params)}`);
+}
+
+export async function getMovimientoAcademico(id: number | string) {
+  return apiGet<{ ok: true; item: MovimientoAcademicoDTO }>(`/api/relaciones/movimientos/${encodeURIComponent(String(id))}/`);
+}
+
+export async function crearMovimientoAcademico(payload: MovimientoAcademicoPayload) {
+  return apiMutate<{ ok: true; item: MovimientoAcademicoDTO }>("/api/relaciones/movimientos/", "POST", payload);
+}
+
+export async function crearCambioGrupo(payload: CambioGrupoPayload) {
+  return apiMutate<{ ok: true; item: MovimientoAcademicoDTO }>("/api/relaciones/movimientos/cambio-grupo/", "POST", payload);
+}
+
+export async function getPeriodos(params: Record<string, string> = {}) {
+  return apiGet<TrayectoriaListResponse<PeriodoOperativoDTO>>(`/api/periodos/${queryString(params)}`);
+}
+
+export async function getDiagnosticoCierrePeriodo(periodoId: number | string) {
+  return apiGet<DiagnosticoCierrePeriodoDTO>(`/api/periodos/${encodeURIComponent(String(periodoId))}/diagnostico-cierre/`);
+}
+
+export async function cerrarPeriodo(periodoId: number | string, payload: { observaciones?: string } = {}) {
+  return apiMutate<{ ok: true; item: ProcesoCierrePeriodoDTO }>(`/api/periodos/${encodeURIComponent(String(periodoId))}/cerrar/`, "POST", payload);
+}
+
+export async function getCierres(params: Record<string, string> = {}) {
+  return apiGet<TrayectoriaListResponse<ProcesoCierrePeriodoDTO>>(`/api/cierres/${queryString(params)}`);
+}
+
+export async function getCierre(id: number | string) {
+  return apiGet<{ ok: true; item: ProcesoCierrePeriodoDTO }>(`/api/cierres/${encodeURIComponent(String(id))}/`);
+}
+
+export async function crearAperturaPeriodo(payload: { periodo_origen_id: string | number; periodo_destino_id: string | number; observaciones?: string }) {
+  return apiMutate<{ ok: true; item: ProcesoAperturaPeriodoDTO }>("/api/aperturas/crear/", "POST", payload);
+}
+
+export async function getAperturas(params: Record<string, string> = {}) {
+  return apiGet<TrayectoriaListResponse<ProcesoAperturaPeriodoDTO>>(`/api/aperturas/${queryString(params)}`);
+}
+
+export async function getApertura(id: number | string) {
+  return apiGet<{ ok: true; item: ProcesoAperturaPeriodoDTO }>(`/api/aperturas/${encodeURIComponent(String(id))}/`);
+}
+
+export async function getPendientesAsignacionDocente(params: Record<string, string> = {}) {
+  return apiGet<{ ok: true; total: number; periodo?: PeriodoOperativoDTO; items: PendienteAsignacionDocenteDTO[] }>(`/api/pendientes-asignacion-docente/${queryString(params)}`);
+}
+
 export function backendUrl(path: string) {
   if (path.startsWith("http")) return path;
   return apiUrl(path.startsWith("/") ? path : `/${path}`);
+}
+
+function ensureTrailingSlash(path: string) {
+  return path.endsWith("/") ? path : `${path}/`;
 }
 
 function queryString(params: Record<string, string>) {
