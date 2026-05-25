@@ -360,6 +360,14 @@ class Acta(models.Model):
         decimal_places=2,
         verbose_name="Umbral de exención usado",
     )
+    probables_causas_reprobacion = models.TextField(
+        blank=True,
+        verbose_name="Probables causas de reprobación",
+    )
+    sugerencias_academicas = models.TextField(
+        blank=True,
+        verbose_name="Sugerencias académicas",
+    )
     publicada_en = models.DateTimeField(null=True, blank=True, verbose_name="Publicada en")
     remitida_en = models.DateTimeField(null=True, blank=True, verbose_name="Remitida en")
     formalizada_en = models.DateTimeField(null=True, blank=True, verbose_name="Formalizada en")

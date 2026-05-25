@@ -3,11 +3,12 @@ import json
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Q
-from django.http import JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.utils.dateparse import parse_date
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET, require_POST
 
+from .actas_services import ServicioExportacionActa
 from .models import RegistroExportacion
 from .services import CatalogoExportaciones, ServicioExportacion, ServicioPermisosExportacion
 
@@ -36,6 +37,13 @@ def _error_response(exc, status=400):
     if isinstance(exc, ValidationError):
         return JsonResponse({"ok": False, "error": exc.message_dict if hasattr(exc, "message_dict") else exc.messages}, status=status)
     return JsonResponse({"ok": False, "error": str(exc)}, status=status)
+
+
+def _archivo_response(resultado):
+    response = HttpResponse(resultado.contenido, content_type=resultado.content_type)
+    response["Content-Disposition"] = f'attachment; filename="{resultado.nombre_archivo}"'
+    response["X-Registro-Exportacion-Id"] = str(resultado.registro.id)
+    return response
 
 
 @require_GET
@@ -83,6 +91,57 @@ def registrar_evento_prueba_view(request):
     except (PermissionDenied, ValidationError) as exc:
         return _error_response(exc)
     return JsonResponse({"ok": True, "item": serializar_registro_exportacion(resultado.registro)}, status=201)
+
+
+@require_GET
+@api_login_required
+def exportar_acta_pdf_view(request, acta_id):
+    return _exportar_acta_corte(request, acta_id, RegistroExportacion.FORMATO_PDF)
+
+
+@require_GET
+@api_login_required
+def exportar_acta_xlsx_view(request, acta_id):
+    return _exportar_acta_corte(request, acta_id, RegistroExportacion.FORMATO_XLSX)
+
+
+@require_GET
+@api_login_required
+def exportar_calificacion_final_pdf_view(request, asignacion_docente_id):
+    return _exportar_calificacion_final(request, asignacion_docente_id, RegistroExportacion.FORMATO_PDF)
+
+
+@require_GET
+@api_login_required
+def exportar_calificacion_final_xlsx_view(request, asignacion_docente_id):
+    return _exportar_calificacion_final(request, asignacion_docente_id, RegistroExportacion.FORMATO_XLSX)
+
+
+def _exportar_acta_corte(request, acta_id, formato):
+    try:
+        resultado = ServicioExportacionActa(request.user, request=request).exportar_acta_corte(acta_id, formato)
+    except Http404:
+        raise
+    except (PermissionDenied, ValidationError) as exc:
+        return _error_response(exc)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "No fue posible generar el archivo de acta."}, status=500)
+    return _archivo_response(resultado)
+
+
+def _exportar_calificacion_final(request, asignacion_docente_id, formato):
+    try:
+        resultado = ServicioExportacionActa(request.user, request=request).exportar_calificacion_final(
+            asignacion_docente_id,
+            formato,
+        )
+    except Http404:
+        raise
+    except (PermissionDenied, ValidationError) as exc:
+        return _error_response(exc)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "No fue posible generar el archivo de calificación final."}, status=500)
+    return _archivo_response(resultado)
 
 
 def aplicar_filtros_exportaciones(qs, params):

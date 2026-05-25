@@ -78,6 +78,17 @@ class Usuario(AbstractUser):
     )
     correo = models.EmailField(blank=True)
     telefono = models.CharField(max_length=30, blank=True)
+    titulo_profesional = models.CharField(
+        max_length=160,
+        blank=True,
+        verbose_name="Título profesional",
+        help_text="Ejemplo: Maestro en ingeniería, Doctor en ciencias, Licenciado.",
+    )
+    cedula_profesional = models.CharField(
+        max_length=40,
+        blank=True,
+        verbose_name="Cédula profesional",
+    )
     ultimo_acceso = models.DateTimeField(
         null=True,
         blank=True,
