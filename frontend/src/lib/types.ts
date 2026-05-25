@@ -297,3 +297,65 @@ export type ReporteOperativoConfig = {
   rolesSugeridos: string[];
   ayuda: string;
 };
+
+export type ReporteDesempenoCodigo =
+  | "aprobados-reprobados"
+  | "promedios"
+  | "distribucion"
+  | "exentos"
+  | "docentes"
+  | "cohorte"
+  | "reprobados-nominal"
+  | "cuadro-aprovechamiento";
+
+export type ReporteDesempenoColumna = {
+  key: string;
+  label: string;
+};
+
+export type ReporteDesempenoItem = Record<string, unknown>;
+
+export type ReporteDesempenoSheet = {
+  titulo: string;
+  total: number;
+  columnas: ReporteDesempenoColumna[];
+};
+
+export type ReporteDesempenoRespuesta = {
+  ok: boolean;
+  slug: ReporteDesempenoCodigo;
+  nombre: string;
+  total: number;
+  filtros: Record<string, string>;
+  columnas: ReporteDesempenoColumna[];
+  items: ReporteDesempenoItem[];
+  resumen?: Record<string, unknown>;
+  sheets?: ReporteDesempenoSheet[];
+};
+
+export type ReporteDesempenoFiltro = {
+  key: string;
+  label: string;
+  type?: "text" | "select" | "date";
+  placeholder?: string;
+  options?: Array<{ value: string; label: string }>;
+};
+
+export type ReporteDesempenoConfig = {
+  slug: ReporteDesempenoCodigo;
+  titulo: string;
+  descripcion: string;
+  ruta: string;
+  tipoDocumento: string;
+  endpointVistaPrevia: string;
+  endpointDescarga: string;
+  formatosDisponibles: string[];
+  pdfPendiente: boolean;
+  filtros: ReporteDesempenoFiltro[];
+  columnasDestacadas: string[];
+  rolesSugeridos: string[];
+  ayuda: string;
+  nominal: boolean;
+  datosSensibles: boolean;
+  privacidad?: string;
+};

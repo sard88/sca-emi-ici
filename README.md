@@ -2014,3 +2014,202 @@ No se implementa todavía:
 Resumen técnico:
 
 - `docs/resumen_bloque9g_h_reportes_desempeno.md`
+
+## Bloque 10C-3B - Integración visual de reportes de desempeño
+
+Se integra en el portal Next.js la consulta y descarga de los reportes de desempeño académico y cuadro de aprovechamiento implementados en el Bloque 9G-H.
+
+### Objetivo
+
+Permitir que perfiles institucionales autorizados consulten vista previa, apliquen filtros y descarguen XLSX auditados desde el portal, sin calcular reportes ni generar archivos en React.
+
+### Rutas frontend
+
+- `/reportes/desempeno`
+- `/reportes/desempeno/aprobados-reprobados`
+- `/reportes/desempeno/promedios`
+- `/reportes/desempeno/distribucion`
+- `/reportes/desempeno/exentos`
+- `/reportes/desempeno/docentes`
+- `/reportes/desempeno/cohorte`
+- `/reportes/desempeno/reprobados-nominal`
+- `/reportes/desempeno/cuadro-aprovechamiento`
+
+La ruta específica usa una pantalla dinámica:
+
+- `/reportes/desempeno/[slug]`
+
+### Reportes integrados
+
+- Aprobados y reprobados.
+- Promedios académicos.
+- Distribución de calificaciones.
+- Exentos por asignatura.
+- Desempeño por docente.
+- Desempeño por cohorte.
+- Reprobados nominal.
+- Cuadro de aprovechamiento académico.
+
+### Endpoints backend consumidos
+
+Vista previa JSON:
+
+- `GET /api/reportes/desempeno/aprobados-reprobados/`
+- `GET /api/reportes/desempeno/promedios/`
+- `GET /api/reportes/desempeno/distribucion/`
+- `GET /api/reportes/desempeno/exentos/`
+- `GET /api/reportes/desempeno/docentes/`
+- `GET /api/reportes/desempeno/cohorte/`
+- `GET /api/reportes/desempeno/reprobados-nominal/`
+- `GET /api/reportes/desempeno/cuadro-aprovechamiento/`
+
+Descarga XLSX:
+
+- `GET /api/exportaciones/reportes/aprobados-reprobados/xlsx/`
+- `GET /api/exportaciones/reportes/promedios/xlsx/`
+- `GET /api/exportaciones/reportes/distribucion/xlsx/`
+- `GET /api/exportaciones/reportes/exentos/xlsx/`
+- `GET /api/exportaciones/reportes/desempeno-docente/xlsx/`
+- `GET /api/exportaciones/reportes/desempeno-cohorte/xlsx/`
+- `GET /api/exportaciones/reportes/reprobados-nominal/xlsx/`
+- `GET /api/exportaciones/reportes/cuadro-aprovechamiento/xlsx/`
+
+La descarga usa `credentials: "include"`, lee `Content-Disposition` y muestra el folio técnico `X-Registro-Exportacion-Id` cuando el backend lo devuelve.
+
+### Filtros visuales
+
+Se agregan filtros compatibles con backend:
+
+- periodo;
+- carrera;
+- grupo;
+- asignatura;
+- docente;
+- antigüedad;
+- año de formación;
+- semestre;
+- fecha desde/hasta;
+- incluir no numéricas;
+- incluir extraordinarios;
+- incluir con reprobadas;
+- rango de aprovechamiento.
+
+Los filtros vacíos se eliminan antes de llamar al backend. La descarga XLSX usa los mismos filtros aplicados en pantalla.
+
+### Permisos
+
+Pueden ver Reportes de desempeño:
+
+- Admin;
+- Estadística;
+- Jefatura académica;
+- Jefatura pedagógica;
+- Jefatura de carrera.
+
+No ven Reportes de desempeño:
+
+- Docente;
+- Discente.
+
+El frontend solo oculta o muestra opciones. El backend sigue validando permisos y ámbito institucional.
+
+### Qué queda fuera
+
+No se implementa en este bloque:
+
+- PDF del cuadro de aprovechamiento;
+- generación XLSX en frontend;
+- nuevas métricas o cálculos académicos;
+- gráficas;
+- reportes de situación académica;
+- historial académico exportable;
+- edición de datos desde reportes.
+
+Resumen técnico:
+
+- `docs/resumen_bloque10c3b_reportes_desempeno_portal.md`
+
+## Bloque 9I-M-E - Reportes de situación académica, movimientos e historial interno
+
+Se implementan reportes institucionales XLSX derivados de trayectoria académica, extraordinarios, eventos de situación, movimientos académicos e historial interno.
+
+### Objetivo
+
+Permitir que perfiles institucionales autorizados consulten vistas previas JSON y exporten XLSX auditados para seguimiento operativo, sin modificar actas, calificaciones, inscripciones, kárdex, historial académico persistente ni movimientos.
+
+### Reportes implementados
+
+- Extraordinarios registrados.
+- Situación académica actual.
+- Bajas temporales.
+- Bajas definitivas.
+- Reingresos.
+- Egresables / egresados.
+- Agregado de situaciones académicas.
+- Movimientos académicos.
+- Cambios de grupo.
+- Historial académico interno institucional.
+- Historial académico interno por discente.
+
+### Endpoints JSON
+
+- `GET /api/reportes/situacion/extraordinarios/`
+- `GET /api/reportes/situacion/actual/`
+- `GET /api/reportes/situacion/bajas-temporales/`
+- `GET /api/reportes/situacion/bajas-definitivas/`
+- `GET /api/reportes/situacion/reingresos/`
+- `GET /api/reportes/situacion/egresables/`
+- `GET /api/reportes/situacion/agregado/`
+- `GET /api/reportes/movimientos/`
+- `GET /api/reportes/movimientos/cambios-grupo/`
+- `GET /api/reportes/historial-interno/`
+- `GET /api/reportes/historial-interno/<discente_id>/`
+
+### Endpoints XLSX
+
+- `GET /api/exportaciones/reportes/extraordinarios/xlsx/`
+- `GET /api/exportaciones/reportes/situacion-actual/xlsx/`
+- `GET /api/exportaciones/reportes/bajas-temporales/xlsx/`
+- `GET /api/exportaciones/reportes/bajas-definitivas/xlsx/`
+- `GET /api/exportaciones/reportes/reingresos/xlsx/`
+- `GET /api/exportaciones/reportes/egresables/xlsx/`
+- `GET /api/exportaciones/reportes/situacion-agregado/xlsx/`
+- `GET /api/exportaciones/reportes/movimientos-academicos/xlsx/`
+- `GET /api/exportaciones/reportes/cambios-grupo/xlsx/`
+- `GET /api/exportaciones/reportes/historial-interno/xlsx/`
+- `GET /api/exportaciones/reportes/historial-interno/<discente_id>/xlsx/`
+
+Cada descarga devuelve `Content-Disposition: attachment`, MIME XLSX y `X-Registro-Exportacion-Id`.
+
+### Permisos
+
+- Admin/superusuario y Estadística pueden consultar y exportar todos los reportes.
+- Jefatura académica y jefatura pedagógica pueden consultar reportes institucionales autorizados.
+- Jefatura de carrera queda filtrada a su ámbito cuando existe carrera asociada.
+- Docente no accede a reportes globales de situación, movimientos ni historial interno.
+- Discente no accede a reportes institucionales ni exporta historial interno XLSX.
+
+El backend sigue siendo la autoridad real de permisos.
+
+### Privacidad
+
+- No se muestra matrícula militar por defecto.
+- Los reportes agregados no muestran nombres.
+- Los reportes nominales e historiales internos quedan restringidos a perfiles institucionales autorizados.
+- `RegistroExportacion` guarda metadatos, filtros sanitizados, estado, tamaño y hash, pero no guarda payload completo ni listados de discentes.
+
+### Qué queda fuera
+
+No se implementa en este bloque:
+
+- integración visual completa en Next.js;
+- kárdex Excel;
+- PDF de historial o situación académica;
+- bitácora transversal completa;
+- importación Excel;
+- gráficas;
+- cambios en datos académicos.
+
+Resumen técnico:
+
+- `docs/resumen_bloque9i_m_e_reportes_situacion_historial.md`

@@ -124,6 +124,7 @@ class ServicioPermisosExportacion:
                 RegistroExportacion.TIPO_ACTA_EVALUACION_FINAL,
                 RegistroExportacion.TIPO_ACTA_CALIFICACION_FINAL,
                 RegistroExportacion.TIPO_KARDEX_OFICIAL,
+                RegistroExportacion.TIPO_HISTORIAL_ACADEMICO,
                 RegistroExportacion.TIPO_REPORTE_ACTAS_ESTADO,
                 RegistroExportacion.TIPO_REPORTE_ACTAS_PENDIENTES,
                 RegistroExportacion.TIPO_REPORTE_INCONFORMIDADES,
@@ -138,8 +139,17 @@ class ServicioPermisosExportacion:
                 RegistroExportacion.TIPO_REPORTE_DESEMPENO_COHORTE,
                 RegistroExportacion.TIPO_REPORTE_REPROBADOS_NOMINAL,
                 RegistroExportacion.TIPO_CUADRO_APROVECHAMIENTO,
+                RegistroExportacion.TIPO_REPORTE_SITUACION_ACADEMICA,
+                RegistroExportacion.TIPO_REPORTE_EXTRAORDINARIOS,
+                RegistroExportacion.TIPO_REPORTE_BAJAS_TEMPORALES,
+                RegistroExportacion.TIPO_REPORTE_BAJAS_DEFINITIVAS,
+                RegistroExportacion.TIPO_REPORTE_REINGRESOS,
+                RegistroExportacion.TIPO_REPORTE_EGRESADOS_EGRESABLES,
+                RegistroExportacion.TIPO_REPORTE_SITUACION_ACADEMICA_AGREGADO,
                 RegistroExportacion.TIPO_REPORTE_VALIDACIONES_ACTA,
                 RegistroExportacion.TIPO_REPORTE_MOVIMIENTOS_ACADEMICOS,
+                RegistroExportacion.TIPO_REPORTE_CAMBIOS_GRUPO,
+                RegistroExportacion.TIPO_REPORTE_HISTORIAL_ACADEMICO_INTERNO,
             }
         if self.is_jefatura_academica or self.is_jefatura_pedagogica:
             return tipo_documento in {
@@ -163,8 +173,18 @@ class ServicioPermisosExportacion:
                 RegistroExportacion.TIPO_REPORTE_REPROBADOS_NOMINAL,
                 RegistroExportacion.TIPO_CUADRO_APROVECHAMIENTO,
                 RegistroExportacion.TIPO_REPORTE_SITUACION_ACADEMICA,
+                RegistroExportacion.TIPO_REPORTE_EXTRAORDINARIOS,
+                RegistroExportacion.TIPO_REPORTE_BAJAS_TEMPORALES,
+                RegistroExportacion.TIPO_REPORTE_BAJAS_DEFINITIVAS,
+                RegistroExportacion.TIPO_REPORTE_REINGRESOS,
+                RegistroExportacion.TIPO_REPORTE_EGRESADOS_EGRESABLES,
+                RegistroExportacion.TIPO_REPORTE_SITUACION_ACADEMICA_AGREGADO,
                 RegistroExportacion.TIPO_REPORTE_VALIDACIONES_ACTA,
                 RegistroExportacion.TIPO_REPORTE_EXPORTACIONES,
+                RegistroExportacion.TIPO_REPORTE_MOVIMIENTOS_ACADEMICOS,
+                RegistroExportacion.TIPO_REPORTE_CAMBIOS_GRUPO,
+                RegistroExportacion.TIPO_HISTORIAL_ACADEMICO,
+                RegistroExportacion.TIPO_REPORTE_HISTORIAL_ACADEMICO_INTERNO,
             }
         return False
 

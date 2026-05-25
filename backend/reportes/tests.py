@@ -22,9 +22,9 @@ from evaluacion.models import (
     EsquemaEvaluacion,
     ValidacionActa,
 )
-from relaciones.models import AdscripcionGrupo, AsignacionDocente, Discente, InscripcionMateria
-from trayectoria.models import CatalogoResultadoAcademico
-from trayectoria.services import registrar_extraordinario
+from relaciones.models import AdscripcionGrupo, AsignacionDocente, Discente, InscripcionMateria, MovimientoAcademico
+from trayectoria.models import CatalogoResultadoAcademico, CatalogoSituacionAcademica, EventoSituacionAcademica
+from trayectoria.services import obtener_situacion, registrar_baja_temporal, registrar_extraordinario, registrar_reingreso
 from usuarios.models import AsignacionCargo, UnidadOrganizacional, Usuario
 
 from .admin import RegistroExportacionAdmin
@@ -1359,6 +1359,241 @@ class ReportesBloque9BActasTests(TestCase):
         )
 
         self.assert_xlsx_response_desempeno(response)
+        filename = response["Content-Disposition"].split('filename="', 1)[1].rstrip('"')
+        registro = RegistroExportacion.objects.get(id=response["X-Registro-Exportacion-Id"])
+        self.assertNotIn(" ", filename)
+        self.assertNotIn(self.discentes[0].matricula, filename)
+        self.assertEqual(registro.filtros_json, {"periodo": self.periodo.clave, "carrera": self.carrera.clave})
+
+    def preparar_trayectoria_reportes(self):
+        if not getattr(self, "_trayectoria_preparada", False):
+            registrar_extraordinario(
+                self.inscripciones[2],
+                Decimal("7.0"),
+                timezone.localdate(),
+                self.estadistica,
+            )
+            registrar_baja_temporal(
+                self.discentes[0],
+                fecha_inicio=timezone.localdate(),
+                periodo=self.periodo,
+                motivo="Baja temporal de prueba",
+                registrado_por=self.estadistica,
+                inscripcion_materia=self.inscripciones[0],
+            )
+            registrar_reingreso(
+                self.discentes[0],
+                fecha_inicio=timezone.localdate(),
+                periodo=self.periodo,
+                motivo="Reingreso de prueba",
+                registrado_por=self.estadistica,
+            )
+            EventoSituacionAcademica.objects.create(
+                discente=self.discentes[1],
+                situacion=obtener_situacion(CatalogoSituacionAcademica.CLAVE_BAJA_DEFINITIVA),
+                fecha_inicio=timezone.localdate(),
+                periodo=self.periodo,
+                motivo="Baja definitiva de prueba",
+                registrado_por=self.estadistica,
+            )
+            self.discentes[1].situacion_actual = Discente.SITUACION_BAJA_DEFINITIVA
+            self.discentes[1].save(update_fields=["situacion_actual"])
+            self.movimiento_discente = self.crear_discente(9)
+            self.grupo_destino = GrupoAcademico.objects.create(
+                clave_grupo="R9BG9",
+                antiguedad=self.antiguedad,
+                periodo=self.periodo,
+                semestre_numero=1,
+            )
+            self.movimiento = MovimientoAcademico.objects.create(
+                discente=self.movimiento_discente,
+                periodo=self.periodo,
+                tipo_movimiento=MovimientoAcademico.CAMBIO_GRUPO,
+                grupo_origen=self.grupo,
+                grupo_destino=self.grupo_destino,
+                observaciones="Cambio de grupo de prueba",
+            )
+            self.discentes[2].situacion_actual = Discente.SITUACION_EGRESADO
+            self.discentes[2].save(update_fields=["situacion_actual"])
+            EventoSituacionAcademica.objects.create(
+                discente=self.discentes[2],
+                situacion=obtener_situacion(CatalogoSituacionAcademica.CLAVE_EGRESADO),
+                fecha_inicio=timezone.localdate(),
+                periodo=self.periodo,
+                motivo="Egreso de prueba",
+                registrado_por=self.estadistica,
+            )
+            self._trayectoria_preparada = True
+
+    def assert_xlsx_response_trayectoria(self, response):
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertTrue(response.content.startswith(b"PK"))
+        self.assertIn("X-Registro-Exportacion-Id", response)
+
+    def test_reportes_trayectoria_json_y_xlsx_como_estadistica(self):
+        self.preparar_trayectoria_reportes()
+        endpoints = [
+            ("extraordinarios", "/api/reportes/situacion/extraordinarios/", "/api/exportaciones/reportes/extraordinarios/xlsx/"),
+            ("situacion", "/api/reportes/situacion/actual/", "/api/exportaciones/reportes/situacion-actual/xlsx/"),
+            ("bajas-temporales", "/api/reportes/situacion/bajas-temporales/", "/api/exportaciones/reportes/bajas-temporales/xlsx/"),
+            ("bajas-definitivas", "/api/reportes/situacion/bajas-definitivas/", "/api/exportaciones/reportes/bajas-definitivas/xlsx/"),
+            ("reingresos", "/api/reportes/situacion/reingresos/", "/api/exportaciones/reportes/reingresos/xlsx/"),
+            ("egresables", "/api/reportes/situacion/egresables/", "/api/exportaciones/reportes/egresables/xlsx/"),
+            ("situacion-agregado", "/api/reportes/situacion/agregado/", "/api/exportaciones/reportes/situacion-agregado/xlsx/"),
+            ("movimientos", "/api/reportes/movimientos/", "/api/exportaciones/reportes/movimientos-academicos/xlsx/"),
+            ("cambios-grupo", "/api/reportes/movimientos/cambios-grupo/", "/api/exportaciones/reportes/cambios-grupo/xlsx/"),
+            ("historial-interno", "/api/reportes/historial-interno/", "/api/exportaciones/reportes/historial-interno/xlsx/"),
+        ]
+        self.client.force_login(self.estadistica)
+        for slug, json_url, xlsx_url in endpoints:
+            json_response = self.client.get(json_url)
+            self.assertEqual(json_response.status_code, 200, slug)
+            self.assertIn("total", json_response.json(), slug)
+            self.assertIn("columnas", json_response.json(), slug)
+            self.assertIn("resumen", json_response.json(), slug)
+
+            xlsx_response = self.client.get(xlsx_url)
+            self.assert_xlsx_response_trayectoria(xlsx_response)
+            registro = RegistroExportacion.objects.get(id=xlsx_response["X-Registro-Exportacion-Id"])
+            self.assertEqual(registro.estado, RegistroExportacion.ESTADO_GENERADA)
+            self.assertEqual(registro.formato, RegistroExportacion.FORMATO_XLSX)
+
+    def test_historial_interno_por_discente_exporta_y_conserva_ordinario_con_ee(self):
+        self.preparar_trayectoria_reportes()
+        self.client.force_login(self.estadistica)
+        response = self.client.get(f"/api/exportaciones/reportes/historial-interno/{self.discentes[2].id}/xlsx/")
+
+        self.assert_xlsx_response_trayectoria(response)
+        registro = RegistroExportacion.objects.get(id=response["X-Registro-Exportacion-Id"])
+        self.assertEqual(registro.tipo_documento, RegistroExportacion.TIPO_HISTORIAL_ACADEMICO)
+        valores = self.valores_xlsx(response)
+        texto = " ".join(str(valor) for valor in valores)
+        self.assertIn("Conserva evidencia ordinaria previa a EE", texto)
+        self.assertIn("5.95", texto)
+        self.assertIn("7.0", texto)
+        self.assertNotIn(self.discentes[2].matricula, texto)
+
+    def test_reportes_trayectoria_bloquean_anonimo_discente_y_docente(self):
+        anonimo = self.client.get("/api/reportes/situacion/actual/")
+        self.assertEqual(anonimo.status_code, 401)
+
+        self.client.force_login(self.discentes[0].usuario)
+        discente_json = self.client.get("/api/reportes/situacion/actual/")
+        discente_xlsx = self.client.get("/api/exportaciones/reportes/situacion-actual/xlsx/")
+        self.assertEqual(discente_json.status_code, 403)
+        self.assertEqual(discente_xlsx.status_code, 403)
+
+        self.client.force_login(self.docente)
+        docente_json = self.client.get("/api/reportes/situacion/actual/")
+        docente_xlsx = self.client.get("/api/exportaciones/reportes/situacion-actual/xlsx/")
+        self.assertEqual(docente_json.status_code, 403)
+        self.assertEqual(docente_xlsx.status_code, 403)
+
+    def test_reportes_trayectoria_jefatura_carrera_filtra_por_ambito(self):
+        self.preparar_trayectoria_reportes()
+        acta_externa = self.crear_acta_externa_operativa()
+        grupo_externo = acta_externa.asignacion_docente.grupo_academico
+        plan_externo = acta_externa.asignacion_docente.programa_asignatura.plan_estudios
+        usuario_externo = self.crear_usuario("discenteexterno9i", "DISCENTE", nombre="Discente Externo 9I")
+        discente_externo = Discente.objects.create(
+            usuario=usuario_externo,
+            matricula="R9IEXT001",
+            plan_estudios=plan_externo,
+            antiguedad=grupo_externo.antiguedad,
+        )
+        AdscripcionGrupo.objects.create(discente=discente_externo, grupo_academico=grupo_externo)
+        EventoSituacionAcademica.objects.create(
+            discente=discente_externo,
+            situacion=obtener_situacion(CatalogoSituacionAcademica.CLAVE_BAJA_TEMPORAL),
+            fecha_inicio=timezone.localdate(),
+            motivo="Evento externo",
+            registrado_por=self.estadistica,
+        )
+
+        self.client.force_login(self.jefe_carrera)
+        response = self.client.get("/api/reportes/situacion/actual/")
+
+        self.assertEqual(response.status_code, 200)
+        ids = {item["discente_id"] for item in response.json()["items"]}
+        self.assertIn(self.discentes[0].id, ids)
+        self.assertNotIn(discente_externo.id, ids)
+
+    def test_reportes_trayectoria_no_exponen_matricula_y_agregado_no_muestra_nombres(self):
+        self.preparar_trayectoria_reportes()
+        self.client.force_login(self.estadistica)
+        nominal = self.client.get("/api/reportes/situacion/actual/")
+        agregado = self.client.get("/api/reportes/situacion/agregado/")
+
+        self.assertEqual(nominal.status_code, 200)
+        self.assertEqual(agregado.status_code, 200)
+        nominal_texto = json.dumps(nominal.json(), ensure_ascii=False)
+        agregado_items = agregado.json()["items"]
+        agregado_texto = json.dumps(agregado_items, ensure_ascii=False)
+        self.assertIn("Discente 1", nominal_texto)
+        self.assertNotIn(self.discentes[0].matricula, nominal_texto)
+        self.assertNotIn("matricula", nominal_texto.lower())
+        self.assertNotIn("Discente 1", agregado_texto)
+        self.assertTrue(all("nombre" not in item and "nombre_discente" not in item for item in agregado_items))
+
+    def test_extraordinario_aprobado_muestra_marca_ee_y_baja_temporal_abierta(self):
+        self.preparar_trayectoria_reportes()
+        registrar_baja_temporal(
+            self.discentes[2],
+            fecha_inicio=timezone.localdate(),
+            periodo=self.periodo,
+            motivo="Baja abierta de prueba",
+            registrado_por=self.estadistica,
+        )
+
+        self.client.force_login(self.estadistica)
+        extraordinarios = self.client.get("/api/reportes/situacion/extraordinarios/")
+        bajas = self.client.get("/api/reportes/situacion/bajas-temporales/")
+
+        self.assertEqual(extraordinarios.status_code, 200)
+        self.assertIn("EE", json.dumps(extraordinarios.json(), ensure_ascii=False))
+        self.assertEqual(bajas.status_code, 200)
+        self.assertIn("Si", json.dumps(bajas.json(), ensure_ascii=False))
+
+    def test_reingreso_y_movimientos_se_reportan_sin_modificar_datos(self):
+        self.preparar_trayectoria_reportes()
+        movimiento_id = self.movimiento.id
+        adscripciones_antes = AdscripcionGrupo.objects.count()
+        inscripciones_antes = InscripcionMateria.objects.count()
+
+        self.client.force_login(self.estadistica)
+        reingresos = self.client.get("/api/reportes/situacion/reingresos/")
+        movimientos = self.client.get("/api/reportes/movimientos/cambios-grupo/")
+
+        self.assertEqual(reingresos.status_code, 200)
+        self.assertIn("Reingreso de prueba", json.dumps(reingresos.json(), ensure_ascii=False))
+        self.assertEqual(movimientos.status_code, 200)
+        self.assertIn(movimiento_id, {item["movimiento_id"] for item in movimientos.json()["items"]})
+        self.assertEqual(AdscripcionGrupo.objects.count(), adscripciones_antes)
+        self.assertEqual(InscripcionMateria.objects.count(), inscripciones_antes)
+
+    def test_exportacion_reporte_trayectoria_fallida_registra_fallida(self):
+        self.client.force_login(self.estadistica)
+        with patch("reportes.reportes_trayectoria.generar_reporte_xlsx", side_effect=RuntimeError("fallo trayectoria")):
+            response = self.client.get("/api/exportaciones/reportes/situacion-actual/xlsx/")
+
+        self.assertEqual(response.status_code, 500)
+        registro = RegistroExportacion.objects.latest("id")
+        self.assertEqual(registro.tipo_documento, RegistroExportacion.TIPO_REPORTE_SITUACION_ACADEMICA)
+        self.assertEqual(registro.estado, RegistroExportacion.ESTADO_FALLIDA)
+        self.assertIn("fallo trayectoria", registro.mensaje_error)
+
+    def test_exportacion_reporte_trayectoria_nombre_seguro_y_filtros_sanitizados(self):
+        self.client.force_login(self.estadistica)
+        response = self.client.get(
+            "/api/exportaciones/reportes/situacion-actual/xlsx/",
+            {"periodo": self.periodo.clave, "carrera": self.carrera.clave, "password": "secreto"},
+        )
+
+        self.assert_xlsx_response_trayectoria(response)
         filename = response["Content-Disposition"].split('filename="', 1)[1].rstrip('"')
         registro = RegistroExportacion.objects.get(id=response["X-Registro-Exportacion-Id"])
         self.assertNotIn(" ", filename)

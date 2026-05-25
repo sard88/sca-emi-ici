@@ -17,6 +17,7 @@ from .kardex_services import ServicioExportacionKardex
 from .models import RegistroExportacion
 from .reportes_desempeno import ServicioReportesDesempeno
 from .reportes_operativos import ServicioReportesOperativos
+from .reportes_trayectoria import ServicioReportesTrayectoria
 from .services import CatalogoExportaciones, ServicioExportacion, ServicioPermisosExportacion
 from trayectoria.permisos import filtrar_discentes_por_ambito, puede_consultar_kardex
 
@@ -339,6 +340,138 @@ def exportar_reporte_cuadro_aprovechamiento_xlsx_view(request):
     return _exportar_reporte_desempeno_xlsx(request, "cuadro-aprovechamiento")
 
 
+@require_GET
+@api_login_required
+def reporte_extraordinarios_view(request):
+    return _reporte_trayectoria_json(request, "extraordinarios")
+
+
+@require_GET
+@api_login_required
+def reporte_situacion_actual_view(request):
+    return _reporte_trayectoria_json(request, "situacion-actual")
+
+
+@require_GET
+@api_login_required
+def reporte_bajas_temporales_view(request):
+    return _reporte_trayectoria_json(request, "bajas-temporales")
+
+
+@require_GET
+@api_login_required
+def reporte_bajas_definitivas_view(request):
+    return _reporte_trayectoria_json(request, "bajas-definitivas")
+
+
+@require_GET
+@api_login_required
+def reporte_reingresos_view(request):
+    return _reporte_trayectoria_json(request, "reingresos")
+
+
+@require_GET
+@api_login_required
+def reporte_egresables_view(request):
+    return _reporte_trayectoria_json(request, "egresables")
+
+
+@require_GET
+@api_login_required
+def reporte_situacion_agregado_view(request):
+    return _reporte_trayectoria_json(request, "situacion-agregado")
+
+
+@require_GET
+@api_login_required
+def reporte_movimientos_academicos_view(request):
+    return _reporte_trayectoria_json(request, "movimientos-academicos")
+
+
+@require_GET
+@api_login_required
+def reporte_cambios_grupo_view(request):
+    return _reporte_trayectoria_json(request, "cambios-grupo")
+
+
+@require_GET
+@api_login_required
+def reporte_historial_interno_view(request):
+    return _reporte_trayectoria_json(request, "historial-interno")
+
+
+@require_GET
+@api_login_required
+def reporte_historial_interno_discente_view(request, discente_id):
+    return _reporte_trayectoria_json(request, "historial-interno-discente", discente_id=discente_id)
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_extraordinarios_xlsx_view(request):
+    return _exportar_reporte_trayectoria_xlsx(request, "extraordinarios")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_situacion_actual_xlsx_view(request):
+    return _exportar_reporte_trayectoria_xlsx(request, "situacion-actual")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_bajas_temporales_xlsx_view(request):
+    return _exportar_reporte_trayectoria_xlsx(request, "bajas-temporales")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_bajas_definitivas_xlsx_view(request):
+    return _exportar_reporte_trayectoria_xlsx(request, "bajas-definitivas")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_reingresos_xlsx_view(request):
+    return _exportar_reporte_trayectoria_xlsx(request, "reingresos")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_egresables_xlsx_view(request):
+    return _exportar_reporte_trayectoria_xlsx(request, "egresables")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_situacion_agregado_xlsx_view(request):
+    return _exportar_reporte_trayectoria_xlsx(request, "situacion-agregado")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_movimientos_academicos_xlsx_view(request):
+    return _exportar_reporte_trayectoria_xlsx(request, "movimientos-academicos")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_cambios_grupo_xlsx_view(request):
+    return _exportar_reporte_trayectoria_xlsx(request, "cambios-grupo")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_historial_interno_xlsx_view(request):
+    return _exportar_reporte_trayectoria_xlsx(request, "historial-interno")
+
+
+@require_GET
+@api_login_required
+def exportar_reporte_historial_interno_discente_xlsx_view(request, discente_id):
+    return _exportar_reporte_trayectoria_xlsx(request, "historial-interno-discente", discente_id=discente_id)
+
+
 def _reporte_operativo_json(request, slug):
     try:
         data = ServicioReportesOperativos(request.user, request=request).vista_previa(slug, request.GET)
@@ -417,6 +550,47 @@ def _exportar_reporte_desempeno_xlsx(request, slug):
         return _error_response(exc)
     except Exception:
         return JsonResponse({"ok": False, "error": "No fue posible generar el reporte de desempeño."}, status=500)
+    return _archivo_response(resultado)
+
+
+def _reporte_trayectoria_json(request, slug, discente_id=None):
+    try:
+        data = ServicioReportesTrayectoria(request.user, request=request).vista_previa(slug, request.GET, discente_id=discente_id)
+    except (PermissionDenied, ValidationError) as exc:
+        return _error_response(exc)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "No fue posible consultar el reporte de trayectoria."}, status=500)
+
+    limit = normalizar_limit(request.GET.get("limit"), default=100, maximum=500)
+    return JsonResponse(
+        {
+            "ok": True,
+            "slug": data.slug,
+            "nombre": data.nombre,
+            "total": len(data.filas),
+            "filtros": data.filtros,
+            "columnas": data.columnas,
+            "items": data.filas[:limit],
+            "resumen": data.resumen,
+            "sheets": [
+                {
+                    "titulo": sheet.titulo,
+                    "total": len(sheet.filas),
+                    "columnas": sheet.columnas,
+                }
+                for sheet in data.sheets
+            ],
+        }
+    )
+
+
+def _exportar_reporte_trayectoria_xlsx(request, slug, discente_id=None):
+    try:
+        resultado = ServicioReportesTrayectoria(request.user, request=request).exportar_xlsx(slug, request.GET, discente_id=discente_id)
+    except (PermissionDenied, ValidationError) as exc:
+        return _error_response(exc)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "No fue posible generar el reporte de trayectoria."}, status=500)
     return _archivo_response(resultado)
 
 
