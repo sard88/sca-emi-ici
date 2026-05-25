@@ -17,22 +17,22 @@ export function TrajectoryReportsIndex() {
       {!user ? null : !canAccessReportesTrayectoria(user) ? (
         <ErrorMessage message="No tienes permiso para consultar reportes de trayectoria desde el portal." />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <PageHeader
             title="Reportes de trayectoria y situación académica"
-            description="Vista previa y descarga XLSX de situación académica, movimientos e historial interno. El portal consume APIs Django y no modifica datos."
+            description="Consulta la información académica disponible para tu ámbito autorizado."
             user={user}
           />
 
           <section className="rounded-[1.75rem] border border-[#d8c5a7] bg-[#073f34] p-6 text-white shadow-institutional">
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-[#d4af37]">Bloque 10C-3C</p>
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-[#d4af37]">Reporte institucional</p>
             <h2 className="mt-3 text-3xl font-black">Trayectoria, situación académica e historial interno</h2>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-white/84">
-              Los reportes se generan en backend desde el Bloque 9I-M-E. El formato disponible es XLSX auditado; PDF, kárdex Excel, importación y bitácora transversal quedan pendientes.
+              Consulta reportes disponibles según tu perfil autorizado.
             </p>
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-2">
+          <section className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
             {reportes.map((config) => (
               <TrajectoryReportCard key={config.slug} config={config} />
             ))}

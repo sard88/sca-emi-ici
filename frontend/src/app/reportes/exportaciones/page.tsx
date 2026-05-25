@@ -7,6 +7,7 @@ import { EmptyExportsState } from "@/components/reportes/EmptyExportsState";
 import { ExportHistoryTable } from "@/components/reportes/ExportHistoryTable";
 import { ErrorMessage } from "@/components/states/ErrorMessage";
 import { LoadingState } from "@/components/states/LoadingState";
+import { ExportTracePanel, SensitiveTraceNotice } from "@/components/trazabilidad";
 import { getExportaciones } from "@/lib/api";
 import { canAccessAuditoriaExportaciones, canAccessReportes } from "@/lib/dashboard";
 import { useAuth } from "@/lib/auth";
@@ -54,6 +55,7 @@ export default function HistorialExportacionesPage() {
             description="Consulta tus descargas documentales registradas. Los perfiles autorizados pueden ver una trazabilidad más amplia."
             user={user}
           />
+          <SensitiveTraceNotice text="La tabla principal no muestra filtros ni parámetros completos de exportación; conserva solo trazabilidad documental segura." tone="info" />
 
           <section className="rounded-[1.5rem] border border-[#eadfce] bg-white/88 p-4 shadow-sm">
             <div className="grid gap-3 md:grid-cols-3">
@@ -81,7 +83,12 @@ export default function HistorialExportacionesPage() {
           {error ? <ErrorMessage message={error} /> : null}
           {!loading && !error && items.length === 0 ? <EmptyExportsState /> : null}
           {!loading && !error && items.length > 0 ? (
-            <ExportHistoryTable items={items} showUser={canAccessAuditoriaExportaciones(user)} />
+            <>
+              <section className="grid gap-4 xl:grid-cols-2">
+                {items.slice(0, 6).map((item) => <ExportTracePanel key={item.id} item={item} />)}
+              </section>
+              <ExportHistoryTable items={items} showUser={canAccessAuditoriaExportaciones(user)} />
+            </>
           ) : null}
         </div>
       )}

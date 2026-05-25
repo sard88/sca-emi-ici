@@ -52,7 +52,7 @@ export function KardexExportCard({
           onError={onError}
         />
         <span className="text-xs font-semibold text-[#6f7773]">
-          La descarga queda registrada en auditoría documental.
+          Documento disponible según la información académica registrada.
         </span>
       </div>
     </article>

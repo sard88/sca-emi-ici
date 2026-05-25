@@ -5,8 +5,28 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import type { AuthenticatedUser } from "@/lib/types";
-import { canAccessAdministracionPortal, canAccessAuditoria, canAccessCatalogosPortal, canAccessDiscenteActas, canAccessDiscenteCargaAcademica, canAccessDocenteOperacion, canAccessEstadisticaActas, canAccessJefaturaAcademicaActas, canAccessJefaturaCarreraActas, canAccessKardexPdf, canAccessMiHistorialAcademico, canAccessPeriodosOperativos, canAccessReportes, canAccessReportesDesempeno, canAccessReportesOperativos, canAccessReportesTrayectoria, canAccessTrayectoriaInstitucional, getProfilesForUser } from "@/lib/dashboard";
+import {
+  canAccessAdministracionPortal,
+  canAccessAuditoria,
+  canAccessCatalogosPortal,
+  canAccessDiscenteActas,
+  canAccessDiscenteCargaAcademica,
+  canAccessDocenteOperacion,
+  canAccessEstadisticaActas,
+  canAccessJefaturaAcademicaActas,
+  canAccessJefaturaCarreraActas,
+  canAccessKardexPdf,
+  canAccessMiHistorialAcademico,
+  canAccessPeriodosOperativos,
+  canAccessReportes,
+  canAccessReportesDesempeno,
+  canAccessReportesOperativos,
+  canAccessReportesTrayectoria,
+  canAccessTrayectoriaInstitucional,
+  getProfilesForUser,
+} from "@/lib/dashboard";
 import { resolvePortalHref } from "@/lib/route-mapping";
+import { ModuleIcon } from "@/components/ui/icons";
 
 const routeByProfile: Record<string, string> = {
   ADMIN: "/admin-soporte",
@@ -41,13 +61,11 @@ export function Sidebar({ user }: { user: AuthenticatedUser }) {
         </div>
 
         <div className="mt-6 flex gap-3">
-          <BrandChip label="EMI" />
-          <BrandChip label="UDEFA" />
+          <BrandChip src="/brand/institutions/emi.png" alt="Escudo EMI" />
+          <BrandChip src="/brand/institutions/udefa.png" alt="Escudo UDEFA" />
         </div>
 
-        <h1 className="mt-6 text-xl font-black leading-tight text-[#10372e]">
-          Sistema de Control Académico EMI
-        </h1>
+        <h1 className="mt-6 text-xl font-black leading-tight text-[#10372e]">Sistema de Control Académico EMI</h1>
       </div>
 
       <nav className="mt-4 flex-1 space-y-5 overflow-y-auto rounded-[1.75rem] border border-white bg-white/72 p-4 shadow-sm">
@@ -78,7 +96,9 @@ export function MobileModuleNav({ user }: { user: AuthenticatedUser }) {
   return (
     <div className="lg:hidden">
       <div className="flex gap-2 overflow-x-auto px-4 pb-2 pt-3">
-        {links.map((item) => <MobilePill key={`${item.href}-${item.label}`} href={item.href} active={item.active} label={item.shortLabel ?? item.label} backend={item.backend} />)}
+        {links.map((item) => (
+          <MobilePill key={`${item.href}-${item.label}`} href={item.href} active={item.active} label={item.shortLabel ?? item.label} backend={item.backend} />
+        ))}
       </div>
     </div>
   );
@@ -99,6 +119,10 @@ type NavigationSection = {
 };
 
 function buildNavigationSections(user: AuthenticatedUser, pathname: string): NavigationSection[] {
+  const isAdminUser = isAdmin(user);
+  const isEstadisticaUser = hasRole(user, "ENCARGADO_ESTADISTICA") || hasRole(user, "ESTADISTICA");
+  const isJefaturaCarreraUser = hasRole(user, "JEFE_CARRERA") || hasRole(user, "JEFATURA_CARRERA") || hasRole(user, "JEFE_SUB_EJEC_CTR");
+  const isJefaturaAcademicaUser = hasRole(user, "JEFE_ACADEMICO") || hasRole(user, "JEFATURA_ACADEMICA");
   const profileLinks = getProfilesForUser(user).map((profile) => {
     const href = routeByProfile[profile.key] ?? "/dashboard";
     return navItem(href, profile.title, profile.key, pathname, profile.title);
@@ -118,37 +142,37 @@ function buildNavigationSections(user: AuthenticatedUser, pathname: string): Nav
     {
       title: "Operación académica",
       items: [
-        canAccessEstadisticaActas(user) ? navItem("/estadistica/actas", "Consulta de actas", "ACTAS", pathname, "Actas") : null,
+        canAccessEstadisticaActas(user) ? navItem("/estadistica/actas", "Seguimiento de actas", "ACTAS", pathname, "Actas") : null,
         canAccessJefaturaCarreraActas(user) ? navItem("/jefatura-carrera/actas", "Actas por validar", "ACTAS", pathname, "Validar") : null,
         canAccessJefaturaAcademicaActas(user) ? navItem("/jefatura-academica/actas", "Actas por formalizar", "ACTAS", pathname, "Formalizar") : null,
         canAccessTrayectoriaInstitucional(user) ? navItem("/trayectoria", "Trayectoria", "TRAYECTORIA", pathname) : null,
         canAccessTrayectoriaInstitucional(user) ? navItem("/movimientos-academicos", "Movimientos académicos", "TRAYECTORIA", pathname, "Movimientos") : null,
-        canAccessPeriodosOperativos(user) ? navItem("/periodos", "Periodos", "PERIODOS", pathname) : null,
+        canAccessPeriodosOperativos(user) ? navItem("/periodos", "Períodos", "PERIODOS", pathname) : null,
         canAccessPeriodosOperativos(user) ? navItem("/periodos/pendientes-asignacion-docente", "Pendientes de asignación docente", "PERIODOS", pathname, "Pendientes") : null,
       ].filter(Boolean) as NavigationItem[],
     },
     {
       title: "Gestión institucional",
       items: [
-        canAccessAdministracionPortal(user) ? navItem("/administracion", "Administración", "ADMINISTRACION", pathname, "Admin") : null,
-        canAccessCatalogosPortal(user) ? navItem("/catalogos", "Catálogos académicos", "CATALOGOS", pathname, "Catálogos") : null,
+        (isAdminUser || isEstadisticaUser) && canAccessAdministracionPortal(user) ? navItem("/administracion", "Administración", "ADMINISTRACION", pathname, "Admin") : null,
+        (isAdminUser || isEstadisticaUser) && canAccessCatalogosPortal(user) ? navItem("/catalogos", "Catálogos académicos", "CATALOGOS", pathname, "Catálogos") : null,
       ].filter(Boolean) as NavigationItem[],
     },
     {
       title: "Reportes y auditoría",
       items: [
         canAccessReportes(user) ? navItem("/reportes", "Reportes", "REPORTES", pathname) : null,
-        canAccessKardexPdf(user) ? navItem("/reportes/kardex", "Kárdex oficial", "REPORTES", pathname, "Kárdex") : null,
+        canAccessKardexPdf(user) && !isJefaturaCarreraUser && !isJefaturaAcademicaUser ? navItem("/reportes/kardex", "Kárdex oficial", "REPORTES", pathname, "Kárdex") : null,
         canAccessReportesOperativos(user) ? navItem("/reportes/operativos", "Reportes operativos", "REPORTES", pathname, "Operativos") : null,
         canAccessReportesDesempeno(user) ? navItem("/reportes/desempeno", "Desempeño académico", "REPORTES", pathname, "Desempeño") : null,
-        canAccessReportesTrayectoria(user) ? navItem("/reportes/trayectoria", "Reportes de trayectoria", "REPORTES", pathname, "Reportes trayectoria") : null,
-        canAccessReportes(user) ? navItem("/reportes/exportaciones", "Historial de exportaciones", "REPORTES", pathname, "Exportaciones") : null,
-        canAccessAuditoria(user) ? navItem("/reportes/auditoria", "Auditoría institucional", "SEGURIDAD", pathname, "Auditoría") : null,
+        canAccessReportesTrayectoria(user) ? navItem("/reportes/trayectoria", "Reportes de trayectoria", "REPORTES", pathname, "Trayectoria") : null,
+        (isAdminUser || isEstadisticaUser) ? navItem("/reportes/exportaciones", "Historial de exportaciones", "REPORTES", pathname, "Exportaciones") : null,
+        (isAdminUser || isEstadisticaUser) && canAccessAuditoria(user) ? navItem("/reportes/auditoria", "Auditoría institucional", "SEGURIDAD", pathname, "Auditoría") : null,
       ].filter(Boolean) as NavigationItem[],
     },
     {
       title: "Soporte técnico",
-      items: isAdmin(user)
+      items: isAdminUser
         ? [
             navItem("/admin/", "Django Admin", "ADMINISTRACION", pathname, "Django Admin", true),
             navItem("/health/", "Estado técnico", "SEGURIDAD", pathname, "Health", true),
@@ -177,16 +201,18 @@ function SidebarSection({ title, items }: NavigationSection) {
     <section>
       <p className="px-2 text-xs font-black uppercase tracking-[0.22em] text-[#b46c13]">{title}</p>
       <div className="mt-3 space-y-1">
-        {items.map((item) => <SidebarLink key={`${item.href}-${item.label}`} {...item} />)}
+        {items.map((item) => (
+          <SidebarLink key={`${item.href}-${item.label}`} {...item} />
+        ))}
       </div>
     </section>
   );
 }
 
-function BrandChip({ label }: { label: string }) {
+function BrandChip({ src, alt }: { src: string; alt: string }) {
   return (
     <span className="flex h-12 w-12 items-center justify-center rounded-full border border-[#dfc79f] bg-[#fffaf1] text-xs font-black text-[#7a123d] shadow-sm">
-      {label}
+      <Image src={src} alt={alt} width={28} height={28} className="h-7 w-7 object-contain" />
     </span>
   );
 }
@@ -229,96 +255,15 @@ function SidebarLink({ href, active, icon, label, backend = false }: NavigationI
   );
   if (!resolved) return null;
   if (resolved.backend) {
-    return <a href={resolved.href} target="_blank" rel="noreferrer" className={className}>{content}</a>;
+    return (
+      <a href={resolved.href} target="_blank" rel="noreferrer" className={className}>
+        {content}
+      </a>
+    );
   }
   return (
     <Link href={resolved.href} className={className}>
       {content}
     </Link>
-  );
-}
-
-export function ModuleIcon({ name, className }: { name: string; className?: string }) {
-  const normalized = name.toUpperCase();
-
-  if (normalized.includes("ESTADISTICA")) return <ChartIcon className={className} />;
-  if (normalized.includes("DOCENTE")) return <UsersIcon className={className} />;
-  if (normalized.includes("DISCENTE")) return <IdIcon className={className} />;
-  if (normalized.includes("TRAYECTORIA") || normalized.includes("PERIODO")) return <AcademicIcon className={className} />;
-  if (normalized.includes("JEFE") || normalized.includes("JEFATURA")) return <AcademicIcon className={className} />;
-  if (normalized.includes("REPORTE") || normalized.includes("ACTA")) return <DocumentIcon className={className} />;
-  if (normalized.includes("SEGURIDAD")) return <ShieldIcon className={className} />;
-  if (normalized.includes("PANEL")) return <HomeIcon className={className} />;
-  return <SettingsIcon className={className} />;
-}
-
-function HomeIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M3.5 11.2 12 4l8.5 7.2V20h-5.2v-5.4H8.7V20H3.5v-8.8Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function SettingsIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M19 13.6v-3.2l-2.1-.7a5.6 5.6 0 0 0-.7-1.6l1-2-2.3-2.3-2 .9a6 6 0 0 0-1.8-.4L10.4 2H7.2l-.7 2.2a5.6 5.6 0 0 0-1.6.7l-2-.9L.6 6.3l.9 2a6 6 0 0 0-.4 1.8L-1 10.8V14l2.1.7c.2.6.4 1.1.7 1.6l-1 2 2.3 2.3 2-.9c.5.3 1.1.5 1.8.7l.7 2.1h3.2l.7-2.1c.6-.2 1.1-.4 1.6-.7l2 .9 2.3-2.3-.9-2c.3-.5.5-1.1.7-1.8l1.8-.9Z" transform="translate(2.5 .3)" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function ChartIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M4 19V5M4 19h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M8 16v-5M12 16V8M16 16v-3M20 16V6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function UsersIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM3.5 20a5.5 5.5 0 0 1 11 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M16 11.5a3 3 0 1 0-.8-5.9M16.5 14.5A5 5 0 0 1 21 20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IdIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M5 4h14v16H5V4Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M9 9h6M9 13h6M9 17h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function AcademicIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="m3 8.5 9-4 9 4-9 4-9-4Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M7 10.5v4.2c0 1.1 2.2 2.8 5 2.8s5-1.7 5-2.8v-4.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function ShieldIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 3.5 19 6v5.5c0 4.5-3 7.8-7 9-4-1.2-7-4.5-7-9V6l7-2.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="m8.8 12.2 2.1 2.1 4.4-4.9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function DocumentIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M7 3.5h6.5L18 8v12.5H7V3.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M13.5 3.8V8H18M9.8 12h5.4M9.8 15h5.4M9.8 18h3.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }

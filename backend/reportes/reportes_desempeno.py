@@ -1,5 +1,6 @@
 import hashlib
 from dataclasses import dataclass
+from io import BytesIO
 from decimal import Decimal, ROUND_HALF_UP
 from statistics import StatisticsError, mode
 
@@ -10,6 +11,8 @@ from django.utils.dateparse import parse_date
 
 from core.portal_services import portal_context
 from evaluacion.models import Acta, CalificacionComponente, ComponenteEvaluacion, DetalleActa
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from relaciones.models import InscripcionMateria
 from trayectoria.models import CatalogoResultadoAcademico
 
@@ -291,7 +294,98 @@ class ServicioReportesDesempeno:
         )
         try:
             data = self.vista_previa(slug, params)
-            contenido = generar_reporte_xlsx(titulo=config.nombre, filtros=filtros, sheets=data.sheets)
+            if slug == "cuadro-aprovechamiento":
+                contenido = _generar_cuadro_aprovechamiento_xlsx(filtros=filtros, rows=data.sheets[0].filas if data.sheets else [])
+            else:
+                contenido = generar_reporte_xlsx(titulo=config.nombre, filtros=filtros, sheets=data.sheets)
+        except Exception as exc:
+            self.servicio_exportacion.marcar_fallida(registro, exc)
+            raise
+        self.servicio_exportacion.marcar_generada(
+            registro,
+            tamano_bytes=len(contenido),
+            hash_archivo=hashlib.sha256(contenido).hexdigest(),
+        )
+        return ArchivoReporteDesempeno(
+            contenido=contenido,
+            nombre_archivo=nombre_archivo,
+            content_type=XLSX_MIME,
+            registro=registro,
+        )
+
+    def vista_previa_consolidado_materia(self, params):
+        self._validar_permiso(RegistroExportacion.TIPO_REPORTE_PROMEDIOS_ACADEMICOS)
+        filtros = self._filtros_consolidado(params)
+        records = self._consolidado_records(filtros)
+        estadisticos = _metricas([record["calificacion_final"] for record in records if record["calificacion_final"] is not None])
+        return {
+            "filtros": filtros,
+            "columnas": [
+                {"key": "numero", "label": "No."},
+                {"key": "grado_empleo", "label": "Grado y empleo"},
+                {"key": "nombre", "label": "Nombre del discente"},
+                {"key": "grupo", "label": "Grupo"},
+                {"key": "asignatura", "label": "Materia"},
+                {"key": "p1", "label": "P1"},
+                {"key": "p2", "label": "P2"},
+                {"key": "p3", "label": "P3"},
+                {"key": "promedio_parciales", "label": "PP"},
+                {"key": "exencion", "label": "Exención"},
+                {"key": "evaluacion_final", "label": "EF"},
+                {"key": "calificacion_final", "label": "PF"},
+                {"key": "situacion", "label": "Situación"},
+            ],
+            "items": records,
+            "resumen": {
+                "extraordinarios": sum(1 for record in records if record["extraordinario_registrado"]),
+                "media_aritmetica": estadisticos["promedio"],
+                "moda": estadisticos["moda"],
+                "desviacion_estandar": estadisticos["desviacion_estandar"],
+                "reprobados": estadisticos["reprobados"],
+            },
+        }
+
+    def exportar_consolidado_materia_xlsx(self, params) -> ArchivoReporteDesempeno:
+        self._validar_permiso(RegistroExportacion.TIPO_REPORTE_PROMEDIOS_ACADEMICOS)
+        data = self.vista_previa_consolidado_materia(params)
+        filtros = data["filtros"]
+        nombre_documento = "Consolidado por materia y grupo"
+        nombre_archivo = construir_nombre_archivo(
+            RegistroExportacion.TIPO_REPORTE_PROMEDIOS_ACADEMICOS,
+            RegistroExportacion.FORMATO_XLSX,
+            objeto_repr=self._objeto_repr_filtros_consolidado(filtros),
+        )
+        registro = self.servicio_exportacion.registrar_solicitud(
+            tipo_documento=RegistroExportacion.TIPO_REPORTE_PROMEDIOS_ACADEMICOS,
+            formato=RegistroExportacion.FORMATO_XLSX,
+            nombre_documento=nombre_documento,
+            nombre_archivo=nombre_archivo,
+            filtros=filtros,
+            parametros={"slug": "consolidado-materia"},
+        )
+        try:
+            resumen_fila = {
+                "extraordinarios": data["resumen"]["extraordinarios"],
+                "media_aritmetica": data["resumen"]["media_aritmetica"],
+                "moda": data["resumen"]["moda"],
+                "desviacion_estandar": data["resumen"]["desviacion_estandar"],
+                "reprobados": data["resumen"]["reprobados"],
+            }
+            sheets = [
+                ReporteSheet("Consolidado", data["columnas"], data["items"]),
+                ReporteSheet(
+                    "Resumen",
+                    [
+                        {"key": "extraordinarios", "label": "Extraordinarios"},
+                        {"key": "media_aritmetica", "label": "Media aritmetica"},
+                        {"key": "moda", "label": "Moda"},
+                        {"key": "desviacion_estandar", "label": "Desviacion estandar"},
+                        {"key": "reprobados", "label": "Reprobados"},
+                    ],
+                    [resumen_fila],
+                ),
+            ]
+            contenido = generar_reporte_xlsx(titulo=nombre_documento, filtros=filtros, sheets=sheets)
         except Exception as exc:
             self.servicio_exportacion.marcar_fallida(registro, exc)
             raise
@@ -336,6 +430,26 @@ class ServicioReportesDesempeno:
             "rango_aprovechamiento",
         )
         return {key: str(params.get(key, "")).strip() for key in keys if str(params.get(key, "")).strip()}
+
+    def _filtros_consolidado(self, params):
+        alias_map = {
+            "periodo": ["periodo", "periodo_academico_id", "periodo_id"],
+            "carrera": ["carrera", "carrera_id"],
+            "grupo": ["grupo", "grupo_id"],
+            "asignatura": ["asignatura", "programa_asignatura_id", "materia_id"],
+            "asignacion": ["asignacion", "asignacion_docente_id"],
+            "semestre": ["semestre"],
+        }
+        filtros = {}
+        for key, aliases in alias_map.items():
+            for alias in aliases:
+                value = str(params.get(alias, "")).strip()
+                if value:
+                    filtros[key] = value
+                    break
+        if "asignacion" in filtros:
+            filtros["asignacion_docente_id"] = filtros["asignacion"]
+        return filtros
 
     def _build_sheets(self, slug, filtros):
         records = self._official_records(filtros)
@@ -437,6 +551,67 @@ class ServicioReportesDesempeno:
     def _official_records(self, filtros):
         return [self._record(inscripcion) for inscripcion in self._official_queryset(filtros)]
 
+    def _consolidado_records(self, filtros):
+        base_qs = self._official_queryset(filtros)
+        if filtros.get("asignacion_docente_id"):
+            base_qs = base_qs.filter(asignacion_docente_id=_int_or_none(filtros["asignacion_docente_id"]))
+
+        inscripciones = list(base_qs)
+        inscripcion_ids = [item.id for item in inscripciones]
+        detalles = (
+            DetalleActa.objects.select_related("acta")
+            .filter(
+                inscripcion_materia_id__in=inscripcion_ids,
+                acta__estado_acta=Acta.ESTADO_FORMALIZADO_JEFATURA_ACADEMICA,
+                acta__corte_codigo__in=[
+                    ComponenteEvaluacion.CORTE_P1,
+                    ComponenteEvaluacion.CORTE_P2,
+                    ComponenteEvaluacion.CORTE_P3,
+                    ComponenteEvaluacion.CORTE_FINAL,
+                ],
+            )
+            .order_by("-acta__formalizada_en", "-acta_id")
+        )
+
+        cortes_por_inscripcion = {}
+        for detalle in detalles:
+            corte = detalle.acta.corte_codigo
+            by_corte = cortes_por_inscripcion.setdefault(detalle.inscripcion_materia_id, {})
+            if corte in by_corte:
+                continue
+            by_corte[corte] = detalle
+
+        rows = []
+        for index, inscripcion in enumerate(inscripciones, start=1):
+            cortes = cortes_por_inscripcion.get(inscripcion.id, {})
+            p1 = _detalle_visible(cortes.get(ComponenteEvaluacion.CORTE_P1))
+            p2 = _detalle_visible(cortes.get(ComponenteEvaluacion.CORTE_P2))
+            p3 = _detalle_visible(cortes.get(ComponenteEvaluacion.CORTE_P3))
+            final = _detalle_visible(cortes.get(ComponenteEvaluacion.CORTE_FINAL))
+            pp = _detalle_promedio(cortes.get(ComponenteEvaluacion.CORTE_FINAL))
+            exencion = _detalle_exencion(cortes.get(ComponenteEvaluacion.CORTE_FINAL))
+            calificacion_final = _fmt_decimal(inscripcion.calificacion_final)
+            extraordinario = getattr(inscripcion, "extraordinario", None)
+            rows.append(
+                {
+                    "numero": index,
+                    "grado_empleo": _grado(inscripcion.discente.usuario),
+                    "nombre": inscripcion.discente.usuario.nombre_visible,
+                    "grupo": inscripcion.asignacion_docente.grupo_academico.clave_grupo,
+                    "asignatura": inscripcion.asignacion_docente.programa_asignatura.materia.nombre,
+                    "p1": p1,
+                    "p2": p2,
+                    "p3": p3,
+                    "promedio_parciales": pp,
+                    "exencion": exencion,
+                    "evaluacion_final": final,
+                    "calificacion_final": calificacion_final,
+                    "situacion": inscripcion.discente.get_situacion_actual_display(),
+                    "extraordinario_registrado": bool(extraordinario),
+                }
+            )
+        return rows
+
     def _record(self, inscripcion):
         asignacion = inscripcion.asignacion_docente
         grupo = asignacion.grupo_academico
@@ -470,6 +645,7 @@ class ServicioReportesDesempeno:
             "marca": inscripcion.codigo_marca or "",
             "extraordinario_aprobado": bool(extraordinario and extraordinario.aprobado),
             "extraordinario_pendiente": calificacion < APROBATORIA and not (extraordinario and extraordinario.aprobado),
+            "extraordinario_registrado": bool(extraordinario),
             "final_acta_id": final_acta.id if final_acta else "",
             "formalizada_en": _dt(final_acta.formalizada_en if final_acta else None),
             "asignacion_id": asignacion.id,
@@ -756,6 +932,10 @@ class ServicioReportesDesempeno:
         parts = [filtros.get("periodo"), filtros.get("carrera"), filtros.get("grupo")]
         return "-".join(part for part in parts if part) or ""
 
+    def _objeto_repr_filtros_consolidado(self, filtros):
+        parts = [filtros.get("periodo"), filtros.get("carrera"), filtros.get("grupo"), filtros.get("asignatura")]
+        return "-".join(part for part in parts if part) or ""
+
 
 def _metricas(values):
     values = [Decimal(value) for value in values if value is not None]
@@ -826,6 +1006,168 @@ def _rango_aprovechamiento(promedio):
     return ""
 
 
+def _generar_cuadro_aprovechamiento_xlsx(*, filtros, rows):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Cuadro"
+    thin = Side(style="thin", color="D8C5A7")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    green_fill = PatternFill("solid", fgColor="073F34")
+    burgundy_fill = PatternFill("solid", fgColor="611232")
+    beige_fill = PatternFill("solid", fgColor="FFF7E8")
+    header_fill = PatternFill("solid", fgColor="235B4E")
+    columns = [
+        ("grupo", "Grupo"),
+        ("lugar", "No."),
+        ("grado", "Grado y empleo"),
+        ("nombre_discente", "Nombre"),
+        ("promedio", "Promedio"),
+    ]
+    max_col = len(columns)
+
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max_col)
+    ws["A1"] = "Sistema de Control Académico EMI - ICI"
+    ws["A1"].font = Font(bold=True, size=14, color="FFFFFF")
+    ws["A1"].fill = burgundy_fill
+    ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
+
+    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=max_col)
+    ws["A2"] = "Cuadro de aprovechamiento académico"
+    ws["A2"].font = Font(bold=True, size=12, color="10372E")
+    ws["A2"].alignment = Alignment(horizontal="center", vertical="center")
+
+    ws.merge_cells(start_row=3, start_column=1, end_row=3, end_column=max_col)
+    ws["A3"] = "Relación de discentes agrupados por rango de aprovechamiento."
+    ws["A3"].font = Font(italic=True, color="5F6764")
+    ws["A3"].alignment = Alignment(horizontal="center", vertical="center")
+
+    filtros_texto = ", ".join(f"{key}: {value}" for key, value in filtros.items() if value not in ("", None, [])) or "Sin filtros"
+    ws.merge_cells(start_row=4, start_column=1, end_row=4, end_column=max_col)
+    ws["A4"] = f"Filtros aplicados: {filtros_texto}"
+    ws["A4"].font = Font(italic=True, color="5F6764")
+    ws["A4"].alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    current_row = 6
+    for rango, grouped_rows in _agrupar_cuadro_por_rango_y_grupo(rows):
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=max_col)
+        range_cell = ws.cell(row=current_row, column=1, value=rango)
+        range_cell.font = Font(bold=True, color="FFFFFF")
+        range_cell.fill = green_fill
+        range_cell.alignment = Alignment(horizontal="center", vertical="center")
+        current_row += 1
+
+        for col_idx, (_, label) in enumerate(columns, start=1):
+            cell = ws.cell(row=current_row, column=col_idx, value=label)
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = header_fill
+            cell.border = border
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        current_row += 1
+
+        for group, group_rows in grouped_rows:
+            group_start = current_row
+            for item in group_rows:
+                for col_idx, (key, _) in enumerate(columns, start=1):
+                    raw_value = item.get(key, "")
+                    value = _decimal_or_original(raw_value) if key == "promedio" else raw_value
+                    cell = ws.cell(row=current_row, column=col_idx, value=value)
+                    cell.border = border
+                    cell.alignment = Alignment(vertical="top", wrap_text=True)
+                    if key in {"grupo", "lugar", "promedio"}:
+                        cell.alignment = Alignment(horizontal="center", vertical="top", wrap_text=True)
+                    if key == "promedio":
+                        cell.number_format = "0.0"
+                        cell.font = Font(bold=True, color="611232")
+                current_row += 1
+            if current_row - group_start > 1:
+                ws.merge_cells(start_row=group_start, start_column=1, end_row=current_row - 1, end_column=1)
+                ws.cell(row=group_start, column=1).alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            ws.cell(row=group_start, column=1, value=group)
+
+        current_row += 1
+
+    if not rows:
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=max_col)
+        cell = ws.cell(row=current_row, column=1, value="Sin información disponible.")
+        cell.fill = beige_fill
+        cell.border = border
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    for column, width in {"A": 18, "B": 10, "C": 24, "D": 42, "E": 14}.items():
+        ws.column_dimensions[column].width = width
+
+    for row in range(1, current_row + 1):
+        ws.row_dimensions[row].height = 22
+
+    ws.freeze_panes = "A7"
+    ws.sheet_view.showGridLines = False
+    ws.page_setup.orientation = "portrait"
+    ws.page_setup.paperSize = ws.PAPERSIZE_LETTER
+    ws.page_margins.left = 0.35
+    ws.page_margins.right = 0.35
+    ws.page_margins.top = 0.45
+    ws.page_margins.bottom = 0.45
+    ws.print_title_rows = "1:6"
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+
+    _agregar_resumen_cuadro(wb, rows, border, header_fill)
+    stream = BytesIO()
+    wb.save(stream)
+    return stream.getvalue()
+
+
+def _agrupar_cuadro_por_rango_y_grupo(rows):
+    ranges = []
+    seen_ranges = {}
+    for item in rows:
+        rango = item.get("rango_aprovechamiento") or "Sin rango"
+        group = item.get("grupo") or "Sin grupo"
+        if rango not in seen_ranges:
+            seen_ranges[rango] = {}
+            ranges.append((rango, seen_ranges[rango]))
+        seen_ranges[rango].setdefault(group, []).append(item)
+    return [(rango, list(groups.items())) for rango, groups in ranges]
+
+
+def _agregar_resumen_cuadro(wb, rows, border, header_fill):
+    ws = wb.create_sheet("Resumen por rango")
+    resumen = {}
+    for item in rows:
+        rango = item.get("rango_aprovechamiento") or "Sin rango"
+        resumen[rango] = resumen.get(rango, 0) + 1
+
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=2)
+    ws["A1"] = "Resumen por rango"
+    ws["A1"].font = Font(bold=True, size=12, color="10372E")
+    ws["A1"].alignment = Alignment(horizontal="center")
+
+    for col_idx, label in enumerate(("Rango de aprovechamiento", "Total"), start=1):
+        cell = ws.cell(row=3, column=col_idx, value=label)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = header_fill
+        cell.border = border
+        cell.alignment = Alignment(horizontal="center")
+    for row_idx, (rango, total) in enumerate(resumen.items(), start=4):
+        ws.cell(row=row_idx, column=1, value=rango).border = border
+        ws.cell(row=row_idx, column=2, value=total).border = border
+        ws.cell(row=row_idx, column=2).alignment = Alignment(horizontal="center")
+
+    ws.column_dimensions["A"].width = 42
+    ws.column_dimensions["B"].width = 14
+    ws.sheet_view.showGridLines = False
+
+
+def _decimal_or_original(value):
+    if value in ("", None):
+        return value
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return value
+
+
 def _percent(value, total):
     if not total:
         return "0.0"
@@ -868,3 +1210,23 @@ def _is_truthy(value):
 def _is_summary_sheet(sheet):
     keys = {column["key"] for column in sheet.columnas}
     return keys == {"categoria", "total"}
+
+
+def _detalle_visible(detalle):
+    if not detalle:
+        return "N/A"
+    value = detalle.resultado_corte_visible if detalle.resultado_corte_visible is not None else detalle.resultado_corte
+    return _fmt_decimal(value) if value is not None else "N/A"
+
+
+def _detalle_promedio(detalle):
+    if not detalle:
+        return "N/A"
+    value = detalle.promedio_parciales_visible if detalle.promedio_parciales_visible is not None else detalle.promedio_parciales
+    return _fmt_decimal(value) if value is not None else "N/A"
+
+
+def _detalle_exencion(detalle):
+    if not detalle:
+        return "No"
+    return "Sí" if detalle.exencion_aplica else "No"

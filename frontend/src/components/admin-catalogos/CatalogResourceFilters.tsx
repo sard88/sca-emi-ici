@@ -20,7 +20,7 @@ export function CatalogResourceFilters({
       <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h3 className="text-base font-black text-[#101b18]">Filtros</h3>
-          <p className="text-sm text-[#5f6764]">Los filtros se envían como querystring y el backend aplica permisos y ámbito.</p>
+          <p className="text-sm text-[#5f6764]">Usa los filtros para encontrar información de forma rápida.</p>
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={onClear} className="rounded-xl border border-[#d8c5a7] bg-white px-4 py-2 text-xs font-black text-[#5f4525] transition hover:bg-[#fff7e8]">Limpiar</button>

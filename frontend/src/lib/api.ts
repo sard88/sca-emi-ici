@@ -6,6 +6,8 @@ import type {
   AsignacionesListResponse,
   AuthMe,
   AuthenticatedUser,
+  AuditEventDTO,
+  AuditEventSummaryDTO,
   BitacoraEventosResponse,
   BusquedaResponse,
   CalendarioMes,
@@ -64,7 +66,8 @@ async function parseJson<T>(response: Response): Promise<T> {
     const message = typeof data === "object" && data
       ? String((data as { error?: unknown; message?: unknown }).error ?? (data as { message?: unknown }).message ?? "No fue posible completar la solicitud.")
       : "No fue posible completar la solicitud.";
-    const error = new Error(message) as Error & { errors?: Record<string, string[]> };
+    const error = new Error(message) as Error & { errors?: Record<string, string[]>; status?: number };
+    error.status = response.status;
     if (typeof data === "object" && data && "errors" in data) {
       error.errors = (data as { errors?: Record<string, string[]> }).errors;
     }
@@ -191,6 +194,22 @@ export async function getAuditoriaExportaciones(params: Record<string, string> =
 
 export async function getAuditoriaEventos(params: Record<string, string> = {}) {
   return apiGet<BitacoraEventosResponse>(`/api/auditoria/eventos/${queryString(params)}`);
+}
+
+export async function getAuditoriaEventoDetalle(id: number | string) {
+  return apiGet<{ ok: boolean; item: AuditEventDTO }>(`/api/auditoria/eventos/${encodeURIComponent(String(id))}/`).then((data) => data.item);
+}
+
+export async function getAuditoriaResumen(params: Record<string, string> = {}) {
+  return apiGet<AuditEventSummaryDTO & { resumen?: AuditEventSummaryDTO }>(`/api/auditoria/eventos/resumen/${queryString(params)}`).then((data) => data.resumen || data);
+}
+
+export async function getEventosCriticosPorObjeto(objetoTipo: string, objetoId: number | string, params: Record<string, string> = {}) {
+  return getAuditoriaEventos({
+    ...params,
+    objeto_tipo: objetoTipo,
+    objeto_id: String(objetoId),
+  });
 }
 
 export async function descargarAuditoriaEventosXlsx(params: Record<string, string> = {}) {
@@ -335,9 +354,10 @@ export async function getReporteDesempenoCuadroAprovechamiento(params: Record<st
   return getReporteDesempeno("cuadro-aprovechamiento", params);
 }
 
-const desempenoDownloadEndpoint: Record<ReporteDesempenoCodigo, string> = {
+const desempenoDownloadEndpoint: Partial<Record<ReporteDesempenoCodigo, string>> = {
   "aprobados-reprobados": "aprobados-reprobados",
   promedios: "promedios",
+  "consolidado-materia": "consolidado-materia",
   distribucion: "distribucion",
   exentos: "exentos",
   docentes: "desempeno-docente",
@@ -347,7 +367,11 @@ const desempenoDownloadEndpoint: Record<ReporteDesempenoCodigo, string> = {
 };
 
 export async function descargarReporteDesempenoXlsx(slug: ReporteDesempenoCodigo, params: Record<string, string> = {}) {
-  return downloadFile(`/api/exportaciones/reportes/${desempenoDownloadEndpoint[slug]}/xlsx/${queryString(params)}`, {
+  const endpoint = desempenoDownloadEndpoint[slug];
+  if (!endpoint) {
+    throw new Error("La descarga XLSX no está disponible para este reporte.");
+  }
+  return downloadFile(`/api/exportaciones/reportes/${endpoint}/xlsx/${queryString(params)}`, {
     forbidden: "No tienes permiso para exportar este reporte de desempeño.",
     fallback: "La descarga del reporte falló. Intenta nuevamente o contacta soporte.",
   });

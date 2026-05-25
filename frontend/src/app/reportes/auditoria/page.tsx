@@ -7,10 +7,11 @@ import { EmptyExportsState } from "@/components/reportes/EmptyExportsState";
 import { ExportHistoryTable } from "@/components/reportes/ExportHistoryTable";
 import { ErrorMessage } from "@/components/states/ErrorMessage";
 import { LoadingState } from "@/components/states/LoadingState";
-import { descargarAuditoriaEventosXlsx, getAuditoriaEventos, getAuditoriaExportaciones } from "@/lib/api";
+import { AuditEventDetailDrawer, ProcessStateBadge, SensitiveTraceNotice } from "@/components/trazabilidad";
+import { descargarAuditoriaEventosXlsx, getAuditoriaEventos, getAuditoriaExportaciones, getAuditoriaResumen } from "@/lib/api";
 import { canAccessAuditoria, canAccessAuditoriaEventos, canAccessAuditoriaExportaciones } from "@/lib/dashboard";
 import { useAuth } from "@/lib/auth";
-import type { BitacoraEventoCritico, ExportacionRegistro } from "@/lib/types";
+import type { AuditEventDTO, AuditEventSummaryDTO, ExportacionRegistro } from "@/lib/types";
 
 type Tab = "exportaciones" | "eventos";
 
@@ -32,7 +33,9 @@ export default function AuditoriaExportacionesPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("exportaciones");
   const [exportaciones, setExportaciones] = useState<ExportacionRegistro[]>([]);
-  const [eventos, setEventos] = useState<BitacoraEventoCritico[]>([]);
+  const [eventos, setEventos] = useState<AuditEventDTO[]>([]);
+  const [resumenEventos, setResumenEventos] = useState<AuditEventSummaryDTO | null>(null);
+  const [eventoDetalle, setEventoDetalle] = useState<AuditEventDTO | null>(null);
   const [totalEventos, setTotalEventos] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +94,9 @@ export default function AuditoriaExportacionesPage() {
           const response = await getAuditoriaEventos(filtrosEventos);
           setEventos(response.items);
           setTotalEventos(response.total);
+          getAuditoriaResumen(filtrosEventos)
+            .then(setResumenEventos)
+            .catch(() => setResumenEventos(null));
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "No fue posible cargar la auditoría institucional.");
@@ -180,7 +186,13 @@ export default function AuditoriaExportacionesPage() {
           {error ? <ErrorMessage message={error} /> : null}
           {!loading && !error && tab === "exportaciones" && exportaciones.length === 0 ? <EmptyExportsState title="No hay registros de auditoría con los filtros seleccionados." /> : null}
           {!loading && !error && tab === "exportaciones" && exportaciones.length > 0 ? <ExportHistoryTable items={exportaciones} showUser /> : null}
-          {!loading && !error && tab === "eventos" ? <EventosTable items={eventos} total={totalEventos} /> : null}
+          {!loading && !error && tab === "eventos" ? (
+            <>
+              <EventosSummary resumen={resumenEventos} total={totalEventos} />
+              <EventosTable items={eventos} total={totalEventos} onSelect={setEventoDetalle} />
+              <AuditEventDetailDrawer item={eventoDetalle} onClose={() => setEventoDetalle(null)} />
+            </>
+          ) : null}
         </div>
       )}
     </AppShell>
@@ -191,7 +203,27 @@ function tabClass(active: boolean) {
   return `border-b-2 px-4 py-3 text-sm font-bold ${active ? "border-[#9f2241] text-[#9f2241]" : "border-transparent text-[#6b6258] hover:text-[#9f2241]"}`;
 }
 
-function EventosTable({ items, total }: { items: BitacoraEventoCritico[]; total: number }) {
+function EventosSummary({ resumen, total }: { resumen: AuditEventSummaryDTO | null; total: number }) {
+  const values = [
+    { label: "Eventos recientes", value: Number(resumen?.eventos_recientes ?? resumen?.total ?? total) },
+    { label: "Eventos críticos", value: Number(resumen?.eventos_criticos ?? countBy(resumen?.por_severidad, "CRITICO")) },
+    { label: "Bloqueados", value: Number(resumen?.eventos_bloqueados ?? countBy(resumen?.por_resultado, "BLOQUEADO")) },
+    { label: "Fallidos", value: Number(resumen?.eventos_fallidos ?? countBy(resumen?.por_resultado, "FALLIDO")) },
+  ];
+  return (
+    <section className="grid gap-3 md:grid-cols-4">
+      {values.map((item) => (
+        <div key={item.label} className="rounded-[1.25rem] border border-[#eadfce] bg-white p-4 shadow-sm">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#b46c13]">{item.label}</p>
+          <p className="mt-2 text-2xl font-black text-[#101b18]">{item.value}</p>
+        </div>
+      ))}
+      {!resumen ? <div className="md:col-span-4"><SensitiveTraceNotice text="El resumen de auditoría no está disponible para estos filtros o perfil; la tabla sigue operando." tone="info" /></div> : null}
+    </section>
+  );
+}
+
+function EventosTable({ items, total, onSelect }: { items: AuditEventDTO[]; total: number; onSelect: (item: AuditEventDTO) => void }) {
   if (items.length === 0) return <EmptyExportsState title="No hay eventos críticos con los filtros seleccionados." />;
   return (
     <section className="overflow-hidden rounded-lg border border-[#eadfce] bg-white shadow-sm">
@@ -207,18 +239,20 @@ function EventosTable({ items, total }: { items: BitacoraEventoCritico[]; total:
               <th className="px-4 py-3">Resultado</th>
               <th className="px-4 py-3">Objeto</th>
               <th className="px-4 py-3">Resumen</th>
+              <th className="px-4 py-3">Detalle</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#f1e7d8]">
             {items.map((item) => (
               <tr key={item.id}>
                 <td className="px-4 py-3 whitespace-nowrap">{formatDate(item.creado_en)}</td>
-                <td className="px-4 py-3">{item.usuario.username || "Sistema"}</td>
+                <td className="px-4 py-3">{formatUsuario(item.usuario)}</td>
                 <td className="px-4 py-3">{item.modulo}</td>
                 <td className="px-4 py-3 font-semibold text-[#4b4038]">{item.evento_codigo}</td>
-                <td className="px-4 py-3">{item.resultado}</td>
+                <td className="px-4 py-3"><ProcessStateBadge state={item.resultado || "INFO"} /></td>
                 <td className="px-4 py-3">{[item.objeto_tipo, item.objeto_id].filter(Boolean).join(" #") || "N/A"}</td>
                 <td className="px-4 py-3 max-w-[24rem]">{item.resumen}</td>
+                <td className="px-4 py-3"><button type="button" className="font-black text-[#7a123d]" onClick={() => onSelect(item)}>Abrir</button></td>
               </tr>
             ))}
           </tbody>
@@ -228,7 +262,23 @@ function EventosTable({ items, total }: { items: BitacoraEventoCritico[]; total:
   );
 }
 
-function formatDate(value: string | null) {
+function formatDate(value?: string | null) {
   if (!value) return "";
   return new Intl.DateTimeFormat("es-MX", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+}
+
+function formatUsuario(value: AuditEventDTO["usuario"]) {
+  if (!value) return "Sistema";
+  if (typeof value === "string") return value;
+  return value.username || value.nombre || "Sistema";
+}
+
+function countBy(value: unknown, key: string) {
+  if (!Array.isArray(value)) return 0;
+  const match = value.find((item) => {
+    if (!item || typeof item !== "object") return false;
+    const row = item as Record<string, unknown>;
+    return row.resultado === key || row.severidad === key;
+  });
+  return Number((match as Record<string, unknown> | undefined)?.total || 0);
 }

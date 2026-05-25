@@ -84,8 +84,8 @@ export function TrajectoryReportPage({ config }: { config: ReporteTrayectoriaCon
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <div className="flex flex-wrap gap-2">
-                  <TrajectoryReportBadge label="XLSX disponible" tone="dorado" />
-                  {config.pdfPendiente ? <TrajectoryReportBadge label="PDF pendiente" tone="neutral" /> : null}
+                  <TrajectoryReportBadge label="Documento disponible" tone="dorado" />
+                  {config.pdfPendiente ? <TrajectoryReportBadge label="Formato adicional" tone="neutral" /> : null}
                   <TrajectoryReportBadge label={config.nominal ? "Reporte nominal" : "Reporte agregado"} tone={config.nominal ? "guinda" : "verde"} />
                   {config.requiereDiscenteId ? <TrajectoryReportBadge label="Discente requerido" tone="dorado" /> : null}
                 </div>
@@ -137,7 +137,7 @@ export function TrajectoryReportPage({ config }: { config: ReporteTrayectoriaCon
           {config.requiereDiscenteId && !appliedFilters.discente_id ? (
             <EmptyExportsState
               title="Discente requerido para consultar este historial interno."
-              description="Captura un ID interno de discente y aplica filtros. El historial interno no es kárdex oficial."
+              description="Ingresa el discente y aplica filtros para consultar resultados."
             />
           ) : null}
           {loading ? <LoadingState label="Cargando vista previa del reporte..." /> : null}
@@ -145,7 +145,7 @@ export function TrajectoryReportPage({ config }: { config: ReporteTrayectoriaCon
 
           {!loading && !error && (!config.requiereDiscenteId || appliedFilters.discente_id) ? <TrajectoryReportSummaryBar data={data} /> : null}
           {!loading && !error && data && data.items.length === 0 ? (
-            <EmptyExportsState title="No hay resultados para los filtros seleccionados." description="Ajusta los filtros o descarga el XLSX si necesitas confirmar el reporte completo." />
+            <EmptyExportsState title="No hay resultados para los filtros seleccionados." description="Ajusta los filtros para confirmar el reporte completo." />
           ) : null}
           {!loading && !error && data && data.items.length > 0 ? (
             <TrajectoryReportTable columns={data.columnas} items={data.items} />

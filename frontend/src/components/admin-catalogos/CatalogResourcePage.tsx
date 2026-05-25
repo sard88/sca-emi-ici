@@ -78,9 +78,9 @@ export function CatalogResourcePage({
           <section className="rounded-[1.75rem] border border-[#d8c5a7] bg-[#073f34] p-5 text-white shadow-institutional">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.28em] text-[#d4af37]">{writable ? (config.categoria === "administracion" ? "Administración institucional" : "Catálogos académicos") : "Consulta institucional · Solo lectura"}</p>
+                <p className="text-xs font-black uppercase tracking-[0.28em] text-[#d4af37]">{writable ? (config.categoria === "administracion" ? "Administración institucional" : "Catálogos académicos") : "Solo lectura institucional"}</p>
                 <h2 className="mt-3 text-2xl font-black">{resourceId ? "Detalle del registro" : "Listado operativo"}</h2>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-white/82">{config.ayuda ?? "El portal muestra y envía datos; Django conserva las reglas de validación reales."}</p>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-white/82">{config.ayuda ?? "Consulta y administra información autorizada para este catálogo."}</p>
               </div>
               <div className="flex flex-wrap gap-3">
                 <Link href={resourceId ? config.ruta : backHref} className="rounded-xl border border-white/30 px-5 py-3 text-sm font-black text-white transition hover:bg-white/10">
@@ -96,7 +96,7 @@ export function CatalogResourcePage({
           </section>
           {!writable ? (
             <p className="rounded-2xl border border-[#d4af37]/35 bg-[#fff8e6] px-4 py-3 text-sm font-bold text-[#72530d]">
-              Tu perfil permite consulta de este módulo. Las modificaciones requieren perfil autorizado.
+              Tu perfil permite consultar este módulo. Las modificaciones requieren un perfil autorizado.
             </p>
           ) : null}
 

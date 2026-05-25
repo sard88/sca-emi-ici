@@ -7,12 +7,13 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ActaExportActions } from "@/components/operacion-actas/ActaExportActions";
 import { ActaComponentsTable, ActaDetailTable, ActaValidationTimeline } from "@/components/operacion-actas/ActaTables";
-import { ActaOfficialNotice, ActaReadonlyNotice, ActaStatusBadge } from "@/components/operacion-actas/ActaStatusBadge";
+import { ActaReadonlyNotice, ActaStatusBadge } from "@/components/operacion-actas/ActaStatusBadge";
+import { AuditTrailPanel, ConformitySummaryPanel, OfficialStatusNotice, ProcessTimeline, buildActaProcessSteps } from "@/components/trazabilidad";
 import { ErrorMessage } from "@/components/states/ErrorMessage";
 import { LoadingState } from "@/components/states/LoadingState";
 import { getEstadisticaActaDetalle } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { canAccessEstadisticaActas } from "@/lib/dashboard";
+import { canAccessAuditoriaEventos, canAccessEstadisticaActas } from "@/lib/dashboard";
 import type { ActaDetalle } from "@/lib/types";
 
 export default function EstadisticaActaDetallePage() {
@@ -62,11 +63,14 @@ export default function EstadisticaActaDetallePage() {
                 </div>
               </section>
               <ActaReadonlyNotice visible message="Estadística consulta esta acta en solo lectura. No valida ni formaliza desde este perfil." />
-              <ActaOfficialNotice oficial={data.acta.es_documento_oficial} />
+              <OfficialStatusNotice acta={data.acta} />
+              <ProcessTimeline title="Timeline de estado del acta" description="Trazabilidad visual de consulta operativa." steps={buildActaProcessSteps(data.acta)} />
               <ActaExportActions acta={data.acta} />
+              <ConformitySummaryPanel filas={data.filas} />
               <ActaComponentsTable componentes={data.componentes} />
               <ActaDetailTable filas={data.filas} />
               <ActaValidationTimeline validaciones={data.validaciones} />
+              {canAccessAuditoriaEventos(user) ? <AuditTrailPanel objetoTipo="ACTA" objetoId={data.acta.acta_id} forbiddenMode="message" /> : null}
             </>
           ) : null}
         </div>

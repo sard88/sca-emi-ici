@@ -9,9 +9,7 @@ export function TrajectoryReportPrivacyNotice({ config }: { config: ReporteTraye
       <p className="mt-1">
         {config.privacidad ?? "Este reporte contiene información académica sensible y solo debe consultarse por personal autorizado."}
       </p>
-      {config.slug.includes("historial-interno") ? (
-        <p className="mt-2 font-black">El historial interno no es kárdex oficial.</p>
-      ) : null}
+      {config.slug.includes("historial-interno") ? <p className="mt-2 font-black">Consulta de seguimiento institucional de trayectoria.</p> : null}
     </section>
   );
 }

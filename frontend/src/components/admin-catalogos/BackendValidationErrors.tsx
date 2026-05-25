@@ -3,7 +3,7 @@ export function BackendValidationErrors({ errors }: { errors?: Record<string, st
 
   return (
     <div className="rounded-2xl border border-[#e7c3ce] bg-[#fff7f9] p-4 text-sm text-[#7a123d]">
-      <p className="font-black">Revisa las validaciones del backend</p>
+      <p className="font-black">Revisa los datos marcados en el formulario</p>
       <ul className="mt-2 space-y-1">
         {Object.entries(errors).map(([field, messages]) => (
           <li key={field}>

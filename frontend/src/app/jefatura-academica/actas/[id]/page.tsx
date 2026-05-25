@@ -8,12 +8,13 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { FormalizationActionPanel } from "@/components/operacion-actas/ActaActionPanels";
 import { ActaExportActions } from "@/components/operacion-actas/ActaExportActions";
 import { ActaComponentsTable, ActaDetailTable, ActaValidationTimeline } from "@/components/operacion-actas/ActaTables";
-import { ActaOfficialNotice, ActaStatusBadge } from "@/components/operacion-actas/ActaStatusBadge";
+import { ActaStatusBadge } from "@/components/operacion-actas/ActaStatusBadge";
+import { AuditTrailPanel, ConformitySummaryPanel, OfficialStatusNotice, ProcessTimeline, buildActaProcessSteps } from "@/components/trazabilidad";
 import { ErrorMessage } from "@/components/states/ErrorMessage";
 import { LoadingState } from "@/components/states/LoadingState";
 import { getJefaturaAcademicaActaDetalle } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { canAccessJefaturaAcademicaActas } from "@/lib/dashboard";
+import { canAccessAuditoriaEventos, canAccessJefaturaAcademicaActas } from "@/lib/dashboard";
 import type { ActaDetalle } from "@/lib/types";
 
 export default function JefaturaAcademicaActaDetallePage() {
@@ -64,11 +65,14 @@ export default function JefaturaAcademicaActaDetallePage() {
                 </div>
               </section>
               <FormalizationActionPanel acta={data.acta} onChanged={() => void load()} />
-              <ActaOfficialNotice oficial={data.acta.es_documento_oficial} />
+              <OfficialStatusNotice acta={data.acta} formalizationContext />
+              <ProcessTimeline title="Timeline de estado del acta" description="Validación jerárquica visible sin alterar estados existentes." steps={buildActaProcessSteps(data.acta)} />
               <ActaExportActions acta={data.acta} />
+              <ConformitySummaryPanel filas={data.filas} />
               <ActaComponentsTable componentes={data.componentes} />
               <ActaDetailTable filas={data.filas} />
               <ActaValidationTimeline validaciones={data.validaciones} />
+              {canAccessAuditoriaEventos(user) ? <AuditTrailPanel objetoTipo="ACTA" objetoId={data.acta.acta_id} /> : null}
             </>
           ) : null}
         </div>

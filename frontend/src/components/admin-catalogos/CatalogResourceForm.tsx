@@ -63,7 +63,7 @@ export function CatalogResourceForm({
         <div>
           <h3 className="text-lg font-black text-[#101b18]">{item ? "Detalle y edición" : "Nuevo registro"}</h3>
           <p className="mt-1 text-sm leading-6 text-[#5f6764]">
-            {canWrite ? "Los datos se validan en Django antes de guardarse." : "Consulta de solo lectura para tu perfil."}
+            {canWrite ? "Verifica la información antes de guardar los cambios." : "Consulta de solo lectura para tu perfil."}
           </p>
         </div>
         {onCancel ? (
@@ -92,7 +92,7 @@ export function CatalogResourceForm({
       </div>
       {item && config.slug === "usuarios" ? (
         <p className="mt-4 rounded-2xl border border-[#d4af37]/35 bg-[#fff8e6] px-4 py-3 text-sm font-bold text-[#72530d]">
-          El cambio de contraseña se realizará mediante un flujo específico de restablecimiento. La contraseña temporal solo aparece al crear una cuenta.
+          El cambio de contraseña se realiza mediante el flujo de restablecimiento. La contraseña temporal solo aparece al crear una cuenta.
         </p>
       ) : null}
 

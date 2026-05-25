@@ -68,7 +68,7 @@ export function EvaluationComponentsPanel({ esquemaId, canWrite }: { esquemaId: 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-lg font-black text-[#101b18]">Componentes de evaluación</h3>
-          <p className="mt-1 text-sm leading-6 text-[#5f6764]">Los componentes se guardan en backend. La suma por corte se conserva como regla institucional de evaluación.</p>
+          <p className="mt-1 text-sm leading-6 text-[#5f6764]">Define los componentes de evaluación por corte según la regla institucional.</p>
         </div>
         {canWrite ? (
           <button type="button" onClick={() => setShowForm((value) => !value)} className="rounded-xl bg-[#0b4a3d] px-4 py-2 text-xs font-black text-white shadow-sm transition hover:bg-[#08372e]">

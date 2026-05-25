@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/states/EmptyState";
 import { ErrorMessage } from "@/components/states/ErrorMessage";
 import { LoadingState } from "@/components/states/LoadingState";
+import { SensitiveTraceNotice } from "@/components/trazabilidad";
 import { getDiscenteCargaAcademica } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { DiscenteCargaAcademicaItem, DiscenteCargaAcademicaResponse } from "@/lib/types";
@@ -37,8 +38,9 @@ export default function DiscenteCargaAcademicaPage() {
             user={user}
           />
           <p className="rounded-2xl border border-[#d4af37]/35 bg-[#fff8e6] px-4 py-3 text-sm font-bold text-[#72530d]">
-            Esta vista muestra solo tus inscripciones. No sustituye al kárdex oficial ni expone matrícula militar.
+            Vista personal de tus inscripciones y actas disponibles.
           </p>
+          <SensitiveTraceNotice text="Consulta tus materias inscritas y las actas disponibles." tone="info" />
           {state.loading ? <LoadingState label="Cargando carga académica..." /> : null}
           {state.error ? <ErrorMessage message={state.error} /> : null}
           {!state.loading && !state.error && state.data?.items.length === 0 ? (
@@ -105,18 +107,17 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function ActasSummary({ item }: { item: DiscenteCargaAcademicaItem }) {
-  if (!item.actas.length) return <span className="text-xs font-bold text-[#7b6b58]">Sin actas publicadas o en proceso.</span>;
+  if (!item.actas.length) return <span className="text-xs font-bold text-[#7b6b58]">Sin actas por ahora.</span>;
+  const published = item.actas.filter((acta) => Boolean(acta.fecha_publicacion));
+  const latest = published.at(0)?.fecha_publicacion;
+
   return (
-    <div className="space-y-2">
-      {item.actas.map((acta) => (
-        <div key={acta.acta_id} className="rounded-xl border border-[#eadfce] px-3 py-2">
-          <p className="text-xs font-black text-[#101b18]">{acta.corte_label}</p>
-          <p className="text-xs text-[#5f6764]">{acta.estado_acta_label}</p>
-          <Link className="mt-1 inline-block text-xs font-black text-[#7a123d]" href="/discente/actas">
-            Ver mis actas
-          </Link>
-        </div>
-      ))}
+    <div className="space-y-1">
+      <p className="text-xs font-black text-[#101b18]">{item.actas.length} actas disponibles</p>
+      {latest ? <p className="text-xs text-[#5f6764]">Última publicación: {latest}</p> : null}
+      <Link className="inline-block text-xs font-black text-[#7a123d]" href="/discente/actas">
+        Ver mis actas
+      </Link>
     </div>
   );
 }

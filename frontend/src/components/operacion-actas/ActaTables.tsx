@@ -1,57 +1,67 @@
 import type { ReactNode } from "react";
 import type { ActaComponente, ActaFilaDetalle, ValidacionActaDTO } from "@/lib/types";
+import { ValidationTimeline } from "@/components/trazabilidad";
 
-export function ActaDetailTable({ filas }: { filas: ActaFilaDetalle[] }) {
+export function ActaDetailTable({ filas, componentes = [] }: { filas: ActaFilaDetalle[]; componentes?: ActaComponente[] }) {
+  const orderedComponents = [...componentes].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+
   return (
-    <section className="rounded-[1.5rem] border border-[#eadfce] bg-white/90 shadow-sm">
-      <div className="border-b border-[#eadfce] p-4">
-        <h3 className="text-base font-black text-[#101b18]">Detalle del acta</h3>
-        <p className="text-sm text-[#5f6764]">No se muestra matrícula militar por defecto.</p>
+    <section className="rounded-[1.25rem] border border-[#eadfce] bg-white/90 shadow-sm">
+      <div className="border-b border-[#eadfce] px-4 py-3">
+        <h3 className="text-sm font-black text-[#101b18]">Detalle del acta</h3>
+        <p className="text-xs text-[#5f6764]">Detalle académico por discente.</p>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse text-left text-sm">
+        <table className="min-w-full table-fixed border-collapse text-left text-xs">
           <thead>
             <tr className="bg-[#0b4a3d] text-white">
-              <Header>Discente</Header>
-              <Header>Componentes</Header>
-              <Header>Resultado corte</Header>
-              <Header>Promedio parciales</Header>
-              <Header>Final preliminar</Header>
+              <Header>No.</Header>
+              <Header>Grado y empleo</Header>
+              <Header>Nombre</Header>
+              {orderedComponents.map((componente) => (
+                <Header key={`head-${componente.id}`}>{componente.nombre}</Header>
+              ))}
+              <Header>Calificación parcial</Header>
               <Header>Estado</Header>
               <Header>Conformidad</Header>
             </tr>
           </thead>
           <tbody>
-            {filas.map((fila) => (
-              <tr key={fila.detalle_id} className="border-b border-[#f0e5d6] odd:bg-white even:bg-[#fffaf1]/70">
-                <Cell>
-                  {fila.discente ? (
-                    <div>
-                      <p className="font-black text-[#152b25]">{fila.discente.nombre_institucional || fila.discente.nombre}</p>
-                      <p className="text-xs text-[#5f6764]">{fila.discente.situacion_actual_label || fila.discente.situacion_actual}</p>
-                    </div>
-                  ) : (
-                    "Mi resultado"
-                  )}
-                </Cell>
-                <Cell>
-                  <div className="space-y-1">
-                    {fila.calificaciones.map((calificacion) => (
-                      <p key={`${fila.detalle_id}-${calificacion.componente_id}`} className="whitespace-nowrap">
-                        <span className="font-bold">{String(calificacion.nombre)}:</span>{" "}
-                        {formatValue(calificacion.valor_capturado)}
-                        {calificacion.sustituido_por_exencion ? <span className="ml-2 rounded-full bg-[#edf8f2] px-2 py-0.5 text-xs font-black text-[#0b4a3d]">Exención</span> : null}
-                      </p>
-                    ))}
-                  </div>
-                </Cell>
-                <Cell>{formatValue(fila.resultado_corte)}</Cell>
-                <Cell>{formatValue(fila.promedio_parciales)}</Cell>
-                <Cell>{formatValue(fila.resultado_final_preliminar)}</Cell>
-                <Cell>{fila.completo ? fila.resultado_preliminar : "Incompleto"}</Cell>
-                <Cell>{fila.conformidad_vigente?.estado_conformidad_label || "Sin registro"}</Cell>
-              </tr>
-            ))}
+            {filas.map((fila, index) => {
+              const valuesByComponent = new Map((fila.calificaciones ?? []).map((calificacion) => [calificacion.componente_id, calificacion]));
+              return (
+                <tr key={fila.detalle_id} className="border-b border-[#f0e5d6] odd:bg-white even:bg-[#fffaf1]/70">
+                  <Cell className="text-center">{index + 1}</Cell>
+                  <Cell className="break-words">{fila.discente?.grado_empleo || "—"}</Cell>
+                  <Cell className="max-w-[220px] break-words">
+                    {fila.discente ? (
+                      <div>
+                        <p className="font-black text-[#152b25]">{fila.discente.nombre_institucional || fila.discente.nombre}</p>
+                        {fila.discente.situacion_actual_label || fila.discente.situacion_actual ? (
+                          <p className="text-xs text-[#5f6764]">{fila.discente.situacion_actual_label || fila.discente.situacion_actual}</p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      "Mi resultado"
+                    )}
+                  </Cell>
+                  {orderedComponents.map((componente) => {
+                    const calificacion = valuesByComponent.get(componente.id);
+                    return (
+                      <Cell key={`row-${fila.detalle_id}-${componente.id}`} className="text-center">
+                        {formatValue(calificacion?.valor_capturado)}
+                        {calificacion?.sustituido_por_exencion ? (
+                          <span className="ml-1 rounded-full bg-[#edf8f2] px-1.5 py-0.5 text-[10px] font-black text-[#0b4a3d]">Exención</span>
+                        ) : null}
+                      </Cell>
+                    );
+                  })}
+                  <Cell className="text-center">{formatValue(fila.resultado_corte)}</Cell>
+                  <Cell className="text-center">{fila.completo ? fila.resultado_preliminar : "Incompleto"}</Cell>
+                  <Cell className="text-center">{fila.conformidad_vigente?.estado_conformidad_label || "Sin registro"}</Cell>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -61,48 +71,47 @@ export function ActaDetailTable({ filas }: { filas: ActaFilaDetalle[] }) {
 
 export function ActaComponentsTable({ componentes }: { componentes: ActaComponente[] }) {
   if (!componentes.length) return null;
+  const ordered = [...componentes].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+
   return (
-    <section className="rounded-[1.5rem] border border-[#eadfce] bg-white/90 p-4 shadow-sm">
-      <h3 className="text-base font-black text-[#101b18]">Componentes</h3>
-      <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {componentes.map((componente) => (
-          <div key={componente.id} className="rounded-2xl border border-[#eadfce] bg-[#fffaf1] p-4">
-            <p className="text-sm font-black text-[#152b25]">{componente.nombre}</p>
-            <p className="mt-1 text-xs text-[#5f6764]">{formatValue(componente.porcentaje)}% {componente.es_examen ? "· Examen" : ""}</p>
-          </div>
-        ))}
+    <section className="rounded-[1.25rem] border border-[#eadfce] bg-white/90 shadow-sm">
+      <div className="border-b border-[#eadfce] px-4 py-3">
+        <h3 className="text-sm font-black text-[#101b18]">Componentes</h3>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead className="bg-[#f7f0e3] text-xs font-black uppercase tracking-[0.08em] text-[#5f6764]">
+            <tr>
+              <th className="px-3 py-2 text-left">Componente</th>
+              <th className="px-3 py-2 text-left">Ponderación</th>
+              <th className="px-3 py-2 text-left">Tipo</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#f0e5d6] text-[#263b34]">
+            {ordered.map((componente) => (
+              <tr key={componente.id}>
+                <td className="px-3 py-2">{componente.nombre}</td>
+                <td className="px-3 py-2">{formatValue(componente.porcentaje)}%</td>
+                <td className="px-3 py-2">{componente.es_examen ? "Examen" : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </section>
   );
 }
 
 export function ActaValidationTimeline({ validaciones }: { validaciones: ValidacionActaDTO[] }) {
-  return (
-    <section className="rounded-[1.5rem] border border-[#eadfce] bg-white/90 p-4 shadow-sm">
-      <h3 className="text-base font-black text-[#101b18]">Trazabilidad</h3>
-      {validaciones.length === 0 ? (
-        <p className="mt-2 text-sm text-[#5f6764]">Aún no hay validaciones registradas.</p>
-      ) : (
-        <div className="mt-4 space-y-3">
-          {validaciones.map((validacion) => (
-            <div key={validacion.id} className="rounded-2xl border border-[#eadfce] bg-[#fffaf1] p-4">
-              <p className="text-sm font-black text-[#152b25]">{validacion.accion_label} · {validacion.etapa_validacion_label}</p>
-              <p className="mt-1 text-xs text-[#5f6764]">{validacion.usuario?.nombre_institucional || validacion.usuario?.nombre || "Usuario"} · {formatValue(validacion.fecha_hora)}</p>
-              {validacion.cargo ? <p className="mt-1 text-xs font-bold text-[#7a123d]">{validacion.cargo}</p> : null}
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
-  );
+  return <ValidationTimeline validaciones={validaciones} />;
 }
 
 function Header({ children }: { children: ReactNode }) {
-  return <th className="whitespace-nowrap px-4 py-3 text-xs font-black uppercase tracking-[0.08em]">{children}</th>;
+  return <th className="px-2 py-2 text-[11px] font-black uppercase tracking-[0.06em] align-middle break-words">{children}</th>;
 }
 
-function Cell({ children }: { children: ReactNode }) {
-  return <td className="max-w-[360px] px-4 py-3 align-top text-[#263b34]">{children}</td>;
+function Cell({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <td className={`max-w-[220px] px-2 py-2 align-top text-[#263b34] ${className}`}>{children}</td>;
 }
 
 export function formatValue(value: unknown) {

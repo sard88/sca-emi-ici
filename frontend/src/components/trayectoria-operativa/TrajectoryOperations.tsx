@@ -11,6 +11,14 @@ import { EmptyState } from "@/components/states/EmptyState";
 import { ErrorMessage } from "@/components/states/ErrorMessage";
 import { LoadingState } from "@/components/states/LoadingState";
 import {
+  AcademicHistoryTimeline,
+  AuditTrailPanel,
+  MovementImpactTimeline,
+  PeriodBlockersPanel,
+  PeriodProcessStepper,
+  SensitiveTraceNotice,
+} from "@/components/trazabilidad";
+import {
   buscarHistoriales,
   cerrarPeriodo,
   crearAperturaPeriodo,
@@ -37,7 +45,7 @@ import {
   listResource,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { canAccessMiHistorialAcademico, canAccessPeriodosOperativos, canAccessTrayectoriaInstitucional, canAccessTrayectoriaOperativa, canOperateTrayectoria } from "@/lib/dashboard";
+import { canAccessAuditoriaEventos, canAccessMiHistorialAcademico, canAccessPeriodosOperativos, canAccessTrayectoriaInstitucional, canAccessTrayectoriaOperativa, canOperateTrayectoria } from "@/lib/dashboard";
 import type {
   AuthenticatedUser,
   DiagnosticoCierrePeriodoDTO,
@@ -98,7 +106,7 @@ export function TrajectoryHomeCards() {
         if (canAccessMiHistorialAcademico(user) && !canAccessTrayectoriaInstitucional(user)) {
           return (
             <div className="grid gap-4 xl:grid-cols-2">
-              <ModuleCard title="Mi historial académico" href="/trayectoria/mi-historial" description="Consulta personal de resultados, eventos y movimientos visibles. No es kárdex oficial." tone="verde" />
+              <ModuleCard title="Mi historial académico" href="/trayectoria/mi-historial" description="Consulta personal de resultados, eventos y movimientos visibles." tone="verde" />
               <ModuleCard title="Mi carga académica" href="/discente/carga-academica" description="Asignaturas inscritas, docente, grupo y estado de actas visibles para tu perfil." />
               <ModuleCard title="Mis actas publicadas" href="/discente/actas" description="Resultados publicados y conformidad informativa por acta." tone="dorado" />
             </div>
@@ -108,12 +116,12 @@ export function TrajectoryHomeCards() {
         const operator = canOperateTrayectoria(user);
         return (
           <div className="grid gap-4 xl:grid-cols-2">
-            {canAccessMiHistorialAcademico(user) ? <ModuleCard title="Mi historial académico" href="/trayectoria/mi-historial" description="Consulta personal de resultados, eventos y movimientos visibles. No es kárdex oficial." tone="verde" /> : null}
-            {institutional ? <ModuleCard title="Buscar historial académico" href="/trayectoria/historial" description="Consulta institucional filtrada por ámbito autorizado." /> : null}
+            {canAccessMiHistorialAcademico(user) ? <ModuleCard title="Mi historial académico" href="/trayectoria/mi-historial" description="Consulta personal de resultados, eventos y movimientos visibles." tone="verde" /> : null}
+            {institutional ? <ModuleCard title="Buscar historial académico" href="/trayectoria/historial" description="Seguimiento filtrado por ámbito autorizado." /> : null}
             {institutional ? <ModuleCard title="Extraordinarios" href="/trayectoria/extraordinarios" description="Seguimiento de extraordinarios registrados y marca EE cuando aplique." /> : null}
-            {operator ? <ModuleCard title="Registrar extraordinario" href="/trayectoria/extraordinarios/nuevo" description="Registro operativo con validación real en backend." tone="dorado" /> : null}
+            {operator ? <ModuleCard title="Registrar extraordinario" href="/trayectoria/extraordinarios/nuevo" description="Registro operativo de extraordinarios." tone="dorado" /> : null}
             {institutional ? <ModuleCard title="Situaciones académicas" href="/trayectoria/situaciones" description="Bajas temporales, bajas definitivas, reingresos y eventos de trayectoria." /> : null}
-            {operator ? <ModuleCard title="Registrar situación" href="/trayectoria/situaciones/nuevo" description="Alta de evento académico con confirmación y validación backend." tone="dorado" /> : null}
+            {operator ? <ModuleCard title="Registrar situación" href="/trayectoria/situaciones/nuevo" description="Alta de evento académico." tone="dorado" /> : null}
             {institutional ? <ModuleCard title="Movimientos académicos" href="/movimientos-academicos" description="Cambios de grupo y evidencia operativa sin borrar historial." /> : null}
             {operator ? <ModuleCard title="Cambio de grupo" href="/movimientos-academicos/cambio-grupo" description="Movimiento transaccional: adscripción, inscripciones y bloqueos por actas vivas." tone="guinda" /> : null}
             {canAccessPeriodosOperativos(user) ? <ModuleCard title="Cierre y apertura de periodo" href="/periodos" description="Diagnóstico, cierre, apertura y pendientes de asignación docente." tone="verde" /> : null}
@@ -133,7 +141,7 @@ function ModuleCard({ title, description, href, tone = "neutral" }: { title: str
   }[tone];
   return (
     <Link href={href} className={`block rounded-[1.5rem] border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-institutional ${toneClass}`}>
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b46c13]">Operación 10C-6</p>
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b46c13]">Operación institucional</p>
       <h2 className="mt-2 text-xl font-black">{title}</h2>
       <p className="mt-2 text-sm leading-6 text-[#5f6764]">{description}</p>
       <span className="mt-4 inline-flex rounded-xl bg-[#7a123d] px-4 py-2 text-sm font-black text-white">Abrir</span>
@@ -151,7 +159,7 @@ export function MyHistoryView() {
   }, []);
 
   return (
-    <AccessPage title="Mi historial académico" description="Consulta personal de trayectoria. Esta vista no sustituye al kárdex oficial." allowed={canAccessMiHistorialAcademico}>
+    <AccessPage title="Mi historial académico" description="Consulta informativa de tu trayectoria académica." allowed={canAccessMiHistorialAcademico}>
       {() => <HistoryContent state={state} own />}
     </AccessPage>
   );
@@ -172,9 +180,9 @@ export function InstitutionalHistorySearch() {
     <AccessPage title="Búsqueda institucional de historial" description="Consulta de discentes filtrada por permisos y ámbito de carrera." allowed={canAccessTrayectoriaInstitucional}>
       {() => (
         <div className="space-y-5">
-          <SensitiveInfoNotice text="El historial interno contiene información académica sensible y no es kárdex oficial." />
+          <SensitiveInfoNotice text="Consulta institucional autorizada." />
           <FiltersBar filters={filters} setFilters={setFilters} fields={["q", "carrera", "grupo", "plan", "antiguedad", "situacion"]} onSearch={load} />
-          <StateBlock state={state} loadingLabel="Buscando historiales..." emptyTitle="No hay discentes para los filtros." />
+          <StateBlock state={state} loadingLabel="Buscando historiales..." emptyTitle="Sin resultados" />
           {state.data ? <DataTable items={state.data} detailBase="/trayectoria/historial" detailKey="id" /> : null}
         </div>
       )}
@@ -201,15 +209,17 @@ export function InstitutionalHistoryDetail({ discenteId }: { discenteId: string 
 function HistoryContent({ state, own = false }: { state: LoadState<HistorialAcademicoDTO>; own?: boolean }) {
   return (
     <div className="space-y-5">
-      <StateBlock state={state} loadingLabel="Cargando historial..." emptyTitle="No se encontró historial." />
+      <StateBlock state={state} loadingLabel="Cargando historial..." emptyTitle="Registro no encontrado" />
       {state.data ? (
         <>
-          <SensitiveInfoNotice text={own ? "Esta vista es informativa y no corresponde al kárdex oficial." : "Historial interno sensible. Consulta exclusiva para perfiles autorizados."} />
+          <SensitiveInfoNotice text={own ? "Consulta informativa de trayectoria académica." : "Consulta institucional autorizada."} />
+          <SensitiveTraceNotice text="La información mostrada corresponde al historial académico registrado." tone="warning" />
           <Card className="p-5">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-[#b46c13]">Discente</p>
             <h2 className="mt-2 text-2xl font-black text-[#101b18]">{formatValue(state.data.discente)}</h2>
             <p className="mt-2 text-sm text-[#5f6764]">{state.data.aviso_privacidad || "Historial académico interno."}</p>
           </Card>
+          <AcademicHistoryTimeline historial={state.data} />
           <HistoryResultsTable items={state.data.resultados as Array<RecordValue>} />
           <HistoryEventsTable items={state.data.eventos as Array<RecordValue>} />
           <DataSection title="Extraordinarios" items={state.data.extraordinarios as Array<RecordValue>} />
@@ -251,7 +261,7 @@ export function ExtraordinaryForm() {
   const [payload, setPayload] = useState<FilterState>({});
   const [state, setState] = useState<{ saving: boolean; error: string | null; ok: string | null }>({ saving: false, error: null, ok: null });
   async function submit() {
-    if (!window.confirm("Registrar extraordinario puede actualizar resultado vigente y situación académica según reglas backend. ¿Continuamos?")) return;
+    if (!window.confirm("Registrar extraordinario puede actualizar resultados académicos. ¿Continuamos?")) return;
     setState({ saving: true, error: null, ok: null });
     try {
       const response = await crearExtraordinario(payload as unknown as { inscripcion_materia_id: string; calificacion: string; fecha_aplicacion?: string; observaciones?: string });
@@ -261,7 +271,7 @@ export function ExtraordinaryForm() {
       setState({ saving: false, error: error instanceof Error ? error.message : "No fue posible registrar el extraordinario.", ok: null });
     }
   }
-  return <FormPage title="Registrar extraordinario" description="El backend valida acta FINAL formalizada, ordinario reprobatorio y duplicidad." allowed={canOperateTrayectoria} payload={payload} setPayload={setPayload} fields={["inscripcion_materia_id", "fecha_aplicacion", "calificacion", "observaciones"]} state={state} onSubmit={submit} submitLabel="Registrar extraordinario" />;
+  return <FormPage title="Registrar extraordinario" description="Registro sujeto a reglas académicas institucionales." allowed={canOperateTrayectoria} payload={payload} setPayload={setPayload} fields={["inscripcion_materia_id", "fecha_aplicacion", "calificacion", "observaciones"]} state={state} onSubmit={submit} submitLabel="Registrar extraordinario" />;
 }
 
 export function ExtraordinaryDetail({ id }: { id: string }) {
@@ -288,7 +298,7 @@ export function AcademicSituationForm() {
   async function submit() {
     const code = payload.situacion_codigo || payload.situacion;
     const strong = code === "BAJA_DEFINITIVA" ? "Baja definitiva es una acción crítica. " : code === "REINGRESO" ? "Reingreso puede cerrar baja temporal abierta. " : "";
-    if (!window.confirm(`${strong}El backend aplicará las reglas institucionales. ¿Continuamos?`)) return;
+    if (!window.confirm(`${strong}Se aplicarán las reglas institucionales. ¿Continuamos?`)) return;
     setState({ saving: true, error: null, ok: null });
     try {
       const response = await crearSituacionAcademica(payload as unknown as { discente_id: string; situacion_codigo: string; periodo_id?: string; fecha_inicio?: string; fecha_fin?: string; motivo?: string; observaciones?: string });
@@ -298,7 +308,7 @@ export function AcademicSituationForm() {
       setState({ saving: false, error: error instanceof Error ? error.message : "No fue posible registrar la situación.", ok: null });
     }
   }
-  return <FormPage title="Registrar situación académica" description="Usa códigos como BAJA_TEMPORAL, BAJA_DEFINITIVA o REINGRESO. El backend decide y valida." allowed={canOperateTrayectoria} payload={payload} setPayload={setPayload} fields={["discente_id", "situacion_codigo", "periodo_id", "fecha_inicio", "fecha_fin", "motivo", "observaciones"]} state={state} onSubmit={submit} submitLabel="Registrar situación" />;
+  return <FormPage title="Registrar situación académica" description="Registra la situación académica con la información autorizada." allowed={canOperateTrayectoria} payload={payload} setPayload={setPayload} fields={["discente_id", "situacion_codigo", "periodo_id", "fecha_inicio", "fecha_fin", "motivo", "observaciones"]} state={state} onSubmit={submit} submitLabel="Registrar situación" />;
 }
 
 export function AcademicSituationDetail({ id }: { id: string }) {
@@ -323,7 +333,7 @@ export function AcademicMovementForm({ cambioGrupo = false }: { cambioGrupo?: bo
   const [payload, setPayload] = useState<FilterState>(cambioGrupo ? { tipo_movimiento: "cambio_grupo" } : {});
   const [state, setState] = useState<{ saving: boolean; error: string | null; ok: string | null }>({ saving: false, error: null, ok: null });
   async function submit() {
-    if (!window.confirm("Este movimiento puede afectar adscripciones e inscripciones. El backend validará actas vivas y reglas de ámbito. ¿Continuamos?")) return;
+    if (!window.confirm("Este movimiento puede afectar adscripciones e inscripciones. ¿Continuamos?")) return;
     setState({ saving: true, error: null, ok: null });
     try {
       const response = cambioGrupo
@@ -335,7 +345,7 @@ export function AcademicMovementForm({ cambioGrupo = false }: { cambioGrupo?: bo
       setState({ saving: false, error: error instanceof Error ? error.message : "No fue posible registrar el movimiento.", ok: null });
     }
   }
-  return <FormPage title={cambioGrupo ? "Registrar cambio de grupo" : "Registrar movimiento académico"} description="No se borra evidencia previa. Las reglas transaccionales viven en backend." allowed={canOperateTrayectoria} payload={payload} setPayload={setPayload} fields={cambioGrupo ? ["discente_id", "periodo_id", "grupo_origen_id", "grupo_destino_id", "fecha_movimiento", "observaciones"] : ["discente_id", "periodo_id", "tipo_movimiento", "grupo_origen_id", "grupo_destino_id", "fecha_movimiento", "observaciones"]} state={state} onSubmit={submit} submitLabel={cambioGrupo ? "Aplicar cambio de grupo" : "Registrar movimiento"} />;
+  return <FormPage title={cambioGrupo ? "Registrar cambio de grupo" : "Registrar movimiento académico"} description="No se borra evidencia previa durante el movimiento." allowed={canOperateTrayectoria} payload={payload} setPayload={setPayload} fields={cambioGrupo ? ["discente_id", "periodo_id", "grupo_origen_id", "grupo_destino_id", "fecha_movimiento", "observaciones"] : ["discente_id", "periodo_id", "tipo_movimiento", "grupo_origen_id", "grupo_destino_id", "fecha_movimiento", "observaciones"]} state={state} onSubmit={submit} submitLabel={cambioGrupo ? "Aplicar cambio de grupo" : "Registrar movimiento"} />;
 }
 
 export function ChangeGroupForm() {
@@ -343,7 +353,20 @@ export function ChangeGroupForm() {
 }
 
 export function AcademicMovementDetail({ id }: { id: string }) {
-  return <DetailPage title="Detalle de movimiento académico" description="Efecto operativo sobre adscripción e inscripciones cuando el backend lo reporta." allowed={canAccessTrayectoriaInstitucional} load={() => getMovimientoAcademico(id).then((r) => r.item)} />;
+  return (
+    <DetailPage
+      title="Detalle de movimiento académico"
+      description="Efecto operativo sobre adscripción e inscripciones."
+      allowed={canAccessTrayectoriaInstitucional}
+      load={() => getMovimientoAcademico(id).then((r) => r.item)}
+      extra={(item, user) => (
+        <>
+          <MovementImpactTimeline movimiento={item as MovimientoAcademicoDTO} />
+          {canAccessAuditoriaEventos(user) ? <AuditTrailPanel objetoTipo="MOVIMIENTO_ACADEMICO" objetoId={String(item.id)} /> : null}
+        </>
+      )}
+    />
+  );
 }
 
 export function PeriodsOperationalList() {
@@ -358,13 +381,14 @@ export function PeriodsOperationalList() {
     <AccessPage title="Periodos operativos" description="Diagnóstico, cierre, apertura y pendientes de asignación docente." allowed={canAccessPeriodosOperativos}>
       {(user) => (
         <div className="space-y-5">
+          <PeriodProcessStepper activeStep="activo" />
           <div className="flex flex-wrap gap-2">
             <LinkButton href="/periodos/cierres">Procesos de cierre</LinkButton>
             {canOperateTrayectoria(user) ? <LinkButton href="/periodos/apertura">Abrir periodo</LinkButton> : null}
             <LinkButton href="/periodos/aperturas">Procesos de apertura</LinkButton>
             <LinkButton href="/periodos/pendientes-asignacion-docente">Pendientes de asignación docente</LinkButton>
           </div>
-          <StateBlock state={state} loadingLabel="Cargando periodos..." emptyTitle="No hay periodos registrados." />
+          <StateBlock state={state} loadingLabel="Cargando periodos..." emptyTitle="Aún no hay periodos registrados." />
           <div className="grid gap-4 xl:grid-cols-2">
             {(state.data || []).map((periodo) => <PeriodCard key={periodo.id} periodo={periodo} canOperate={canOperateTrayectoria(user)} />)}
           </div>
@@ -428,14 +452,15 @@ export function ClosureDiagnosticPanel({ periodoId }: { periodoId: string }) {
     <AccessPage title="Diagnóstico de cierre" description="El diagnóstico no modifica datos; solo evalúa bloqueantes y advertencias." allowed={canAccessPeriodosOperativos}>
       {(user) => (
         <div className="space-y-5">
-          <StateBlock state={state} loadingLabel="Diagnosticando periodo..." emptyTitle="No hay diagnóstico." />
+          <StateBlock state={state} loadingLabel="Diagnosticando periodo..." emptyTitle="Diagnóstico no disponible." />
           {state.data ? (
             <>
+              <PeriodProcessStepper activeStep="diagnostico" periodo={state.data.periodo} />
               <MetricGrid resumen={state.data.resumen} />
-              <ClosureBlockersList title="Bloqueantes" items={state.data.bloqueantes} tone="danger" />
-              <ClosureBlockersList title="Advertencias" items={state.data.advertencias} tone="warning" />
+              <PeriodBlockersPanel bloqueantes={state.data.bloqueantes} advertencias={state.data.advertencias} />
               <ClosureStudentClassificationTable diagnostico={state.data} />
               <ClosePeriodActionPanel canOperate={canOperateTrayectoria(user)} canClose={state.data.puede_cerrar} observaciones={observaciones} setObservaciones={setObservaciones} saving={saving} onClose={closePeriod} />
+              {canAccessAuditoriaEventos(user) ? <AuditTrailPanel objetoTipo="PERIODO" objetoId={state.data.periodo.id} /> : null}
             </>
           ) : null}
         </div>
@@ -445,7 +470,7 @@ export function ClosureDiagnosticPanel({ periodoId }: { periodoId: string }) {
 }
 
 export function ClosureBlockersList({ title, items, tone }: { title: string; items: Array<unknown>; tone: "danger" | "warning" }) {
-  if (!items.length) return <EmptyState title={`Sin ${title.toLowerCase()}.`} description="El backend no reportó elementos en esta categoría." />;
+  if (!items.length) return <EmptyState title={`Sin ${title.toLowerCase()}.`} description="Sin información disponible en esta categoría." />;
   const color = tone === "danger" ? "border-[#7a123d]/30 bg-[#fff5f8] text-[#7a123d]" : "border-[#d4af37]/40 bg-[#fff8e6] text-[#72530d]";
   return (
     <Card className="p-5">
@@ -485,7 +510,22 @@ export function ClosePeriodActionPanel({ canOperate, canClose, observaciones, se
 }
 
 export function ClosureProcessDetail({ id }: { id: string }) {
-  return <DetailPage title="Proceso de cierre" description="Evidencia generada por el cierre de periodo." allowed={canAccessPeriodosOperativos} load={() => getCierre(id).then((r) => r.item)} extra={(item) => item.detalles ? <DataSection title="Detalles por discente" items={item.detalles as Array<RecordValue>} /> : null} />;
+  return (
+    <DetailPage
+      title="Proceso de cierre"
+      description="Evidencia generada por el cierre de periodo."
+      allowed={canAccessPeriodosOperativos}
+      load={() => getCierre(id).then((r) => r.item)}
+      extra={(item, user) => (
+        <>
+          <PeriodProcessStepper activeStep="cierre" periodo={item.periodo as PeriodoOperativoDTO | undefined} />
+          <SensitiveTraceNotice text="El cierre no modifica actas formalizadas y preserva la evidencia registrada." tone="info" />
+          {item.detalles ? <DataSection title="Detalles por discente" items={item.detalles as Array<RecordValue>} /> : null}
+          {canAccessAuditoriaEventos(user) ? <AuditTrailPanel objetoTipo="PROCESO_CIERRE_PERIODO" objetoId={String(item.id)} /> : null}
+        </>
+      )}
+    />
+  );
 }
 
 export function OpeningPeriodForm() {
@@ -502,7 +542,7 @@ export function OpeningPeriodForm() {
       setState({ saving: false, error: error instanceof Error ? error.message : "No fue posible ejecutar la apertura.", ok: null });
     }
   }
-  return <FormPage title="Apertura de periodo" description="Promueve solo discentes promovibles desde un origen cerrado. No asigna docentes automáticamente." allowed={canOperateTrayectoria} payload={payload} setPayload={setPayload} fields={["periodo_origen_id", "periodo_destino_id", "observaciones"]} state={state} onSubmit={submit} submitLabel="Ejecutar apertura" />;
+  return <FormPage title="Apertura de periodo" description="Promueve solo discentes promovibles desde un origen cerrado. No asigna docentes automáticamente." allowed={canOperateTrayectoria} payload={payload} setPayload={setPayload} fields={["periodo_origen_id", "periodo_destino_id", "observaciones"]} state={state} onSubmit={submit} submitLabel="Ejecutar apertura" leading={<PeriodProcessStepper activeStep="apertura" />} />;
 }
 
 export function ClosureProcessesList() {
@@ -514,7 +554,21 @@ export function OpeningProcessesList() {
 }
 
 export function OpeningProcessDetail({ id }: { id: string }) {
-  return <DetailPage title="Proceso de apertura" description="Resultado de promoción y creación/reuso de grupos destino." allowed={canAccessPeriodosOperativos} load={() => getApertura(id).then((r) => r.item)} />;
+  return (
+    <DetailPage
+      title="Proceso de apertura"
+      description="Resultado de promoción y creación/reuso de grupos destino."
+      allowed={canAccessPeriodosOperativos}
+      load={() => getApertura(id).then((r) => r.item)}
+      extra={(item, user) => (
+        <>
+          <PeriodProcessStepper activeStep="apertura" periodo={item.periodo_destino as PeriodoOperativoDTO | undefined} />
+          <SensitiveTraceNotice text="La apertura no asigna docentes automáticamente." tone="warning" />
+          {canAccessAuditoriaEventos(user) ? <AuditTrailPanel objetoTipo="PROCESO_APERTURA_PERIODO" objetoId={String(item.id)} /> : null}
+        </>
+      )}
+    />
+  );
 }
 
 export function PendingTeacherAssignmentsTable() {
@@ -528,11 +582,12 @@ export function PendingTeacherAssignmentsTable() {
   }, [filters]);
   useEffect(() => { void load(); }, [load]);
   return (
-    <AccessPage title="Pendientes de asignación docente" description="Materias sin docente asignado para el periodo seleccionado." allowed={canAccessPeriodosOperativos}>
+    <AccessPage title="Pendientes de asignación docente" description="Asignaturas sin docente asignado para el periodo seleccionado." allowed={canAccessPeriodosOperativos}>
       {() => (
         <div className="space-y-5">
+          <PeriodProcessStepper activeStep="pendientes" />
           <FiltersBar filters={filters} setFilters={setFilters} fields={["periodo", "carrera", "grupo", "semestre"]} onSearch={load} />
-          <StateBlock state={state} loadingLabel="Cargando pendientes..." emptyTitle="No hay pendientes con los filtros seleccionados." />
+          <StateBlock state={state} loadingLabel="Cargando pendientes..." emptyTitle="Sin resultados" />
           {state.data ? <DataTable items={state.data as Array<RecordValue>} columns={["periodo", "carrera", "grupo", "materia", "programa_asignatura", "estado", "accion_sugerida"]} /> : null}
         </div>
       )}
@@ -552,7 +607,7 @@ function ProcessList<T extends { id: number }>({ title, description, allowed, lo
     <AccessPage title={title} description={description} allowed={allowed}>
       {() => (
         <div className="space-y-5">
-          <StateBlock state={state} loadingLabel="Cargando procesos..." emptyTitle="No hay procesos registrados." />
+          <StateBlock state={state} loadingLabel="Cargando procesos..." emptyTitle="Aún no hay procesos registrados." />
           {state.data ? <DataTable items={state.data as Array<RecordValue>} detailBase={detailBase} detailKey="id" /> : null}
         </div>
       )}
@@ -569,7 +624,7 @@ function ListPage<T extends { id: number }>({ title, description, allowed, filte
             {createHref && canOperateTrayectoria(user) ? <LinkButton href={createHref}>{createLabel || "Nuevo"}</LinkButton> : null}
           </div>
           <FiltersBar filters={filters} setFilters={setFilters} fields={fields} onSearch={onSearch} />
-          <StateBlock state={state} loadingLabel="Cargando registros..." emptyTitle="No hay registros para los filtros seleccionados." />
+          <StateBlock state={state} loadingLabel="Cargando registros..." emptyTitle="Sin resultados" />
           {state.data ? <DataTable items={state.data as Array<RecordValue>} detailBase={detailBase} detailKey="id" /> : null}
         </div>
       )}
@@ -577,26 +632,29 @@ function ListPage<T extends { id: number }>({ title, description, allowed, filte
   );
 }
 
-function FormPage({ title, description, allowed, payload, setPayload, fields, state, onSubmit, submitLabel }: { title: string; description: string; allowed: (user: AuthenticatedUser) => boolean; payload: FilterState; setPayload: (value: FilterState) => void; fields: string[]; state: { saving: boolean; error: string | null; ok: string | null }; onSubmit: () => void; submitLabel: string }) {
+function FormPage({ title, description, allowed, payload, setPayload, fields, state, onSubmit, submitLabel, leading }: { title: string; description: string; allowed: (user: AuthenticatedUser) => boolean; payload: FilterState; setPayload: (value: FilterState) => void; fields: string[]; state: { saving: boolean; error: string | null; ok: string | null }; onSubmit: () => void; submitLabel: string; leading?: ReactNode }) {
   return (
     <AccessPage title={title} description={description} allowed={allowed}>
       {() => (
-        <Card className="p-5">
-          <SensitiveInfoNotice text="Captura únicamente IDs internos autorizados. No uses matrícula militar." />
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            {fields.map((field) => (
-              <SmartFormField
-                key={field}
-                field={field}
-                payload={payload}
-                onChange={(value) => setPayload({ ...payload, [field]: value })}
-              />
-            ))}
-          </div>
-          {state.error ? <div className="mt-4"><ErrorMessage message={state.error} /></div> : null}
-          {state.ok ? <OperationSuccessNotice text={state.ok} /> : null}
-          <Button className="mt-4" disabled={state.saving} onClick={onSubmit}>{state.saving ? "Guardando..." : submitLabel}</Button>
-        </Card>
+        <div className="space-y-5">
+          {leading}
+          <Card className="p-5">
+            <SensitiveInfoNotice text="Registra la información académica autorizada para esta operación." />
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              {fields.map((field) => (
+                <SmartFormField
+                  key={field}
+                  field={field}
+                  payload={payload}
+                  onChange={(value) => setPayload({ ...payload, [field]: value })}
+                />
+              ))}
+            </div>
+            {state.error ? <div className="mt-4"><ErrorMessage message={state.error} /></div> : null}
+            {state.ok ? <OperationSuccessNotice text={state.ok} /> : null}
+            <Button className="mt-4" disabled={state.saving} onClick={onSubmit}>{state.saving ? "Guardando..." : submitLabel}</Button>
+          </Card>
+        </div>
       )}
     </AccessPage>
   );
@@ -754,7 +812,7 @@ function StaticSelectField({ label, value, onChange, options }: { label: string;
   );
 }
 
-function DetailPage<T extends RecordValue>({ title, description, allowed, load, extra }: { title: string; description: string; allowed: (user: AuthenticatedUser) => boolean; load: () => Promise<T>; extra?: (item: T) => ReactNode }) {
+function DetailPage<T extends RecordValue>({ title, description, allowed, load, extra }: { title: string; description: string; allowed: (user: AuthenticatedUser) => boolean; load: () => Promise<T>; extra?: (item: T, user: AuthenticatedUser) => ReactNode }) {
   const [state, setState] = useState<LoadState<T>>(emptyState);
   useEffect(() => {
     setState({ data: null, loading: true, error: null });
@@ -764,11 +822,11 @@ function DetailPage<T extends RecordValue>({ title, description, allowed, load, 
   }, [load]);
   return (
     <AccessPage title={title} description={description} allowed={allowed}>
-      {() => (
+      {(user) => (
         <div className="space-y-5">
-          <StateBlock state={state} loadingLabel="Cargando detalle..." emptyTitle="No se encontró el registro." />
+          <StateBlock state={state} loadingLabel="Cargando detalle..." emptyTitle="Registro no encontrado" />
           {state.data ? <DataSection title="Detalle" items={[state.data]} /> : null}
-          {state.data && extra ? extra(state.data) : null}
+          {state.data && extra ? extra(state.data, user) : null}
         </div>
       )}
     </AccessPage>
@@ -791,7 +849,7 @@ function DataSection({ title, items, columns }: { title: string; items: Array<Re
 
 function DataTable({ items, columns, detailBase, detailKey }: { items: Array<RecordValue>; columns?: string[]; detailBase?: string; detailKey?: string }) {
   const keys = useMemo(() => columns || Array.from(new Set(items.flatMap((item) => Object.keys(item)))).filter((key) => !["url_detalle"].includes(key)).slice(0, 8), [columns, items]);
-  if (!items.length) return <EmptyState title="Sin registros." description="No hay datos para mostrar." />;
+  if (!items.length) return <EmptyState title="Aún no hay registros" description="Cuando se capture información autorizada, aparecerá en esta sección." variant="noData" />;
   return (
     <div className="overflow-x-auto rounded-[1.25rem] border border-[#eadfce]">
       <table className="min-w-full divide-y divide-[#eadfce] text-sm">
@@ -848,7 +906,7 @@ function StateBlock<T>({ state, loadingLabel, emptyTitle }: { state: LoadState<T
   if (state.loading) return <LoadingState label={loadingLabel} />;
   if (state.error) return <ErrorMessage message={state.error} />;
   if (!state.data) return null;
-  if (Array.isArray(state.data) && state.data.length === 0) return <EmptyState title={emptyTitle} description="Ajusta filtros o intenta nuevamente más tarde." />;
+  if (Array.isArray(state.data) && state.data.length === 0) return <EmptyState title={emptyTitle} description="No encontramos registros con los filtros seleccionados. Ajusta los criterios e intenta nuevamente." variant="search" />;
   return null;
 }
 
@@ -870,7 +928,7 @@ export function MovementSafetyNotice() {
 }
 
 export function HistoryPrivacyNotice() {
-  return <SensitiveInfoNotice text="Este historial interno es sensible y no debe presentarse como kárdex oficial." />;
+  return <SensitiveInfoNotice text="Consulta informativa de trayectoria académica." />;
 }
 
 export function SensitiveInfoNotice({ text }: { text: string }) {
@@ -896,33 +954,33 @@ function LinkButton({ href, children }: { href: string; children: ReactNode }) {
 function labelFor(key: string) {
   const labels: Record<string, string> = {
     q: "Búsqueda",
-    carrera: "Carrera ID",
-    grupo: "Grupo ID",
-    plan: "Plan ID",
-    antiguedad: "Antigüedad ID",
-    situacion: "Situación",
-    situacion_codigo: "Código de situación",
-    periodo: "Periodo ID",
-    periodo_id: "Periodo ID",
-    periodo_origen_id: "Periodo origen ID",
-    periodo_destino_id: "Periodo destino ID",
-    discente: "Discente ID",
-    discente_id: "Discente ID",
-    asignatura: "Asignatura ID",
-    aprobado: "Aprobado true/false",
+    carrera: "Carrera",
+    grupo: "Grupo",
+    plan: "Plan de estudios",
+    antiguedad: "Antigüedad",
+    situacion: "Situación académica",
+    situacion_codigo: "Situación académica",
+    periodo: "Periodo académico",
+    periodo_id: "Periodo académico",
+    periodo_origen_id: "Periodo origen",
+    periodo_destino_id: "Periodo destino",
+    discente: "Discente",
+    discente_id: "Discente",
+    asignatura: "Asignatura",
+    aprobado: "Aprobado",
     fecha_desde: "Fecha desde",
     fecha_hasta: "Fecha hasta",
     fecha_aplicacion: "Fecha aplicación",
     fecha_inicio: "Fecha inicio",
     fecha_fin: "Fecha fin",
     calificacion: "Calificación",
-    inscripcion_materia_id: "Inscripción materia ID",
-    tipo_movimiento: "Tipo movimiento",
-    tipo_movimiento_label: "Tipo movimiento",
-    grupo_origen: "Grupo origen ID",
-    grupo_origen_id: "Grupo origen ID",
-    grupo_destino: "Grupo destino ID",
-    grupo_destino_id: "Grupo destino ID",
+    inscripcion_materia_id: "Inscripción a asignatura",
+    tipo_movimiento: "Tipo de movimiento",
+    tipo_movimiento_label: "Tipo de movimiento",
+    grupo_origen: "Grupo origen",
+    grupo_origen_id: "Grupo origen",
+    grupo_destino: "Grupo destino",
+    grupo_destino_id: "Grupo destino",
     fecha_movimiento: "Fecha movimiento",
     observaciones: "Observaciones",
     motivo: "Motivo",

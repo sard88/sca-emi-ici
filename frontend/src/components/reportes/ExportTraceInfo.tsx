@@ -11,7 +11,7 @@ export function ExportTraceInfo({ result }: { result: DownloadResult | null }) {
         {result.registroExportacionId ? (
           <>
             {" "}
-            · Folio técnico de auditoría: <span className="font-black">#{result.registroExportacionId}</span>
+            · Registro: <span className="font-black">#{result.registroExportacionId}</span>
           </>
         ) : null}
         {result.size ? (

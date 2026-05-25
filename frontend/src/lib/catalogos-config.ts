@@ -186,7 +186,7 @@ export const catalogosResources: AdminCatalogResourceConfig[] = [
   {
     slug: "materias",
     titulo: "Materias",
-    descripcion: "Unidades de aprendizaje con horas y créditos calculados.",
+    descripcion: "Catálogo base de materias con horas y créditos calculados. En operación se muestran como asignaturas.",
     ruta: "/catalogos/materias",
     endpoint: "/api/catalogos/materias/",
     categoria: "catalogos",
@@ -214,20 +214,20 @@ export const catalogosResources: AdminCatalogResourceConfig[] = [
   {
     slug: "programas-asignatura",
     titulo: "Programas de asignatura",
-    descripcion: "Relación entre plan de estudios, materia, semestre y año de formación.",
+    descripcion: "Relación entre plan de estudios, materia/asignatura base, semestre y año de formación.",
     ruta: "/catalogos/programas-asignatura",
     endpoint: "/api/catalogos/programas-asignatura/",
     categoria: "catalogos",
     tableColumns: [
       { key: "plan_estudios", label: "Plan", type: "relation" },
-      { key: "materia", label: "Materia", type: "relation" },
+      { key: "materia", label: "Materia / asignatura base", type: "relation" },
       { key: "semestre_numero", label: "Semestre" },
-      { key: "anio_formacion", label: "Año formación" },
+      { key: "anio_formacion", label: "Año de formación" },
       { key: "obligatoria", label: "Obligatoria", type: "boolean" },
     ],
     formFields: [
       { key: "plan_estudios_id", label: "Plan de estudios", type: "relation", relationEndpoint: "/api/catalogos/planes/", relationActiveOnly: true, relationSearchEnabled: true, required: true },
-      { key: "materia_id", label: "Materia", type: "relation", relationEndpoint: "/api/catalogos/materias/", relationActiveOnly: true, relationSearchEnabled: true, required: true },
+      { key: "materia_id", label: "Materia / asignatura base", type: "relation", relationEndpoint: "/api/catalogos/materias/", relationActiveOnly: true, relationSearchEnabled: true, required: true, help: "Selecciona la materia del catálogo que formará parte del plan." },
       { key: "semestre_numero", label: "Semestre", type: "number", required: true },
       { key: "anio_formacion", label: "Año de formación", readOnly: true, help: "Calculado por backend a partir del semestre." },
       { key: "obligatoria", label: "Obligatoria", type: "boolean", readOnly: true, help: "El backend conserva obligatoria activa por regla institucional." },
