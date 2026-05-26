@@ -92,6 +92,17 @@ exports/
 artifacts/
 playwright-report/
 test-results/
+frontend/playwright-report/
+frontend/test-results/
+frontend/playwright/.cache/
+frontend/e2e/downloads/
+frontend/e2e/screenshots/
+frontend/e2e/videos/
+frontend/e2e/traces/
+downloads/
+screenshots/
+videos/
+traces/
 
 # === Documentación generada ===
 docs/_build/

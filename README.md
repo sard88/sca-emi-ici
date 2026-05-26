@@ -2973,3 +2973,28 @@ Dictamen: aprobado con observaciones. No hay P0/P1 abiertos; los P2 quedan docum
 Resumen tecnico:
 
 - `docs/qa_10e/resumen_bloque10e_qa_integral.md`
+
+## Bloque 11A - Dataset QA integral y pruebas E2E por rol
+
+### Objetivo
+
+Se agrega un universo QA ficticio e idempotente para validar el sistema por perfil con usuarios demo `qa_*`, datos `QA_` y recorridos automatizados de navegador.
+
+### Cambios principales
+
+- Se crea el comando `seed_demo_qa_integral` con tamaños `small`, `medium` y `full`, más opciones `--dry-run`, `--reset-qa` y `--print-credentials`.
+- El seed crea carreras, planes, antigüedades, períodos, grupos, materias, programas, esquemas, usuarios, cargos, asignaciones, inscripciones, capturas, actas, trayectoria y auditoría QA sin tocar datos reales.
+- Se documentan usuarios demo, dataset, pool de pruebas, matriz de resultados, defectos y guía de ejecución en `docs/qa_11a/`.
+- Se agrega Playwright para pruebas E2E por rol: Admin, Estadística, Docente, Discente, Jefatura de carrera, Jefatura académica, Jefatura pedagógica y usuario anónimo.
+- Se ignoran artefactos de E2E como reportes, trazas, videos, capturas y descargas.
+
+### Ejecución rápida
+
+```powershell
+docker compose exec -T backend python manage.py seed_demo_qa_integral --size small
+docker compose exec -T backend python manage.py seed_demo_qa_integral --size small
+docker compose exec -T backend python manage.py test core.tests_qa_seed
+docker compose exec -T frontend npm run e2e:qa
+```
+
+La contraseña demo se define con `DEMO_QA_PASSWORD` o `E2E_QA_PASSWORD`; no se versionan contraseñas reales.
