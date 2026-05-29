@@ -66,11 +66,11 @@ export default function LoginPage() {
             </div>
             <div className="hidden h-16 w-px bg-[#b6aa98] sm:block" />
             <Image
-              src="/brand/institutions/sedena.png"
+              src="/brand/institutions/defensa.png"
               alt="Secretaría de la Defensa Nacional"
-              width={278}
-              height={57}
-              className="h-auto w-48 object-contain sm:w-64"
+              width={288}
+              height={70}
+              className="h-auto max-h-16 w-52 object-contain sm:w-72"
               priority
             />
           </header>
