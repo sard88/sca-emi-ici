@@ -30,7 +30,7 @@ export function ActaExportActions({ acta }: { acta: ActaResumen }) {
     <section className="space-y-3 rounded-[1.5rem] border border-[#eadfce] bg-white/90 p-4 shadow-sm">
       <div>
         <h3 className="text-base font-black text-[#101b18]">Exportaciones</h3>
-        <p className="text-sm text-[#5f6764]">Los archivos se generan en Django y registran auditoría.</p>
+        <p className="text-sm text-[#5f6764]">Los documentos disponibles corresponden al estado académico registrado.</p>
       </div>
       <div className="flex flex-wrap gap-2">
         <Button disabled={Boolean(loading)} onClick={() => void download("pdf")}>

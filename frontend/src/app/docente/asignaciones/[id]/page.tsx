@@ -78,7 +78,7 @@ export default function DocenteAsignacionDetallePage() {
 
               <section className="rounded-[1.5rem] border border-[#eadfce] bg-white/90 p-4 shadow-sm">
                 <h3 className="text-base font-black text-[#101b18]">Generar borrador de acta</h3>
-                <p className="mt-1 text-sm text-[#5f6764]">El backend valida completitud y evita duplicados de actas activas.</p>
+                <p className="mt-1 text-sm text-[#5f6764]">La generación verifica que la información esté completa y evita duplicar actas activas.</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {data.cortes.map((corte) => (
                     <button key={corte} className="rounded-xl bg-[#7a123d] px-4 py-2 text-sm font-black text-white" onClick={() => void generar(corte)}>

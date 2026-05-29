@@ -35,7 +35,7 @@ export function HeadValidationActionPanel({ acta, onChanged }: { acta: ActaResum
 export function FormalizationActionPanel({ acta, onChanged }: { acta: ActaResumen; onChanged: () => void }) {
   return (
     <ActaActionsPanel
-      warning="La formalización convierte el acta en información oficial. Si es acta de evaluación final, actualizará resultados oficiales mediante el servicio backend existente."
+      warning="La formalización convierte el acta en información oficial. Si es acta de evaluación final, actualizará los resultados oficiales registrados."
       actions={[
         { label: "Formalizar acta", visible: Boolean(acta.acciones?.puede_formalizar), confirm: "Esta acción formaliza el acta. ¿Confirmas?", run: () => formalizarActaJefaturaAcademica(acta.acta_id) },
       ]}
@@ -92,7 +92,7 @@ export function ActaActionsPanelReadOnly({ data }: { data: ActaDetalle }) {
     <section className="rounded-[1.5rem] border border-[#eadfce] bg-white/90 p-4 shadow-sm">
       <h3 className="text-base font-black text-[#101b18]">Acciones</h3>
       <p className="mt-1 text-sm text-[#5f6764]">
-        {Object.values(data.acciones || {}).some(Boolean) ? "Hay acciones disponibles según el backend." : "No hay acciones disponibles para tu perfil o el estado actual."}
+        {Object.values(data.acciones || {}).some(Boolean) ? "Hay acciones disponibles según tu perfil y el estado actual." : "No hay acciones disponibles para tu perfil o el estado actual."}
       </p>
     </section>
   );

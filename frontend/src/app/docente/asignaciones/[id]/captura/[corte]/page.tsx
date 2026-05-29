@@ -41,7 +41,7 @@ export default function DocenteCapturaCortePage() {
         <ErrorMessage message="No tienes permiso para capturar calificaciones." />
       ) : (
         <div className="space-y-6">
-          <PageHeader title={`Captura ${String(params.corte).toUpperCase()}`} description="Captura preliminar por componente. La validación real permanece en Django." user={user} />
+          <PageHeader title={`Captura ${String(params.corte).toUpperCase()}`} description="Registra las calificaciones por componente para el corte seleccionado." user={user} />
           <Link className="inline-flex rounded-xl border border-[#d8c5a7] px-4 py-2 text-sm font-black text-[#6f4a16]" href={`/docente/asignaciones/${params.id}`}>
             Volver a la asignación
           </Link>
