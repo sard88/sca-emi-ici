@@ -96,7 +96,7 @@ export default function DocenteAsignacionesPage() {
                       const anio = item.semestre ? `Semestre ${item.semestre}` : "-";
                       const discentes = item.num_discentes ?? 0;
                       const detalleId = item.asignacion_id;
-                      const actasHref = `/docente/actas`;
+                      const actasHref = `/docente/actas?asignacion=${encodeURIComponent(String(detalleId))}`;
 
                       return (
                         <tr key={item.asignacion_id} className="align-top">

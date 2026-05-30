@@ -17,7 +17,7 @@ import { useAuth } from "@/lib/auth";
 import { canAccessAuditoriaEventos, canAccessJefaturaAcademicaActas } from "@/lib/dashboard";
 import type { ActaDetalle, AuthenticatedUser } from "@/lib/types";
 
-const TIMELINE_HIDDEN_FOR = new Set(["JEFE_SUB_EJEC_CTR", "JEFE_SUB_PLAN_EVAL"]);
+const TIMELINE_HIDDEN_FOR = new Set(["JEFE_ACADEMICO", "JEFATURA_ACADEMICA", "JEFE_SUB_EJEC_CTR", "JEFE_SUB_PLAN_EVAL"]);
 
 function shouldHideStatusTimeline(user: AuthenticatedUser) {
   return (
@@ -56,7 +56,7 @@ export default function JefaturaAcademicaActaDetallePage() {
         <ErrorMessage message="No tienes permiso para consultar esta acta." />
       ) : (
         <div className="space-y-6">
-          <PageHeader title="Formalización de acta" description="La formalización se ejecuta en Django y respeta el flujo académico existente." user={user} />
+          <PageHeader title="Formalización de acta" description="Revisa y formaliza el acta conforme al flujo académico institucional." user={user} />
           <Link className="inline-flex rounded-xl border border-[#d8c5a7] px-4 py-2 text-sm font-black text-[#6f4a16]" href="/jefatura-academica/actas">
             Volver a pendientes
           </Link>
@@ -82,7 +82,7 @@ export default function JefaturaAcademicaActaDetallePage() {
               <ActaExportActions acta={data.acta} />
               <ConformitySummaryPanel filas={data.filas} />
               <ActaComponentsTable componentes={data.componentes} />
-              <ActaDetailTable filas={data.filas} />
+              <ActaDetailTable filas={data.filas} componentes={data.componentes} />
               <ActaValidationTimeline validaciones={data.validaciones} />
               {canAccessAuditoriaEventos(user) ? <AuditTrailPanel objetoTipo="ACTA" objetoId={data.acta.acta_id} /> : null}
             </>

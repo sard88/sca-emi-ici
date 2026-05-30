@@ -26,10 +26,15 @@ function DocenteActasContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const estado = (searchParams.get("estado") || "").toLowerCase();
+  const asignacion = searchParams.get("asignacion") || "";
   const [items, setItems] = useState<ActaResumen[]>([]);
-  const [filters, setFilters] = useState<Record<string, string>>({});
+  const [filters, setFilters] = useState<Record<string, string>>(() => buildInitialFilters(asignacion));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFilters(buildInitialFilters(asignacion));
+  }, [asignacion]);
 
   useEffect(() => {
     async function load() {
@@ -56,7 +61,12 @@ function DocenteActasContent() {
       ) : (
         <div className="space-y-5">
           <PageHeader title={heading.title} description={heading.description} user={user} />
-          <ActasFilters onApply={setFilters} />
+          <ActasFilters onApply={(values) => setFilters({ ...buildInitialFilters(asignacion), ...values })} />
+          {asignacion ? (
+            <p className="rounded-2xl border border-[#d8c5a7] bg-[#fffaf1] px-4 py-3 text-sm font-semibold text-[#5a3b2a]">
+              Mostrando solo las actas de la asignación seleccionada.
+            </p>
+          ) : null}
           {loading ? <LoadingState label="Cargando actas..." /> : null}
           {error ? <ErrorMessage message={error} /> : null}
           {!loading && !error && filteredItems.length === 0 ? (
@@ -107,6 +117,10 @@ function DocenteActasContent() {
       )}
     </AppShell>
   );
+}
+
+function buildInitialFilters(asignacion: string): Record<string, string> {
+  return asignacion ? { asignacion } : {};
 }
 
 function matchEstado(filter: string, acta: ActaResumen) {

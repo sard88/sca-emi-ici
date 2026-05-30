@@ -16,7 +16,7 @@ import { useAuth } from "@/lib/auth";
 import { canAccessAuditoriaEventos, canAccessEstadisticaActas } from "@/lib/dashboard";
 import type { ActaDetalle, AuthenticatedUser } from "@/lib/types";
 
-const TIMELINE_HIDDEN_FOR = new Set(["JEFE_SUB_EJEC_CTR", "JEFE_SUB_PLAN_EVAL"]);
+const TIMELINE_HIDDEN_FOR = new Set(["JEFE_ACADEMICO", "JEFATURA_ACADEMICA", "JEFE_SUB_EJEC_CTR", "JEFE_SUB_PLAN_EVAL"]);
 
 function shouldHideStatusTimeline(user: AuthenticatedUser) {
   return (
