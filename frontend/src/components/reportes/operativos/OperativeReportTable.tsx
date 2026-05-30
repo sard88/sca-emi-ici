@@ -19,12 +19,12 @@ export function OperativeReportTable({ columns, items }: { columns: ReporteOpera
         ) : null}
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse text-left text-sm">
+        <table className="w-full table-auto border-collapse text-left text-xs sm:text-sm">
           <thead>
             <tr className="bg-[#0b4a3d] text-white">
               {columns.map((column) => (
-                <th key={column.key} className="whitespace-nowrap px-4 py-3 text-xs font-black uppercase tracking-[0.08em]">
-                  {column.label || humanizeKey(column.key)}
+                <th key={column.key} className="px-2 py-2 text-[11px] font-black uppercase tracking-[0.06em] sm:px-3">
+                  <span className="line-clamp-2">{normalizeColumnLabel(column.label || humanizeKey(column.key))}</span>
                 </th>
               ))}
             </tr>
@@ -33,7 +33,7 @@ export function OperativeReportTable({ columns, items }: { columns: ReporteOpera
             {previewItems.map((item, rowIndex) => (
               <tr key={rowIndex} className="border-b border-[#f0e5d6] odd:bg-white even:bg-[#fffaf1]/70">
                 {columns.map((column) => (
-                  <td key={`${rowIndex}-${column.key}`} className="max-w-[320px] px-4 py-3 align-top text-[#263b34]">
+                  <td key={`${rowIndex}-${column.key}`} className="max-w-[260px] px-2 py-2 align-top text-[#263b34] sm:px-3">
                     {formatValue(item[column.key], column.key)}
                   </td>
                 ))}
@@ -61,4 +61,8 @@ function formatValue(value: unknown, key: string) {
 
 function humanizeKey(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+function normalizeColumnLabel(label: string) {
+  return label.replace(/Año de formacion/gi, "Año de formación");
 }

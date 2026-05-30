@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ReportFilterField } from "@/components/reportes/ReportFilterField";
 import type { ReporteDesempenoConfig } from "@/lib/types";
 
@@ -14,36 +15,47 @@ export function PerformanceReportFilters({
   onSubmit: () => void;
   onClear: () => void;
 }) {
+  const [collapsed, setCollapsed] = useState(true);
+
   return (
     <section className="rounded-[1.5rem] border border-[#eadfce] bg-white/88 p-4 shadow-sm">
-      <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h3 className="text-base font-black text-[#101b18]">Filtros</h3>
-          <p className="text-sm text-[#5f6764]">Aplica filtros para consultar la información disponible.</p>
+          <p className="text-sm text-[#5f6764]">Aplica filtros para consultar la informacion disponible.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setCollapsed((value) => !value)}
+            className="rounded-xl border border-[#d8c5a7] bg-[#fff7e8] px-3 py-2 text-xs font-black text-[#5f4525] transition hover:bg-[#f9efd9]"
+          >
+            {collapsed ? "Mostrar filtros" : "Ocultar filtros"}
+          </button>
           <button
             type="button"
             onClick={onClear}
-            className="rounded-xl border border-[#d8c5a7] bg-white px-4 py-2 text-xs font-black text-[#5f4525] transition hover:bg-[#fff7e8]"
+            className="rounded-xl border border-[#d8c5a7] bg-white px-3 py-2 text-xs font-black text-[#5f4525] transition hover:bg-[#fff7e8]"
           >
             Limpiar
           </button>
           <button
             type="button"
             onClick={onSubmit}
-            className="rounded-xl bg-[#0b4a3d] px-4 py-2 text-xs font-black text-white shadow-sm transition hover:bg-[#08372e]"
+            className="rounded-xl bg-[#0b4a3d] px-3 py-2 text-xs font-black text-white shadow-sm transition hover:bg-[#08372e]"
           >
             Aplicar filtros
           </button>
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {config.filtros.map((filter) => (
-          <ReportFilterField key={filter.key} filter={filter} value={values[filter.key] ?? ""} onChange={(value) => onChange(filter.key, value)} />
-        ))}
-      </div>
+      {!collapsed ? (
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          {config.filtros.map((filter) => (
+            <ReportFilterField key={filter.key} filter={filter} value={values[filter.key] ?? ""} onChange={(value) => onChange(filter.key, value)} />
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }
