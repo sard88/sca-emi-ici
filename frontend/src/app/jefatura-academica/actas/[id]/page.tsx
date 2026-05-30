@@ -15,7 +15,17 @@ import { LoadingState } from "@/components/states/LoadingState";
 import { getJefaturaAcademicaActaDetalle } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { canAccessAuditoriaEventos, canAccessJefaturaAcademicaActas } from "@/lib/dashboard";
-import type { ActaDetalle } from "@/lib/types";
+import type { ActaDetalle, AuthenticatedUser } from "@/lib/types";
+
+const TIMELINE_HIDDEN_FOR = new Set(["JEFE_SUB_EJEC_CTR", "JEFE_SUB_PLAN_EVAL"]);
+
+function shouldHideStatusTimeline(user: AuthenticatedUser) {
+  return (
+    TIMELINE_HIDDEN_FOR.has(user.perfil_principal ?? "") ||
+    user.roles.some((role) => TIMELINE_HIDDEN_FOR.has(role)) ||
+    user.cargos_vigentes.some((cargo) => TIMELINE_HIDDEN_FOR.has(cargo.cargo_codigo))
+  );
+}
 
 export default function JefaturaAcademicaActaDetallePage() {
   const params = useParams<{ id: string }>();
@@ -66,7 +76,9 @@ export default function JefaturaAcademicaActaDetallePage() {
               </section>
               <FormalizationActionPanel acta={data.acta} onChanged={() => void load()} />
               <OfficialStatusNotice acta={data.acta} formalizationContext />
-              <ProcessTimeline title="Timeline de estado del acta" description="Validación jerárquica visible sin alterar estados existentes." steps={buildActaProcessSteps(data.acta)} />
+              {!shouldHideStatusTimeline(user) ? (
+                <ProcessTimeline title="Timeline de estado del acta" description="Validación jerárquica visible sin alterar estados existentes." steps={buildActaProcessSteps(data.acta)} />
+              ) : null}
               <ActaExportActions acta={data.acta} />
               <ConformitySummaryPanel filas={data.filas} />
               <ActaComponentsTable componentes={data.componentes} />

@@ -14,7 +14,17 @@ import { LoadingState } from "@/components/states/LoadingState";
 import { getEstadisticaActaDetalle } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { canAccessAuditoriaEventos, canAccessEstadisticaActas } from "@/lib/dashboard";
-import type { ActaDetalle } from "@/lib/types";
+import type { ActaDetalle, AuthenticatedUser } from "@/lib/types";
+
+const TIMELINE_HIDDEN_FOR = new Set(["JEFE_SUB_EJEC_CTR", "JEFE_SUB_PLAN_EVAL"]);
+
+function shouldHideStatusTimeline(user: AuthenticatedUser) {
+  return (
+    TIMELINE_HIDDEN_FOR.has(user.perfil_principal ?? "") ||
+    user.roles.some((role) => TIMELINE_HIDDEN_FOR.has(role)) ||
+    user.cargos_vigentes.some((cargo) => TIMELINE_HIDDEN_FOR.has(cargo.cargo_codigo))
+  );
+}
 
 export default function EstadisticaActaDetallePage() {
   const params = useParams<{ id: string }>();
@@ -64,7 +74,9 @@ export default function EstadisticaActaDetallePage() {
               </section>
               <ActaReadonlyNotice visible message="Estadística consulta esta acta en solo lectura. No valida ni formaliza desde este perfil." />
               <OfficialStatusNotice acta={data.acta} />
-              <ProcessTimeline title="Timeline de estado del acta" description="Trazabilidad visual de consulta operativa." steps={buildActaProcessSteps(data.acta)} />
+              {!shouldHideStatusTimeline(user) ? (
+                <ProcessTimeline title="Timeline de estado del acta" description="Trazabilidad visual de consulta operativa." steps={buildActaProcessSteps(data.acta)} />
+              ) : null}
               <ActaExportActions acta={data.acta} />
               <ConformitySummaryPanel filas={data.filas} />
               <ActaComponentsTable componentes={data.componentes} />
